@@ -2,6 +2,21 @@
 
 ## 2026-05-07
 
+### Auth Session Stability Fix
+
+- Added frontend automatic access-token refresh on `401` responses.
+- Added original-request replay after a successful refresh.
+- Added concurrent request protection so pages loading several protected APIs do not invalidate each other during refresh.
+- Cleared local auth state and redirected to login only when refresh fails.
+- Fixed mounted-view failures caused by stale access tokens.
+
+### Verification
+
+- `docker compose run --rm xuanbox-web npm run build`
+- Manual API refresh smoke check: login, refresh token, then access protected albums endpoint.
+- Frontend route checks for `/photos` and `/files`.
+- Docker Compose health check for API, PostgreSQL, Redis, and web.
+
 ### Step 7: Receipt System
 
 - Added receipt database model, schema, service, API routes, and Alembic migration.

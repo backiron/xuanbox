@@ -21,8 +21,14 @@ export const useAuthStore = defineStore('auth', {
     },
     async loadMe() {
       if (!this.accessToken) return
-      const response = await authApi.me()
-      this.user = response.data.data
+      try {
+        const response = await authApi.me()
+        this.user = response.data.data
+        this.accessToken = localStorage.getItem('xb_access_token')
+        this.refreshToken = localStorage.getItem('xb_refresh_token')
+      } catch (error) {
+        this.logoutLocal()
+      }
     },
     logoutLocal() {
       this.user = null
