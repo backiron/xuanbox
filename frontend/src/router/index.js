@@ -5,6 +5,7 @@ import LoginView from '../views/auth/LoginView.vue'
 import AdminDashboardView from '../views/admin/AdminDashboardView.vue'
 import DashboardView from '../views/dashboard/DashboardView.vue'
 import XuanDropView from '../views/drop/XuanDropView.vue'
+import PublicDropView from '../views/drop/PublicDropView.vue'
 import FilesView from '../views/files/FilesView.vue'
 import PhotosView from '../views/photos/PhotosView.vue'
 import ReceiptsView from '../views/receipts/ReceiptsView.vue'
@@ -14,6 +15,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/login', component: LoginView },
+    { path: '/drop/public/:token', component: PublicDropView, meta: { public: true } },
     {
       path: '/',
       component: AppShell,
@@ -32,7 +34,7 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const token = localStorage.getItem('xb_access_token')
-  if (!token && to.path !== '/login') return '/login'
+  if (!token && to.path !== '/login' && !to.meta.public) return '/login'
 })
 
 export default router

@@ -85,6 +85,56 @@ async def upload_photo(db: AsyncSession, owner: User, upload: UploadFile) -> Pho
     return photo
 
 
+async def create_photo_from_file(db: AsyncSession, owner: User, file_id: UUID) -> PhotoAsset:
+    existing = await db.scalar(select(PhotoAsset).where(PhotoAsset.file_id == file_id, PhotoAsset.owner_id == owner.id))
+    if existing is not None:
+        return existing
+    original_asset, plain_bytes = await decrypt_owned_file(db, owner, file_id)
+    try:
+        image = Image.open(BytesIO(plain_bytes))
+        image.verify()
+        image = Image.open(BytesIO(plain_bytes))
+    except Exception as exc:
+        raise AppError("invalid_photo", "Transfer item is not a supported image", 400) from exc
+    thumbnail_asset = await create_encrypted_asset_from_bytes(
+        db,
+        owner=owner,
+        plain_bytes=_jpeg_bytes(image, (360, 360)),
+        original_filename=f"{original_asset.id}-thumbnail.jpg",
+        mime_type="image/jpeg",
+        source="system_import",
+        file_category="photo",
+        derivative_type="thumbnail",
+    )
+    preview_asset = await create_encrypted_asset_from_bytes(
+        db,
+        owner=owner,
+        plain_bytes=_jpeg_bytes(image, (1800, 1800)),
+        original_filename=f"{original_asset.id}-preview.jpg",
+        mime_type="image/jpeg",
+        source="system_import",
+        file_category="photo",
+        derivative_type="preview",
+    )
+    exif = image.getexif()
+    photo = PhotoAsset(
+        owner_id=owner.id,
+        file_id=original_asset.id,
+        taken_at=None,
+        uploaded_at=datetime.now(UTC),
+        width=image.width,
+        height=image.height,
+        orientation=exif.get(274) if exif else None,
+        thumbnail_file_id=thumbnail_asset.id,
+        preview_file_id=preview_asset.id,
+    )
+    db.add(photo)
+    await write_audit_log(db, action="photo.create_from_file", actor_user_id=owner.id, target_type="photo", target_id=str(photo.id))
+    await db.commit()
+    await db.refresh(photo)
+    return photo
+
+
 async def list_photos(db: AsyncSession, owner: User) -> list[PhotoAsset]:
     result = await db.scalars(
         select(PhotoAsset)

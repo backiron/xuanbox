@@ -70,7 +70,10 @@
   .xb-metric-grid,
   .xb-panel-grid,
   .xb-drop-layout,
-  .xb-workspace-grid {
+  .xb-workspace-grid,
+  .xb-receipt-layout,
+  .xb-filter-bar,
+  .xb-receipt-row {
     grid-template-columns: 1fr;
   }
 

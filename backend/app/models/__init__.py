@@ -6,7 +6,9 @@ from app.models.file_asset import FileAsset
 from app.models.folder import Folder
 from app.models.invite import Invite
 from app.models.photo_asset import PhotoAsset
+from app.models.receipt import Receipt
 from app.models.tag import Tag, TagLink
+from app.models.transfer import TransferItem, TransferSession
 from app.models.user import User
 
 __all__ = [
@@ -19,7 +21,10 @@ __all__ = [
     "Folder",
     "Invite",
     "PhotoAsset",
+    "Receipt",
     "Tag",
     "TagLink",
+    "TransferItem",
+    "TransferSession",
     "User",
 ]

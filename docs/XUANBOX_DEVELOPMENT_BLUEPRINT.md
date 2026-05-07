@@ -24,4 +24,6 @@ Engineering rules for implementation:
 - Step 4: Completed for desktop and mobile shell layouts.
 - Step 5: Completed in this pass. See `docs/CHANGELOG.md`.
 - Step 6: Completed in this pass. See `docs/CHANGELOG.md`.
-- Step 7+: Pending.
+- Step 7: Completed in this pass. See `docs/CHANGELOG.md`.
+- Step 8: Completed in this pass. See `docs/CHANGELOG.md`.
+- Step 9+: Pending.

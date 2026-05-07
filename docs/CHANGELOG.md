@@ -2,6 +2,31 @@
 
 ## 2026-05-07
 
+### Step 7: Receipt System
+
+- Added receipt database model, schema, service, API routes, and Alembic migration.
+- Added encrypted receipt upload linked to file assets.
+- Added structured receipt fields for merchant, category, amount, currency, purchase date, warranty date, and notes.
+- Added receipt search and filters for text, category, merchant, and year.
+- Completed the Receipts workspace with upload form, metadata form, filter bar, receipt list, and edit modal.
+
+### Step 8: XuanDrop
+
+- Added transfer session and transfer item models, schemas, services, API routes, and Alembic migration.
+- Added authenticated PC-side session creation and session/item listing.
+- Added public token upload endpoint for mobile or secondary-device uploads.
+- Added XuanDrop workspace with session creation, upload link display, refreshable received items, and save actions.
+- Added public XuanDrop upload page at `/drop/public/:token`.
+- Added save flow for transfer items into Files, Photos, or Receipts.
+
+### Verification
+
+- `python -m compileall backend\app`
+- `docker compose run --rm xuanbox-web npm run build`
+- `docker compose up -d --build --force-recreate xuanbox-api xuanbox-web`
+- Authenticated smoke checks for receipt upload/listing and XuanDrop session/upload/save.
+- Frontend route checks for `/receipts` and `/drop`.
+
 ### Step 5: File System Completion
 
 - Completed the Files workspace with folder navigation, folder rename, file rename, favorite, move, soft delete, restore, purge, protected download, selection, batch favorite, batch move, and batch delete.
