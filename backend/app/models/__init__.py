@@ -2,6 +2,7 @@ from app.models.audit_log import AuditLog
 from app.models.album import Album, AlbumPhoto
 from app.models.auth_session import AuthSession
 from app.models.device import Device
+from app.models.document_asset import DocumentAsset
 from app.models.file_asset import FileAsset
 from app.models.folder import Folder
 from app.models.invite import Invite
@@ -18,6 +19,7 @@ __all__ = [
     "AlbumPhoto",
     "AuthSession",
     "Device",
+    "DocumentAsset",
     "FileAsset",
     "Folder",
     "Invite",

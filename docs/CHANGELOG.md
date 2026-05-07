@@ -2,6 +2,25 @@
 
 ## 2026-05-07
 
+### Step 10: Documents And Important Records
+
+- Added document database model, schema, service, API routes, and Alembic migration `0006_documents`.
+- Added encrypted document upload linked to file assets.
+- Added document metadata for type, title, issuer, issued date, expiry date, note, and security level.
+- Added security-level validation for `normal`, `sensitive`, `high_sensitive`, and `vault_locked`.
+- Added password re-verification for high-sensitive and vault-locked document downloads as the second-factor placeholder.
+- Added document expiry reminder APIs and Dashboard summary metrics.
+- Added Documents workspace with upload form, filters, security-level cards, edit modal, and protected download.
+- Updated Dashboard to show real storage, file/photo/document counts, and documents expiring in the next 90 days.
+
+### Verification
+
+- `PYTHONPYCACHEPREFIX=.pycache-local python3 -m compileall backend/app`
+- `docker compose up -d --build xuanbox-api xuanbox-web`
+- `docker compose exec -T xuanbox-api alembic current`
+- `docker compose run --rm xuanbox-web npm run build`
+- End-to-end API smoke check: login as `111`, upload high-sensitive document, confirm Dashboard reminder, reject download without password, download with password.
+
 ### Step 9: Sharing System
 
 - Added share and share access log database models with Alembic migration `0005_shares`.

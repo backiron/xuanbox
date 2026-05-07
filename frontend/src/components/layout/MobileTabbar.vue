@@ -1,11 +1,11 @@
 <script setup>
-import { Files, Home, Image, ReceiptText, Share2, User } from 'lucide-vue-next'
+import { ClipboardList, Files, Home, Image, Share2, User } from 'lucide-vue-next'
 
 const tabs = [
   { to: '/', label: 'Home', icon: Home },
   { to: '/photos', label: 'Photos', icon: Image },
   { to: '/files', label: 'Files', icon: Files },
-  { to: '/receipts', label: 'Receipts', icon: ReceiptText },
+  { to: '/documents', label: 'Docs', icon: ClipboardList },
   { to: '/shared', label: 'Shared', icon: Share2 },
   { to: '/settings', label: 'Me', icon: User }
 ]

@@ -519,6 +519,7 @@
 }
 
 .xb-receipt-form,
+.xb-document-form,
 .xb-share-form,
 .xb-modal {
   display: grid;
@@ -526,6 +527,7 @@
 }
 
 .xb-receipt-form label,
+.xb-document-form label,
 .xb-share-form label,
 .xb-modal label {
   display: grid;
@@ -536,6 +538,9 @@
 
 .xb-receipt-form input,
 .xb-receipt-form textarea,
+.xb-document-form input,
+.xb-document-form select,
+.xb-document-form textarea,
 .xb-share-form input,
 .xb-share-form select,
 .xb-modal input,
@@ -549,6 +554,8 @@
 }
 
 .xb-receipt-form input,
+.xb-document-form input,
+.xb-document-form select,
 .xb-share-form input,
 .xb-share-form select,
 .xb-modal input,
@@ -558,6 +565,7 @@
 }
 
 .xb-receipt-form textarea,
+.xb-document-form textarea,
 .xb-modal textarea {
   padding: 10px;
   resize: vertical;
@@ -590,6 +598,96 @@
 .xb-receipt-list {
   display: grid;
   gap: 8px;
+}
+
+.xb-document-layout {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.xb-document-form h3 {
+  margin: 0;
+}
+
+.xb-document-filter-bar {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+}
+
+.xb-document-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.xb-document-card {
+  display: grid;
+  gap: 10px;
+  min-height: 210px;
+  padding: 16px;
+  border: 1px solid var(--xb-border);
+  border-radius: var(--xb-radius-md);
+  background: var(--xb-bg-card);
+}
+
+.xb-document-card.level-sensitive {
+  border-color: #3b82f6;
+}
+
+.xb-document-card.level-high_sensitive {
+  border-color: #f59e0b;
+}
+
+.xb-document-card.level-vault_locked {
+  border-color: #a855f7;
+}
+
+.xb-document-card h3,
+.xb-document-card p {
+  margin: 0;
+}
+
+.xb-document-card p,
+.xb-document-card small {
+  color: var(--xb-text-muted);
+}
+
+.xb-document-card-head,
+.xb-document-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.xb-document-card-head span,
+.xb-document-meta span {
+  color: var(--xb-text-muted);
+  font-size: 13px;
+}
+
+.xb-reminder-list {
+  display: grid;
+  gap: 8px;
+}
+
+.xb-reminder-row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 38px;
+  color: var(--xb-text-main);
+  text-decoration: none;
+}
+
+.xb-reminder-row span {
+  overflow-wrap: anywhere;
+}
+
+.xb-reminder-row svg {
+  color: var(--xb-color-danger);
 }
 
 .xb-receipt-row {

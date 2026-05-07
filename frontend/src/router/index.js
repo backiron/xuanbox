@@ -4,6 +4,7 @@ import AppShell from '../layouts/AppShell.vue'
 import LoginView from '../views/auth/LoginView.vue'
 import AdminDashboardView from '../views/admin/AdminDashboardView.vue'
 import DashboardView from '../views/dashboard/DashboardView.vue'
+import DocumentsView from '../views/documents/DocumentsView.vue'
 import XuanDropView from '../views/drop/XuanDropView.vue'
 import PublicDropView from '../views/drop/PublicDropView.vue'
 import FilesView from '../views/files/FilesView.vue'
@@ -26,6 +27,7 @@ const router = createRouter({
         { path: '', name: 'dashboard', component: DashboardView },
         { path: 'photos', name: 'photos', component: PhotosView },
         { path: 'files', name: 'files', component: FilesView },
+        { path: 'documents', name: 'documents', component: DocumentsView },
         { path: 'receipts', name: 'receipts', component: ReceiptsView },
         { path: 'drop', name: 'drop', component: XuanDropView },
         { path: 'shared', name: 'shared', component: SharedView },

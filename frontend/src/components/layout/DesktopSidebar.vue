@@ -1,6 +1,7 @@
 <script setup>
 import {
   Archive,
+  ClipboardList,
   FileText,
   Gauge,
   HardDrive,
@@ -16,6 +17,7 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: Gauge },
   { to: '/photos', label: 'Photos', icon: Image },
   { to: '/files', label: 'Files', icon: HardDrive },
+  { to: '/documents', label: 'Documents', icon: ClipboardList },
   { to: '/receipts', label: 'Receipts', icon: ReceiptText },
   { to: '/drop', label: 'XuanDrop', icon: Send },
   { to: '/shared', label: 'Shared', icon: Share2 },

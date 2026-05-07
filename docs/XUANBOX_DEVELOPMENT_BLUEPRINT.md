@@ -27,4 +27,5 @@ Engineering rules for implementation:
 - Step 7: Completed in this pass. See `docs/CHANGELOG.md`.
 - Step 8: Completed in this pass. See `docs/CHANGELOG.md`.
 - Step 9: Completed in this pass. See `docs/CHANGELOG.md`.
-- Step 10+: Pending.
+- Step 10: Completed in this pass. See `docs/CHANGELOG.md`.
+- Step 11+: Pending.

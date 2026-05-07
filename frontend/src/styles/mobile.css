@@ -69,6 +69,7 @@
 
   .xb-metric-grid,
   .xb-panel-grid,
+  .xb-document-layout,
   .xb-drop-layout,
   .xb-shared-layout,
   .xb-workspace-grid,
@@ -85,6 +86,10 @@
   .xb-share-card {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .xb-document-filter-bar {
+    grid-template-columns: 1fr;
   }
 
   .xb-file-row {
