@@ -690,6 +690,38 @@
   color: var(--xb-color-danger);
 }
 
+.xb-admin-tabs {
+  margin-bottom: 18px;
+}
+
+.xb-admin-list {
+  display: grid;
+  gap: 8px;
+}
+
+.xb-admin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid var(--xb-border);
+  border-radius: var(--xb-radius-md);
+  background: var(--xb-bg-card);
+}
+
+.xb-admin-row strong,
+.xb-admin-row span {
+  display: block;
+}
+
+.xb-admin-row span {
+  overflow-wrap: anywhere;
+  color: var(--xb-text-muted);
+  font-size: 13px;
+}
+
 .xb-receipt-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 140px 170px auto;

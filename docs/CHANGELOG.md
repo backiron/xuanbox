@@ -2,6 +2,30 @@
 
 ## 2026-05-07
 
+### Step 12: Admin Management
+
+- Added admin API bundle with overview, users, invites, audit logs, backup list, and health-oriented storage stats.
+- Added user role/status/quota update endpoint with audit logging and self-disable protection.
+- Added aggregate storage and service metrics without exposing private file contents.
+- Rebuilt Admin page with overview, users, invites, audit, and backups tabs.
+
+### Step 13: Backup And Migration
+
+- Added backup task database model and Alembic migration `0008_admin_backups`.
+- Added manual backup API that writes a local `.tar.gz` archive containing database JSON export, encrypted storage directories, safe config copy, manifest, and restore notes.
+- Added backup listing and Admin UI trigger.
+- Added safe config export with secrets redacted.
+- Marked the blueprint implementation path complete through Step 13.
+
+### Verification
+
+- `PYTHONPYCACHEPREFIX=.pycache-local python3 -m compileall backend/app`
+- `docker-compose up -d --build xuanbox-api xuanbox-web xuanbox-worker`
+- `docker-compose exec -T xuanbox-api alembic current`
+- `docker-compose run xuanbox-web npm run build`
+- Admin smoke check: owner loads admin bundle and updates aggregate-only admin data.
+- Backup smoke check: manual backup completes and archive is written under `STORAGE_ROOT/backups`.
+
 ### Step 11: OCR And Worker
 
 - Added generic `worker_tasks` queue model and `ocr_tasks` OCR result model with Alembic migration `0007_ocr_worker`.

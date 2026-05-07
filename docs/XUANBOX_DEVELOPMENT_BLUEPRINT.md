@@ -29,4 +29,6 @@ Engineering rules for implementation:
 - Step 9: Completed in this pass. See `docs/CHANGELOG.md`.
 - Step 10: Completed in this pass. See `docs/CHANGELOG.md`.
 - Step 11: Completed in this pass. See `docs/CHANGELOG.md`.
-- Step 12+: Pending.
+- Step 12: Completed in this pass. See `docs/CHANGELOG.md`.
+- Step 13: Completed in this pass. See `docs/CHANGELOG.md`.
+- Blueprint implementation path completed through Step 13.

@@ -1,8 +1,9 @@
 from fastapi import APIRouter
 
-from app.api.v1 import albums, auth, dashboard, devices, documents, drop, files, folders, health, invites, photos, receipts, shares, tags, trash
+from app.api.v1 import admin, albums, auth, dashboard, devices, documents, drop, files, folders, health, invites, photos, receipts, shares, tags, trash
 
 api_router = APIRouter()
+api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(albums.router, prefix="/albums", tags=["albums"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])

@@ -1,6 +1,7 @@
 from app.models.audit_log import AuditLog
 from app.models.album import Album, AlbumPhoto
 from app.models.auth_session import AuthSession
+from app.models.backup_task import BackupTask
 from app.models.device import Device
 from app.models.document_asset import DocumentAsset
 from app.models.file_asset import FileAsset
@@ -20,6 +21,7 @@ __all__ = [
     "Album",
     "AlbumPhoto",
     "AuthSession",
+    "BackupTask",
     "Device",
     "DocumentAsset",
     "FileAsset",
