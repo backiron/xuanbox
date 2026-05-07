@@ -1,0 +1,9 @@
+USER_ROLE_OWNER = "owner"
+USER_ROLE_ADMIN = "admin"
+USER_ROLE_USER = "user"
+USER_ROLE_GUEST = "guest"
+
+USER_STATUS_ACTIVE = "active"
+USER_STATUS_DISABLED = "disabled"
+USER_STATUS_LOCKED = "locked"
+USER_STATUS_DELETED = "deleted"

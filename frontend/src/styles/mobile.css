@@ -1,0 +1,91 @@
+@media (max-width: 840px) {
+  .desktop-only {
+    display: none;
+  }
+
+  .mobile-only {
+    display: flex;
+  }
+
+  .xb-shell {
+    display: block;
+    min-height: 100vh;
+    padding-bottom: 76px;
+  }
+
+  .xb-mobile-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--xb-border);
+    background: var(--xb-bg-card);
+  }
+
+  .xb-mobile-topbar span {
+    color: var(--xb-text-muted);
+    font-size: 13px;
+  }
+
+  .xb-content {
+    padding: 18px 14px;
+  }
+
+  .xb-mobile-tabbar {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 20;
+    justify-content: space-around;
+    min-height: 64px;
+    border-top: 1px solid var(--xb-border);
+    background: var(--xb-bg-card);
+  }
+
+  .xb-mobile-tab {
+    display: grid;
+    place-items: center;
+    gap: 2px;
+    min-width: 52px;
+    color: var(--xb-text-muted);
+    font-size: 11px;
+  }
+
+  .xb-mobile-tab.router-link-active {
+    color: var(--xb-color-primary);
+  }
+
+  .xb-page-header {
+    display: grid;
+  }
+
+  .xb-page-header h2 {
+    font-size: 21px;
+  }
+
+  .xb-metric-grid,
+  .xb-panel-grid,
+  .xb-drop-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .xb-auth-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+  }
+
+  .xb-auth-brand {
+    display: none;
+  }
+
+  .xb-login-panel {
+    width: 100%;
+    max-width: 420px;
+  }
+}

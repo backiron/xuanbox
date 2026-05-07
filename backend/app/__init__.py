@@ -1,0 +1,1 @@
+"""XuanBox backend application package."""

@@ -1,0 +1,83 @@
+services:
+  xuanbox-postgres:
+    image: postgres:16-alpine
+    container_name: xuanbox-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-xuanbox}
+      POSTGRES_USER: ${POSTGRES_USER:-xuanbox}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-xuanbox_dev_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - xuanbox-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-xuanbox} -d ${POSTGRES_DB:-xuanbox}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  xuanbox-redis:
+    image: redis:7-alpine
+    container_name: xuanbox-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - xuanbox-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  xuanbox-api:
+    build:
+      context: ./backend
+    container_name: xuanbox-api
+    restart: unless-stopped
+    depends_on:
+      xuanbox-postgres:
+        condition: service_healthy
+      xuanbox-redis:
+        condition: service_healthy
+    environment:
+      DEBUG: ${DEBUG:-true}
+      POSTGRES_HOST: xuanbox-postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-xuanbox}
+      POSTGRES_USER: ${POSTGRES_USER:-xuanbox}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-xuanbox_dev_password}
+      REDIS_URL: redis://xuanbox-redis:6379/0
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-only-change-this-jwt-secret}
+      MASTER_KEY: ${MASTER_KEY:-dev-only-change-this-master-key}
+      STORAGE_ROOT: /data/xuanbox/storage
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./data/storage:/data/xuanbox/storage
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  xuanbox-web:
+    build:
+      context: ./frontend
+    container_name: xuanbox-web
+    restart: unless-stopped
+    depends_on:
+      xuanbox-api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+    command: npm run dev
+
+volumes:
+  xuanbox-postgres-data:
+  xuanbox-redis-data:
