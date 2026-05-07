@@ -62,6 +62,10 @@
   color: var(--xb-text-muted);
 }
 
+.xb-muted {
+  color: var(--xb-text-muted);
+}
+
 .xb-empty-state {
   display: grid;
   place-items: center;

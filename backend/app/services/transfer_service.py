@@ -8,11 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
 from app.core.security import hash_token
+from app.models.file_asset import FileAsset
 from app.models.transfer import TransferItem, TransferSession
 from app.models.user import User
 from app.schemas.transfer import TransferSaveRequest, TransferSessionCreateRequest
 from app.services.audit_service import write_audit_log
 from app.services.file_service import upload_file
+from app.services.file_service import decrypt_file_asset, soft_delete_file
 from app.services.photo_service import create_photo_from_file
 from app.services.receipt_service import create_receipt_for_file
 
@@ -87,10 +89,35 @@ async def list_transfer_items(db: AsyncSession, owner: User, session_id: UUID) -
     return list(result)
 
 
-async def save_transfer_item(db: AsyncSession, owner: User, item_id: UUID, payload: TransferSaveRequest) -> TransferItem:
+async def get_owned_transfer_item(db: AsyncSession, owner: User, item_id: UUID) -> TransferItem:
     item = await db.scalar(select(TransferItem).where(TransferItem.id == item_id, TransferItem.owner_id == owner.id))
     if item is None:
         raise AppError("drop_item_not_found", "Transfer item not found", 404)
+    return item
+
+
+async def download_transfer_item(db: AsyncSession, owner: User, item_id: UUID) -> tuple[TransferItem, bytes]:
+    item = await get_owned_transfer_item(db, owner, item_id)
+    file_asset = await db.get(FileAsset, item.file_id)
+    if file_asset is None or file_asset.is_deleted:
+        raise AppError("drop_file_not_found", "Transfer file not found", 404)
+    plain_bytes = decrypt_file_asset(file_asset)
+    await write_audit_log(db, action="drop.download_item", actor_user_id=owner.id, target_type="transfer_item", target_id=str(item.id))
+    await db.commit()
+    return item, plain_bytes
+
+
+async def delete_transfer_item(db: AsyncSession, owner: User, item_id: UUID) -> None:
+    item = await get_owned_transfer_item(db, owner, item_id)
+    if item.status != "saved":
+        await soft_delete_file(db, owner, item.file_id)
+    await write_audit_log(db, action="drop.delete_item", actor_user_id=owner.id, target_type="transfer_item", target_id=str(item.id))
+    await db.delete(item)
+    await db.commit()
+
+
+async def save_transfer_item(db: AsyncSession, owner: User, item_id: UUID, payload: TransferSaveRequest) -> TransferItem:
+    item = await get_owned_transfer_item(db, owner, item_id)
     if payload.destination == "photos":
         await create_photo_from_file(db, owner, item.file_id)
     elif payload.destination == "receipts":

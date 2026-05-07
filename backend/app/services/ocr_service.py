@@ -1,10 +1,13 @@
 import re
+from io import BytesIO
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from PIL import Image, UnidentifiedImageError
+import pytesseract
 
 from app.core.errors import AppError
 from app.models.file_asset import FileAsset
@@ -126,6 +129,13 @@ def extract_text_from_bytes(file_asset: FileAsset, plain_bytes: bytes) -> str:
     mime_type = file_asset.mime_type or ""
     if mime_type.startswith("text/") or file_asset.file_ext in {"txt", "csv", "md"}:
         return plain_bytes.decode("utf-8", "ignore").strip()
+    if mime_type.startswith("image/") or file_asset.file_ext in {"jpg", "jpeg", "png", "webp", "tif", "tiff", "bmp"}:
+        try:
+            with Image.open(BytesIO(plain_bytes)) as image:
+                image = image.convert("L")
+                return pytesseract.image_to_string(image, lang="eng+chi_sim").strip()
+        except (UnidentifiedImageError, pytesseract.TesseractError) as exc:
+            raise ValueError(f"Image OCR failed: {exc}") from exc
     if file_asset.file_ext == "pdf" or mime_type == "application/pdf":
         decoded = plain_bytes.decode("latin-1", "ignore")
         tokens = re.findall(r"[A-Za-z0-9$.,:/\\-]{3,}", decoded)

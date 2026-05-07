@@ -1,5 +1,22 @@
 # XuanBox Changelog
 
+## 2026-05-07 Hardening
+
+- Added real image OCR support through Tesseract with English and Simplified Chinese language packs in the backend image.
+- Added Admin health endpoint at `/api/v1/admin/health`.
+- Expanded XuanDrop with realtime server-sent item events, authenticated item download, authenticated item deletion, and frontend live status/download/delete controls.
+- Added scheduled backup execution in the worker with `BACKUP_SCHEDULE_HOURS`.
+- Added executable restore tooling at `python -m app.scripts.restore_backup <archive> --yes` for backup archive database and encrypted storage recovery.
+
+### Verification
+
+- `python -m compileall backend\app`
+- `docker compose run --rm xuanbox-web npm run build`
+- `docker compose build xuanbox-api xuanbox-worker`
+- Container OCR engine check returned Tesseract `5.5.0`.
+- API smoke checks passed for login, `/admin/health`, XuanDrop session creation, public upload, authenticated download, deletion, and realtime event stream.
+- Worker started and completed a scheduled backup.
+
 ## 2026-05-07
 
 ### Step 12: Admin Management

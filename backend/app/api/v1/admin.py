@@ -50,6 +50,22 @@ async def admin_overview_endpoint(
     return success_response((await admin_overview(session)).model_dump(mode="json"))
 
 
+@router.get("/health")
+async def admin_health_endpoint(
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_admin),
+) -> dict:
+    overview = await admin_overview(session)
+    return success_response(
+        {
+            "status": "ok",
+            "services": overview.service_status,
+            "disk": overview.disk,
+            "latest_backup": overview.latest_backup,
+        }
+    )
+
+
 @router.get("/users")
 async def admin_users_endpoint(
     session: AsyncSession = Depends(get_session),

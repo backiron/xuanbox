@@ -1,6 +1,6 @@
 <script setup>
-import { onMounted, ref } from 'vue'
-import { FileCheck, QrCode, RefreshCw, Save, Send } from 'lucide-vue-next'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { Download, FileCheck, QrCode, RefreshCw, Save, Send, Trash2 } from 'lucide-vue-next'
 import PageHeader from '../../components/common/PageHeader.vue'
 import EmptyState from '../../components/common/EmptyState.vue'
 import { dropApi } from '../../api/dropApi'
@@ -10,6 +10,8 @@ const items = ref([])
 const activeSession = ref(null)
 const lastUploadUrl = ref('')
 const loading = ref(false)
+const liveStatus = ref('Offline')
+let eventSource = null
 
 async function loadSessions() {
   const response = await dropApi.sessions()
@@ -40,6 +42,31 @@ async function loadItems() {
   }
 }
 
+function closeEvents() {
+  if (eventSource) {
+    eventSource.close()
+    eventSource = null
+  }
+  liveStatus.value = 'Offline'
+}
+
+function connectEvents() {
+  closeEvents()
+  if (!activeSession.value) return
+  eventSource = new EventSource(dropApi.eventUrl(activeSession.value.id))
+  liveStatus.value = 'Connecting'
+  eventSource.addEventListener('open', () => {
+    liveStatus.value = 'Live'
+  })
+  eventSource.addEventListener('items', (event) => {
+    items.value = JSON.parse(event.data || '[]')
+    liveStatus.value = 'Live'
+  })
+  eventSource.addEventListener('error', () => {
+    liveStatus.value = 'Reconnecting'
+  })
+}
+
 async function saveItem(item, destination) {
   const payload = { destination }
   if (destination === 'receipts') {
@@ -50,13 +77,34 @@ async function saveItem(item, destination) {
   await loadItems()
 }
 
+async function downloadItem(item) {
+  const response = await dropApi.downloadItem(item.id)
+  const url = URL.createObjectURL(response.data)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = item.original_filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+async function deleteItem(item) {
+  if (!window.confirm(`Delete ${item.original_filename}?`)) return
+  await dropApi.deleteItem(item.id)
+  await loadItems()
+}
+
 function selectSession(session) {
   activeSession.value = session
   lastUploadUrl.value = ''
   loadItems()
+  connectEvents()
 }
 
-onMounted(loadSessions)
+onMounted(async () => {
+  await loadSessions()
+  connectEvents()
+})
+onBeforeUnmount(closeEvents)
 </script>
 
 <template>
@@ -86,6 +134,7 @@ onMounted(loadSessions)
 
     <article class="xb-panel">
       <h3>Sessions</h3>
+      <p class="xb-muted">Realtime: {{ liveStatus }}</p>
       <p v-if="sessions.length === 0">No sessions yet.</p>
       <button v-for="session in sessions" :key="session.id" class="xb-session-row" :class="{ 'is-active': activeSession?.id === session.id }" type="button" @click="selectSession(session)">
         <strong>{{ session.title }}</strong>
@@ -104,12 +153,20 @@ onMounted(loadSessions)
         <span>{{ item.mime_type || 'application/octet-stream' }} · {{ Math.ceil(item.file_size / 1024) }} KB · {{ item.status }}</span>
       </div>
       <div class="xb-row-actions">
+        <button class="xb-text-button" type="button" @click="downloadItem(item)">
+          <Download :size="16" />
+          Download
+        </button>
         <button class="xb-text-button" type="button" @click="saveItem(item, 'files')">
           <Save :size="16" />
           Files
         </button>
         <button class="xb-text-button" type="button" @click="saveItem(item, 'photos')">Photos</button>
         <button class="xb-text-button" type="button" @click="saveItem(item, 'receipts')">Receipts</button>
+        <button class="xb-text-button xb-danger-button" type="button" @click="deleteItem(item)">
+          <Trash2 :size="16" />
+          Delete
+        </button>
       </div>
     </article>
   </section>

@@ -32,3 +32,4 @@ Engineering rules for implementation:
 - Step 12: Completed in this pass. See `docs/CHANGELOG.md`.
 - Step 13: Completed in this pass. See `docs/CHANGELOG.md`.
 - Blueprint implementation path completed through Step 13.
+- Hardening pass added production-backed OCR image processing, XuanDrop realtime/download/delete, admin health, scheduled backups, and executable backup restore tooling.

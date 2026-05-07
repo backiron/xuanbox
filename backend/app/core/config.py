@@ -31,6 +31,7 @@ class Settings(BaseSettings):
         default="dev-only-change-this-master-key",
         min_length=24,
     )
+    BACKUP_SCHEDULE_HOURS: int = Field(default=24, ge=0)
 
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:8080,http://127.0.0.1:5173"
 
