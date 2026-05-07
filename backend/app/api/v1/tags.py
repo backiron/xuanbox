@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_current_user, get_session
 from app.core.responses import success_response
 from app.models.user import User
-from app.schemas.tag import TagAttachRequest, TagCreateRequest, TagPublic
-from app.services.tag_service import attach_tag, create_tag, list_tags
+from app.schemas.tag import TagAttachRequest, TagCreateRequest, TagLinkPublic, TagPublic
+from app.services.tag_service import attach_tag, create_tag, list_tag_links, list_tags
 
 router = APIRouter()
 
@@ -19,6 +19,16 @@ async def list_tags_endpoint(
 ) -> dict:
     tags = await list_tags(session, current_user)
     return success_response([TagPublic.model_validate(tag).model_dump(mode="json") for tag in tags])
+
+
+@router.get("/links")
+async def list_tag_links_endpoint(
+    target_type: str | None = None,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    links = await list_tag_links(session, current_user, target_type)
+    return success_response([TagLinkPublic.model_validate(link).model_dump(mode="json") for link in links])
 
 
 @router.post("")

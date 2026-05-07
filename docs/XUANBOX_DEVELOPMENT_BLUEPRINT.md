@@ -15,3 +15,13 @@ Engineering rules for implementation:
 6. PC and mobile layouts should be designed together.
 7. XuanDrop is a core module.
 8. The local path is Docker Compose testing, then repository push, then server deployment.
+
+## Current Implementation Status
+
+- Step 1: Completed.
+- Step 2: Completed for local owner bootstrap, login, token handling, invite APIs, and device records.
+- Step 3: Completed for encrypted upload, encrypted storage, protected download, listing, and delete flows.
+- Step 4: Completed for desktop and mobile shell layouts.
+- Step 5: Completed in this pass. See `docs/CHANGELOG.md`.
+- Step 6: Completed in this pass. See `docs/CHANGELOG.md`.
+- Step 7+: Pending.

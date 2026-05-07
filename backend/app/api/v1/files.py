@@ -15,6 +15,7 @@ from app.services.file_service import (
     purge_file,
     restore_file,
     soft_delete_file,
+    UNSET_FOLDER,
     update_file_metadata,
     upload_file,
 )
@@ -36,10 +37,11 @@ async def upload_file_endpoint(
 @router.get("")
 async def list_files_endpoint(
     folder_id: UUID | None = None,
+    root_only: bool = False,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    files = await list_files(session, current_user, folder_id=folder_id)
+    files = await list_files(session, current_user, folder_id=folder_id, root_only=root_only)
     return success_response([FileAssetPublic.model_validate(item).model_dump(mode="json") for item in files])
 
 
@@ -65,7 +67,7 @@ async def update_file_endpoint(
         current_user,
         file_id,
         display_name=payload.display_name,
-        folder_id=payload.folder_id,
+        folder_id=payload.folder_id if "folder_id" in payload.model_fields_set else UNSET_FOLDER,
         is_favorite=payload.is_favorite,
     )
     return success_response(FileAssetPublic.model_validate(file_asset).model_dump(mode="json"))

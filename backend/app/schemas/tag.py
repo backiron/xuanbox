@@ -22,3 +22,13 @@ class TagPublic(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class TagLinkPublic(BaseModel):
+    id: UUID
+    owner_id: UUID
+    tag_id: UUID
+    target_type: str
+    target_id: UUID
+
+    model_config = {"from_attributes": True}

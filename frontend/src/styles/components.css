@@ -120,8 +120,46 @@
   color: var(--xb-color-danger);
 }
 
+.xb-icon-button,
+.xb-icon-button:visited {
+  text-decoration: none;
+}
+
 .xb-upload-button input {
   display: none;
+}
+
+.xb-progress {
+  overflow: hidden;
+  height: 8px;
+  margin: -8px 0 16px;
+  border-radius: 999px;
+  background: var(--xb-color-primary-soft);
+}
+
+.xb-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--xb-color-primary);
+  transition: width 140ms ease;
+}
+
+.xb-action-bar,
+.xb-album-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.xb-action-bar {
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1px solid var(--xb-border);
+  border-radius: var(--xb-radius-md);
+  background: var(--xb-bg-card);
 }
 
 .xb-file-list {
@@ -141,10 +179,37 @@
   background: var(--xb-bg-card);
 }
 
+.xb-file-row.is-active {
+  border-color: var(--xb-color-primary);
+}
+
+.xb-file-main {
+  flex: 1;
+  min-width: 180px;
+}
+
+.xb-check {
+  display: grid;
+  place-items: center;
+}
+
+.xb-check input {
+  width: 18px;
+  height: 18px;
+}
+
 .xb-row-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.xb-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
+  align-items: start;
 }
 
 .xb-folder-grid {
@@ -157,14 +222,116 @@
 .xb-folder-card {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   min-height: 54px;
-  padding: 0 14px;
+  padding: 8px 10px;
   border: 1px solid var(--xb-border);
   border-radius: var(--xb-radius-md);
   background: var(--xb-bg-card);
   color: var(--xb-text-main);
+}
+
+.xb-folder-card > button:first-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
   cursor: pointer;
+}
+
+.xb-detail-drawer {
+  position: sticky;
+  top: 84px;
+  min-height: 360px;
+  padding: 18px;
+  border: 1px solid var(--xb-border);
+  border-radius: var(--xb-radius-lg);
+  background: var(--xb-bg-card);
+}
+
+.xb-detail-drawer h3 {
+  overflow-wrap: anywhere;
+}
+
+.xb-detail-drawer dl {
+  display: grid;
+  gap: 10px;
+}
+
+.xb-detail-drawer dt {
+  color: var(--xb-text-muted);
+  font-size: 12px;
+}
+
+.xb-detail-drawer dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.xb-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.xb-tag-list span {
+  padding: 2px 7px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: var(--xb-bg-page);
+  font-size: 12px;
+}
+
+.xb-trash-panel {
+  margin-bottom: 16px;
+}
+
+.xb-folder-reference {
+  margin-top: 16px;
+}
+
+.xb-id-list {
+  display: grid;
+  gap: 6px;
+}
+
+.xb-id-list span {
+  overflow-wrap: anywhere;
+  color: var(--xb-text-muted);
+  font-size: 12px;
+}
+
+.xb-album-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--xb-border);
+  border-radius: 999px;
+  background: var(--xb-bg-card);
+  color: var(--xb-text-main);
+  cursor: pointer;
+}
+
+.xb-album-pill.is-active {
+  border-color: var(--xb-color-primary);
+  background: var(--xb-color-primary-soft);
+  color: var(--xb-color-primary);
+}
+
+.xb-timeline {
+  display: grid;
+  gap: 24px;
+}
+
+.xb-timeline-group h3 {
+  margin: 0 0 12px;
 }
 
 .xb-photo-grid {
@@ -179,6 +346,15 @@
   aspect-ratio: 1;
   border-radius: var(--xb-radius-md);
   background: var(--xb-bg-card);
+}
+
+.xb-photo-card button {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
 }
 
 .xb-photo-card img {
@@ -196,6 +372,74 @@
   background: rgba(15, 23, 42, 0.72);
   color: #ffffff;
   font-size: 12px;
+}
+
+.xb-photo-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.xb-photo-card:hover .xb-photo-actions,
+.xb-photo-card:focus-within .xb-photo-actions {
+  opacity: 1;
+}
+
+.xb-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 84px 72px 44px;
+  background: rgba(2, 6, 23, 0.9);
+}
+
+.xb-lightbox img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.xb-lightbox-toolbar {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: var(--xb-radius-md);
+  background: rgba(15, 23, 42, 0.8);
+  color: #ffffff;
+  transform: translateX(-50%);
+}
+
+.xb-lightbox-edge {
+  position: absolute;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 72px;
+  border: 0;
+  border-radius: var(--xb-radius-md);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.xb-lightbox-edge.left {
+  left: 16px;
+}
+
+.xb-lightbox-edge.right {
+  right: 16px;
 }
 
 .xb-file-row strong,

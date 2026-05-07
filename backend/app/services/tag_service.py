@@ -6,12 +6,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import AppError
 from app.models.tag import Tag, TagLink
 from app.models.user import User
-from app.schemas.tag import TagCreateRequest, TagAttachRequest
+from app.schemas.tag import TagAttachRequest, TagCreateRequest
 from app.services.audit_service import write_audit_log
 
 
 async def list_tags(db: AsyncSession, owner: User) -> list[Tag]:
     result = await db.scalars(select(Tag).where(Tag.owner_id == owner.id).order_by(Tag.name.asc()))
+    return list(result)
+
+
+async def list_tag_links(db: AsyncSession, owner: User, target_type: str | None = None) -> list[TagLink]:
+    query = select(TagLink).where(TagLink.owner_id == owner.id)
+    if target_type:
+        query = query.where(TagLink.target_type == target_type)
+    result = await db.scalars(query)
     return list(result)
 
 

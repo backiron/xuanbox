@@ -69,8 +69,38 @@
 
   .xb-metric-grid,
   .xb-panel-grid,
-  .xb-drop-layout {
+  .xb-drop-layout,
+  .xb-workspace-grid {
     grid-template-columns: 1fr;
+  }
+
+  .xb-file-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .xb-detail-drawer {
+    position: static;
+  }
+
+  .xb-photo-actions {
+    opacity: 1;
+  }
+
+  .xb-lightbox {
+    padding: 74px 10px 24px;
+  }
+
+  .xb-lightbox-toolbar {
+    right: 10px;
+    left: 10px;
+    justify-content: center;
+    transform: none;
+  }
+
+  .xb-lightbox-edge {
+    width: 42px;
+    height: 58px;
   }
 
   .xb-auth-page {

@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_current_user, get_session
 from app.core.responses import success_response
 from app.models.user import User
-from app.schemas.photo import AlbumCreateRequest, AlbumPublic
-from app.services.album_service import add_photo_to_album, create_album, list_albums
+from app.schemas.photo import AlbumCreateRequest, AlbumPublic, PhotoPublic
+from app.services.album_service import add_photo_to_album, create_album, list_album_photos, list_albums
 
 router = APIRouter()
 
@@ -40,3 +40,13 @@ async def add_photo_endpoint(
 ) -> dict:
     await add_photo_to_album(session, current_user, album_id, photo_id)
     return success_response(message="added")
+
+
+@router.get("/{album_id}/photos")
+async def list_album_photos_endpoint(
+    album_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    photos = await list_album_photos(session, current_user, album_id)
+    return success_response([PhotoPublic.model_validate(photo).model_dump(mode="json") for photo in photos])

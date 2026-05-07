@@ -16,6 +16,19 @@ async def list_albums(db: AsyncSession, owner: User) -> list[Album]:
     return list(result)
 
 
+async def list_album_photos(db: AsyncSession, owner: User, album_id: UUID) -> list[PhotoAsset]:
+    album = await db.scalar(select(Album).where(Album.id == album_id, Album.owner_id == owner.id))
+    if album is None:
+        raise AppError("album_not_found", "Album not found", 404)
+    result = await db.scalars(
+        select(PhotoAsset)
+        .join(AlbumPhoto, AlbumPhoto.photo_id == PhotoAsset.id)
+        .where(AlbumPhoto.album_id == album_id, PhotoAsset.owner_id == owner.id)
+        .order_by(AlbumPhoto.sort_order.asc(), PhotoAsset.uploaded_at.desc())
+    )
+    return list(result)
+
+
 async def create_album(db: AsyncSession, owner: User, payload: AlbumCreateRequest) -> Album:
     album = Album(owner_id=owner.id, title=payload.title, description=payload.description)
     db.add(album)

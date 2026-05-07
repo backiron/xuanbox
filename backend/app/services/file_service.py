@@ -26,6 +26,8 @@ from app.services.storage_service import (
     save_encrypted_file,
 )
 
+UNSET_FOLDER = object()
+
 
 def detect_file_category(mime_type: str | None, filename: str) -> str:
     suffix = Path(filename).suffix.lower()
@@ -123,12 +125,16 @@ async def list_files(
     owner: User,
     include_deleted: bool = False,
     folder_id: UUID | None = None,
+    root_only: bool = False,
 ) -> list[FileAsset]:
     statement = select(FileAsset).where(FileAsset.owner_id == owner.id)
     if not include_deleted:
         statement = statement.where(FileAsset.is_deleted.is_(False))
     if folder_id is not None:
         statement = statement.where(FileAsset.folder_id == folder_id)
+    elif root_only:
+        statement = statement.where(FileAsset.folder_id.is_(None))
+    statement = statement.where(FileAsset.source != "system_import")
     result = await db.scalars(statement.order_by(FileAsset.created_at.desc()))
     return list(result)
 
@@ -166,13 +172,13 @@ async def update_file_metadata(
     file_id: UUID,
     *,
     display_name: str | None = None,
-    folder_id: UUID | None = None,
+    folder_id: UUID | None | object = UNSET_FOLDER,
     is_favorite: bool | None = None,
 ) -> FileAsset:
     file_asset = await get_owned_file(db, owner, file_id)
     if display_name is not None:
         file_asset.display_name = display_name
-    if folder_id is not None:
+    if folder_id is not UNSET_FOLDER:
         file_asset.folder_id = folder_id
     if is_favorite is not None:
         file_asset.is_favorite = is_favorite
