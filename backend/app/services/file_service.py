@@ -150,12 +150,16 @@ async def get_owned_file(db: AsyncSession, owner: User, file_id: UUID, allow_del
 
 async def decrypt_owned_file(db: AsyncSession, owner: User, file_id: UUID) -> tuple[FileAsset, bytes]:
     file_asset = await get_owned_file(db, owner, file_id)
-    file_key = unwrap_file_key(file_asset.encrypted_file_key)
-    ciphertext = read_encrypted_file(file_asset.encrypted_path)
-    plain_bytes = decrypt_bytes(ciphertext, file_key, file_asset.nonce, file_asset.auth_tag)
+    plain_bytes = decrypt_file_asset(file_asset)
     await write_audit_log(db, action="file.download", actor_user_id=owner.id, target_type="file", target_id=str(file_id))
     await db.commit()
     return file_asset, plain_bytes
+
+
+def decrypt_file_asset(file_asset: FileAsset) -> bytes:
+    file_key = unwrap_file_key(file_asset.encrypted_file_key)
+    ciphertext = read_encrypted_file(file_asset.encrypted_path)
+    return decrypt_bytes(ciphertext, file_key, file_asset.nonce, file_asset.auth_tag)
 
 
 async def soft_delete_file(db: AsyncSession, owner: User, file_id: UUID) -> None:

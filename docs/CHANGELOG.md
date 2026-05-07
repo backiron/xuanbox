@@ -2,6 +2,24 @@
 
 ## 2026-05-07
 
+### Step 9: Sharing System
+
+- Added share and share access log database models with Alembic migration `0005_shares`.
+- Added authenticated share creation, listing, update, and cancellation APIs.
+- Added public share metadata, password verification, and protected download APIs.
+- Enforced owner-only share creation, active/expired/download-limit checks, password checks, and cancellation invalidation.
+- Added access logs for public share views, password checks, successful downloads, and failed access attempts.
+- Added Shared workspace with My shares and Shared with me tabs, link creation, copy link, limits, expiry display, and cancellation.
+- Added public share page at `/public-share/:token`.
+
+### Verification
+
+- `PYTHONPYCACHEPREFIX=.pycache-local python3 -m compileall backend/app`
+- `docker compose up -d --build xuanbox-api xuanbox-web`
+- `docker compose exec -T xuanbox-api alembic current`
+- `docker compose run --rm xuanbox-web npm run build`
+- End-to-end API smoke check: login as `111`, create password-protected file share, reject missing password, verify password, download, cancel, confirm public link returns `403`.
+
 ### Auth Session Stability Fix
 
 - Added frontend automatic access-token refresh on `401` responses.

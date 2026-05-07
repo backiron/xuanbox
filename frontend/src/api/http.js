@@ -35,7 +35,7 @@ http.interceptors.response.use(
       if (status === 401 && !isAuthRequest) {
         localStorage.removeItem('xb_access_token')
         localStorage.removeItem('xb_refresh_token')
-        if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/drop/public/')) {
+        if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/drop/public/') && !window.location.pathname.startsWith('/public-share/')) {
           window.location.href = '/login'
         }
       }
@@ -56,7 +56,7 @@ http.interceptors.response.use(
       refreshPromise = null
       localStorage.removeItem('xb_access_token')
       localStorage.removeItem('xb_refresh_token')
-      if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/drop/public/')) {
+      if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/drop/public/') && !window.location.pathname.startsWith('/public-share/')) {
         window.location.href = '/login'
       }
       return Promise.reject(refreshError)

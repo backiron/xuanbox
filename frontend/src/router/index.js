@@ -9,6 +9,8 @@ import PublicDropView from '../views/drop/PublicDropView.vue'
 import FilesView from '../views/files/FilesView.vue'
 import PhotosView from '../views/photos/PhotosView.vue'
 import ReceiptsView from '../views/receipts/ReceiptsView.vue'
+import PublicShareView from '../views/shared/PublicShareView.vue'
+import SharedView from '../views/shared/SharedView.vue'
 import SettingsView from '../views/settings/SettingsView.vue'
 
 const router = createRouter({
@@ -16,6 +18,7 @@ const router = createRouter({
   routes: [
     { path: '/login', component: LoginView },
     { path: '/drop/public/:token', component: PublicDropView, meta: { public: true } },
+    { path: '/public-share/:token', component: PublicShareView, meta: { public: true } },
     {
       path: '/',
       component: AppShell,
@@ -25,6 +28,7 @@ const router = createRouter({
         { path: 'files', name: 'files', component: FilesView },
         { path: 'receipts', name: 'receipts', component: ReceiptsView },
         { path: 'drop', name: 'drop', component: XuanDropView },
+        { path: 'shared', name: 'shared', component: SharedView },
         { path: 'settings', name: 'settings', component: SettingsView },
         { path: 'admin', name: 'admin', component: AdminDashboardView }
       ]

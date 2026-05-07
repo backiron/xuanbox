@@ -7,6 +7,7 @@ import {
   Image,
   ReceiptText,
   Send,
+  Share2,
   Settings,
   ShieldCheck
 } from 'lucide-vue-next'
@@ -17,6 +18,7 @@ const navItems = [
   { to: '/files', label: 'Files', icon: HardDrive },
   { to: '/receipts', label: 'Receipts', icon: ReceiptText },
   { to: '/drop', label: 'XuanDrop', icon: Send },
+  { to: '/shared', label: 'Shared', icon: Share2 },
   { to: '/settings', label: 'Settings', icon: Settings },
   { to: '/admin', label: 'Admin', icon: ShieldCheck }
 ]

@@ -70,11 +70,21 @@
   .xb-metric-grid,
   .xb-panel-grid,
   .xb-drop-layout,
+  .xb-shared-layout,
   .xb-workspace-grid,
   .xb-receipt-layout,
   .xb-filter-bar,
   .xb-receipt-row {
     grid-template-columns: 1fr;
+  }
+
+  .xb-share-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .xb-share-card {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .xb-file-row {

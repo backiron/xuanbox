@@ -7,6 +7,7 @@ from app.models.folder import Folder
 from app.models.invite import Invite
 from app.models.photo_asset import PhotoAsset
 from app.models.receipt import Receipt
+from app.models.share import Share, ShareAccessLog
 from app.models.tag import Tag, TagLink
 from app.models.transfer import TransferItem, TransferSession
 from app.models.user import User
@@ -22,6 +23,8 @@ __all__ = [
     "Invite",
     "PhotoAsset",
     "Receipt",
+    "Share",
+    "ShareAccessLog",
     "Tag",
     "TagLink",
     "TransferItem",

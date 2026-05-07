@@ -519,12 +519,14 @@
 }
 
 .xb-receipt-form,
+.xb-share-form,
 .xb-modal {
   display: grid;
   gap: 12px;
 }
 
 .xb-receipt-form label,
+.xb-share-form label,
 .xb-modal label {
   display: grid;
   gap: 6px;
@@ -534,6 +536,8 @@
 
 .xb-receipt-form input,
 .xb-receipt-form textarea,
+.xb-share-form input,
+.xb-share-form select,
 .xb-modal input,
 .xb-modal textarea,
 .xb-filter-field input {
@@ -545,6 +549,8 @@
 }
 
 .xb-receipt-form input,
+.xb-share-form input,
+.xb-share-form select,
 .xb-modal input,
 .xb-filter-field input {
   height: 40px;
@@ -648,6 +654,112 @@
 
 .xb-public-drop-panel p {
   color: var(--xb-text-muted);
+}
+
+.xb-shared-layout {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.xb-share-form h3 {
+  margin: 0;
+}
+
+.xb-share-form-grid {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.xb-tabs {
+  display: inline-flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 4px;
+  border: 1px solid var(--xb-border);
+  border-radius: var(--xb-radius-md);
+  background: var(--xb-bg-card);
+}
+
+.xb-tabs button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--xb-radius-sm);
+  background: transparent;
+  color: var(--xb-text-muted);
+  cursor: pointer;
+}
+
+.xb-tabs button.is-active {
+  background: var(--xb-color-primary);
+  color: #ffffff;
+}
+
+.xb-share-list {
+  display: grid;
+  gap: 10px;
+}
+
+.xb-share-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 78px;
+  padding: 14px 16px;
+  border: 1px solid var(--xb-border);
+  border-radius: var(--xb-radius-md);
+  background: var(--xb-bg-card);
+}
+
+.xb-share-card-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.xb-share-card-main strong,
+.xb-share-card-main span,
+.xb-share-card-main small {
+  display: block;
+}
+
+.xb-share-card-main strong {
+  overflow-wrap: anywhere;
+}
+
+.xb-share-card-main span,
+.xb-share-card-main small,
+.xb-share-status {
+  color: var(--xb-text-muted);
+}
+
+.xb-public-share-panel svg {
+  justify-self: center;
+  color: var(--xb-color-primary);
+}
+
+.xb-public-share-meta {
+  display: grid;
+  gap: 6px;
+  color: var(--xb-text-muted);
+  font-size: 13px;
+}
+
+.xb-public-share-password {
+  display: grid;
+  gap: 10px;
+}
+
+.xb-public-share-password input {
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--xb-border);
+  border-radius: var(--xb-radius-md);
 }
 
 .xb-auth-page {
