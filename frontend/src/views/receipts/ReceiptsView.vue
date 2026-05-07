@@ -1,6 +1,6 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import { CalendarClock, Filter, ReceiptText, Save, Search, Upload } from 'lucide-vue-next'
+import { CalendarClock, FileSearch, Filter, ReceiptText, RotateCcw, Save, Search, Upload } from 'lucide-vue-next'
 import PageHeader from '../../components/common/PageHeader.vue'
 import EmptyState from '../../components/common/EmptyState.vue'
 import { receiptApi } from '../../api/receiptApi'
@@ -11,6 +11,7 @@ const uploadProgress = ref(0)
 const filters = ref({ q: '', category: '', merchant: '', year: '' })
 const draft = ref({ merchant: '', category: '', amount: '', currency: 'USD', purchase_date: '', warranty_until: '', notes: '' })
 const editing = ref(null)
+const ocrReview = ref(null)
 
 function cleanPayload(source) {
   return {
@@ -68,6 +69,45 @@ async function saveEdit() {
   await receiptApi.update(editing.value.id, cleanPayload(editing.value))
   editing.value = null
   await loadReceipts()
+}
+
+async function startOcr(receipt) {
+  await receiptApi.startOcr(receipt.id)
+  await loadReceipts()
+  window.setTimeout(loadReceipts, 2000)
+}
+
+async function loadOcrReview(receipt) {
+  const response = await receiptApi.ocrTasks(receipt.id)
+  const task = response.data.data[0]
+  if (!task) return
+  const parsed = task.parsed_json || {}
+  ocrReview.value = {
+    receipt,
+    task,
+    merchant: parsed.merchant || receipt.merchant || '',
+    category: receipt.category || '',
+    amount: parsed.amount || receipt.amount || '',
+    currency: parsed.currency || receipt.currency || 'USD',
+    purchase_date: parsed.purchase_date || receipt.purchase_date || '',
+    warranty_until: receipt.warranty_until || '',
+    notes: receipt.notes || '',
+    raw_text: task.raw_text || '',
+    error_message: task.error_message || ''
+  }
+}
+
+async function confirmOcr() {
+  await receiptApi.confirmOcr(ocrReview.value.receipt.id, ocrReview.value.task.id, cleanPayload(ocrReview.value))
+  ocrReview.value = null
+  await loadReceipts()
+}
+
+async function retryOcr() {
+  await receiptApi.retryOcr(ocrReview.value.receipt.id, ocrReview.value.task.id)
+  ocrReview.value = null
+  await loadReceipts()
+  window.setTimeout(loadReceipts, 2000)
 }
 
 onMounted(loadReceipts)
@@ -129,7 +169,18 @@ onMounted(loadReceipts)
           </div>
           <strong>{{ formatMoney(receipt) }}</strong>
           <span>{{ receipt.warranty_until ? `Warranty ${receipt.warranty_until}` : 'No warranty' }}</span>
-          <button class="xb-text-button" type="button" @click="startEdit(receipt)">Edit</button>
+          <div class="xb-row-actions">
+            <button v-if="receipt.ocr_status === 'not_started'" class="xb-text-button" type="button" @click="startOcr(receipt)">
+              <FileSearch :size="16" />
+              OCR
+            </button>
+            <button v-else class="xb-text-button" type="button" @click="loadOcrReview(receipt)">
+              <RotateCcw v-if="receipt.ocr_status === 'failed'" :size="16" />
+              <FileSearch v-else :size="16" />
+              {{ receipt.ocr_status }}
+            </button>
+            <button class="xb-text-button" type="button" @click="startEdit(receipt)">Edit</button>
+          </div>
         </article>
       </div>
     </section>
@@ -151,6 +202,32 @@ onMounted(loadReceipts)
           Save
         </button>
         <button class="xb-secondary-button" type="button" @click="editing = null">Cancel</button>
+      </div>
+    </form>
+  </section>
+
+  <section v-if="ocrReview" class="xb-modal-backdrop" @click.self="ocrReview = null">
+    <form class="xb-modal" @submit.prevent="confirmOcr">
+      <h3>Confirm OCR</h3>
+      <p v-if="ocrReview.error_message" class="xb-form-error">{{ ocrReview.error_message }}</p>
+      <label>Merchant <input v-model="ocrReview.merchant" /></label>
+      <label>Category <input v-model="ocrReview.category" /></label>
+      <label>Amount <input v-model="ocrReview.amount" type="number" step="0.01" /></label>
+      <label>Currency <input v-model="ocrReview.currency" maxlength="8" /></label>
+      <label>Purchase date <input v-model="ocrReview.purchase_date" type="date" /></label>
+      <label>Warranty until <input v-model="ocrReview.warranty_until" type="date" /></label>
+      <label>Notes <textarea v-model="ocrReview.notes" rows="3"></textarea></label>
+      <label>Raw text <textarea v-model="ocrReview.raw_text" rows="5" readonly></textarea></label>
+      <div class="xb-row-actions">
+        <button v-if="ocrReview.task.status === 'completed' || ocrReview.task.status === 'confirmed'" class="xb-primary-button" type="submit">
+          <Save :size="17" />
+          Confirm
+        </button>
+        <button v-if="ocrReview.task.status === 'failed'" class="xb-secondary-button" type="button" @click="retryOcr">
+          <RotateCcw :size="17" />
+          Retry
+        </button>
+        <button class="xb-secondary-button" type="button" @click="ocrReview = null">Close</button>
       </div>
     </form>
   </section>

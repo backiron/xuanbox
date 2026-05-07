@@ -30,6 +30,7 @@ class ReceiptPublic(BaseModel):
     purchase_date: date | None
     warranty_until: date | None
     notes: str | None
+    ocr_status: str
     created_at: datetime
     updated_at: datetime
 

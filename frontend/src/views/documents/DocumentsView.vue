@@ -116,17 +116,17 @@ async function saveEdit() {
   await loadDocuments()
 }
 
-async function downloadDocument(document) {
+async function downloadDocument(item) {
   let password = ''
-  if (document.security_level === 'high_sensitive' || document.security_level === 'vault_locked') {
+  if (item.security_level === 'high_sensitive' || item.security_level === 'vault_locked') {
     password = window.prompt('Password required') || ''
     if (!password) return
   }
-  const response = await documentApi.download(document.id, password)
+  const response = await documentApi.download(item.id, password)
   const blobUrl = URL.createObjectURL(response.data)
-  const anchor = document.createElement('a')
+  const anchor = window.document.createElement('a')
   anchor.href = blobUrl
-  anchor.download = document.title
+  anchor.download = item.title
   anchor.click()
   URL.revokeObjectURL(blobUrl)
   await loadDocuments()

@@ -22,6 +22,9 @@ async def dashboard_summary(db: AsyncSession, owner: User) -> DashboardSummary:
         select(func.count(FileAsset.id)).where(FileAsset.owner_id == owner.id, FileAsset.is_deleted.is_(False), FileAsset.source != "system_import")
     )
     receipts_count = await db.scalar(select(func.count(Receipt.id)).where(Receipt.owner_id == owner.id))
+    pending_ocr_count = await db.scalar(
+        select(func.count(Receipt.id)).where(Receipt.owner_id == owner.id, Receipt.ocr_status.in_(("pending", "processing", "completed", "failed")))
+    )
     documents_count = await db.scalar(select(func.count(DocumentAsset.id)).where(DocumentAsset.owner_id == owner.id))
     expiring_result = await db.scalars(
         select(DocumentAsset)
@@ -37,6 +40,7 @@ async def dashboard_summary(db: AsyncSession, owner: User) -> DashboardSummary:
             files_count=int(files_count or 0),
             receipts_count=int(receipts_count or 0),
             documents_count=int(documents_count or 0),
+            pending_ocr_count=int(pending_ocr_count or 0),
         ),
         expiring_documents=[
             ExpiringDocument(

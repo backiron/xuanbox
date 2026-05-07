@@ -14,7 +14,8 @@ const cards = computed(() => {
     { label: 'Storage', value: formatBytes(metrics.storage_bytes || 0), hint: 'Local encrypted vault' },
     { label: 'Photos', value: metrics.photos_count || 0, hint: 'Timeline ready' },
     { label: 'Files', value: metrics.files_count || 0, hint: 'Encrypted storage' },
-    { label: 'Documents', value: metrics.documents_count || 0, hint: 'Expiry reminders' }
+    { label: 'Documents', value: metrics.documents_count || 0, hint: 'Expiry reminders' },
+    { label: 'OCR', value: metrics.pending_ocr_count || 0, hint: 'Pending confirmation' }
   ]
 })
 

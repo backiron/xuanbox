@@ -2,6 +2,26 @@
 
 ## 2026-05-07
 
+### Step 11: OCR And Worker
+
+- Added generic `worker_tasks` queue model and `ocr_tasks` OCR result model with Alembic migration `0007_ocr_worker`.
+- Added receipt `ocr_status` tracking.
+- Added Python async worker entrypoint at `app.workers.ocr_worker`.
+- Added `xuanbox-worker` Docker Compose service for background task processing.
+- Added receipt OCR task creation, listing, confirmation, and failed-task retry APIs.
+- Added lightweight local text extraction and receipt field parsing for text/PDF-like receipt files.
+- Added OCR status, trigger, review, confirm, and retry controls to the Receipts workspace.
+- Added pending OCR count to Dashboard metrics.
+
+### Verification
+
+- `PYTHONPYCACHEPREFIX=.pycache-local python3 -m compileall backend/app`
+- `docker-compose up -d --build xuanbox-api xuanbox-web xuanbox-worker`
+- `docker-compose exec -T xuanbox-api alembic current`
+- `docker-compose run xuanbox-web npm run build`
+- End-to-end OCR smoke check: upload text receipt, trigger OCR, worker completes task, confirm parsed fields, receipt becomes `confirmed`.
+- Failed OCR smoke check: upload unsupported image receipt, task becomes `failed`, retry endpoint returns task to `pending`.
+
 ### Step 10: Documents And Important Records
 
 - Added document database model, schema, service, API routes, and Alembic migration `0006_documents`.

@@ -10,6 +10,7 @@ class DashboardMetrics(BaseModel):
     files_count: int
     receipts_count: int
     documents_count: int
+    pending_ocr_count: int
 
 
 class ExpiringDocument(BaseModel):

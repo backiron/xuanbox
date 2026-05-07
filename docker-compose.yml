@@ -78,6 +78,30 @@ services:
       - "${WEB_PORT:-5173}:5173"
     command: npm run dev
 
+  xuanbox-worker:
+    build:
+      context: ./backend
+    container_name: xuanbox-worker
+    restart: unless-stopped
+    depends_on:
+      xuanbox-api:
+        condition: service_healthy
+    environment:
+      DEBUG: ${DEBUG:-true}
+      POSTGRES_HOST: xuanbox-postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-xuanbox}
+      POSTGRES_USER: ${POSTGRES_USER:-xuanbox}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-xuanbox_dev_password}
+      REDIS_URL: redis://xuanbox-redis:6379/0
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-only-change-this-jwt-secret}
+      MASTER_KEY: ${MASTER_KEY:-dev-only-change-this-master-key}
+      STORAGE_ROOT: /data/xuanbox/storage
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+    volumes:
+      - ./data/storage:/data/xuanbox/storage
+    command: python -m app.workers.ocr_worker
+
 volumes:
   xuanbox-postgres-data:
   xuanbox-redis-data:

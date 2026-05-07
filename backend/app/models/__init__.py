@@ -7,11 +7,13 @@ from app.models.file_asset import FileAsset
 from app.models.folder import Folder
 from app.models.invite import Invite
 from app.models.photo_asset import PhotoAsset
+from app.models.ocr_task import OcrTask
 from app.models.receipt import Receipt
 from app.models.share import Share, ShareAccessLog
 from app.models.tag import Tag, TagLink
 from app.models.transfer import TransferItem, TransferSession
 from app.models.user import User
+from app.models.worker_task import WorkerTask
 
 __all__ = [
     "AuditLog",
@@ -24,6 +26,7 @@ __all__ = [
     "Folder",
     "Invite",
     "PhotoAsset",
+    "OcrTask",
     "Receipt",
     "Share",
     "ShareAccessLog",
@@ -32,4 +35,5 @@ __all__ = [
     "TransferItem",
     "TransferSession",
     "User",
+    "WorkerTask",
 ]

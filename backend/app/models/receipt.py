@@ -22,3 +22,4 @@ class Receipt(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     purchase_date: Mapped[date | None] = mapped_column(Date(), index=True, nullable=True)
     warranty_until: Mapped[date | None] = mapped_column(Date(), index=True, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ocr_status: Mapped[str] = mapped_column(String(32), default="not_started", index=True, nullable=False)
