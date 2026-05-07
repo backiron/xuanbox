@@ -74,6 +74,8 @@ services:
     depends_on:
       xuanbox-api:
         condition: service_healthy
+    environment:
+      VITE_DROP_PUBLIC_ORIGIN: ${DROP_PUBLIC_ORIGIN:-}
     ports:
       - "${WEB_PORT:-5173}:5173"
     command: npm run dev

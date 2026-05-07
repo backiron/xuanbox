@@ -14,6 +14,7 @@ class TransferSession(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     owner_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
     token_hash: Mapped[str] = mapped_column(String(128), unique=True, index=True, nullable=False)
+    public_token: Mapped[str | None] = mapped_column(String(96), unique=True, index=True, nullable=True)
     title: Mapped[str] = mapped_column(String(160), default="XuanDrop", nullable=False)
     status: Mapped[str] = mapped_column(String(32), default="open", index=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False)

@@ -2,6 +2,9 @@
 
 ## 2026-05-07 Hardening
 
+- Replaced the XuanDrop QR placeholder icon with a real scannable QR code generated from the temporary upload URL.
+- Added `DROP_PUBLIC_ORIGIN`/`VITE_DROP_PUBLIC_ORIGIN` support so phone QR codes can use a LAN address instead of unusable `localhost`.
+- Persisted expiring XuanDrop public tokens so session links and QR codes survive page refresh while the session remains open.
 - Added real image OCR support through Tesseract with English and Simplified Chinese language packs in the backend image.
 - Added Admin health endpoint at `/api/v1/admin/health`.
 - Expanded XuanDrop with realtime server-sent item events, authenticated item download, authenticated item deletion, and frontend live status/download/delete controls.

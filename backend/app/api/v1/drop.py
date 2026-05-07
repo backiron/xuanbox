@@ -28,20 +28,23 @@ router = APIRouter()
 
 def session_public(session, request: Request, token: str | None = None) -> dict:
     data = TransferSessionPublic.model_validate(session).model_dump(mode="json")
-    if token:
-        upload_path = f"/drop/public/{token}"
-        data["token"] = token
+    public_token = token or session.public_token
+    if public_token:
+        upload_path = f"/drop/public/{public_token}"
+        data["token"] = public_token
+        data["public_token"] = public_token
         data["upload_url"] = str(request.base_url).rstrip("/") + upload_path
     return data
 
 
 @router.get("/sessions")
 async def list_sessions_endpoint(
+    request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> dict:
     sessions = await list_transfer_sessions(session, current_user)
-    return success_response([TransferSessionPublic.model_validate(item).model_dump(mode="json") for item in sessions])
+    return success_response([session_public(item, request) for item in sessions])
 
 
 @router.post("/sessions")

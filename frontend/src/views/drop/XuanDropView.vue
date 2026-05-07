@@ -1,6 +1,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { Download, FileCheck, QrCode, RefreshCw, Save, Send, Trash2 } from 'lucide-vue-next'
+import QRCode from 'qrcode'
+import { Check, Copy, Download, FileCheck, RefreshCw, Save, Send, Trash2 } from 'lucide-vue-next'
 import PageHeader from '../../components/common/PageHeader.vue'
 import EmptyState from '../../components/common/EmptyState.vue'
 import { dropApi } from '../../api/dropApi'
@@ -8,16 +9,22 @@ import { dropApi } from '../../api/dropApi'
 const sessions = ref([])
 const items = ref([])
 const activeSession = ref(null)
-const lastUploadUrl = ref('')
+const uploadUrl = ref('')
+const qrCodeUrl = ref('')
 const loading = ref(false)
 const liveStatus = ref('Offline')
+const copied = ref(false)
 let eventSource = null
+
+const configuredPublicOrigin = (import.meta.env.VITE_DROP_PUBLIC_ORIGIN || '').replace(/\/$/, '')
+const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname)
 
 async function loadSessions() {
   const response = await dropApi.sessions()
   sessions.value = response.data.data
   if (!activeSession.value && sessions.value.length) {
     activeSession.value = sessions.value[0]
+    await refreshUploadLink()
     await loadItems()
   }
 }
@@ -26,9 +33,28 @@ async function createSession() {
   const title = window.prompt('Session name', 'Send to XuanBox') || 'Send to XuanBox'
   const response = await dropApi.createSession({ title, expires_in_minutes: 30 })
   activeSession.value = response.data.data
-  lastUploadUrl.value = `${window.location.origin}/drop/public/${activeSession.value.token}`
+  await refreshUploadLink()
   await loadSessions()
   await loadItems()
+}
+
+function buildUploadUrl(session) {
+  const token = session?.public_token || session?.token
+  if (!token) return ''
+  const origin = configuredPublicOrigin || window.location.origin
+  return `${origin}/drop/public/${token}`
+}
+
+async function refreshUploadLink() {
+  uploadUrl.value = buildUploadUrl(activeSession.value)
+  copied.value = false
+  qrCodeUrl.value = uploadUrl.value
+    ? await QRCode.toDataURL(uploadUrl.value, {
+        width: 240,
+        margin: 2,
+        errorCorrectionLevel: 'M'
+      })
+    : ''
 }
 
 async function loadItems() {
@@ -93,10 +119,19 @@ async function deleteItem(item) {
   await loadItems()
 }
 
-function selectSession(session) {
+async function copyUploadLink() {
+  if (!uploadUrl.value) return
+  await navigator.clipboard.writeText(uploadUrl.value)
+  copied.value = true
+  window.setTimeout(() => {
+    copied.value = false
+  }, 1500)
+}
+
+async function selectSession(session) {
   activeSession.value = session
-  lastUploadUrl.value = ''
-  loadItems()
+  await refreshUploadLink()
+  await loadItems()
   connectEvents()
 }
 
@@ -125,10 +160,21 @@ onBeforeUnmount(closeEvents)
       <strong>{{ activeSession?.title || 'No active drop session' }}</strong>
       <p v-if="activeSession">Expires {{ new Date(activeSession.expires_at).toLocaleString() }}</p>
       <p v-else>Create a session to receive files from another device.</p>
-      <div v-if="lastUploadUrl" class="xb-drop-link">
-        <QrCode :size="72" />
-        <strong>Open on mobile</strong>
-        <span>{{ lastUploadUrl }}</span>
+      <div v-if="uploadUrl" class="xb-drop-link">
+        <img :src="qrCodeUrl" alt="XuanDrop upload QR code" />
+        <strong>Scan with your phone camera</strong>
+        <span>{{ uploadUrl }}</span>
+        <button class="xb-secondary-button" type="button" @click="copyUploadLink">
+          <component :is="copied ? Check : Copy" :size="16" />
+          {{ copied ? 'Copied' : 'Copy link' }}
+        </button>
+        <small v-if="!configuredPublicOrigin && isLocalhost">
+          A phone cannot open localhost from this computer. Set DROP_PUBLIC_ORIGIN to this PC's LAN address, for example http://10.0.0.39:15173.
+        </small>
+      </div>
+      <div v-else-if="activeSession" class="xb-drop-link">
+        <strong>Link unavailable</strong>
+        <span>This older session was created before QR links were persisted. Create a new Drop to get a scannable QR code.</span>
       </div>
     </article>
 

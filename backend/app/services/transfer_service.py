@@ -24,6 +24,7 @@ async def create_transfer_session(db: AsyncSession, owner: User, payload: Transf
     session = TransferSession(
         owner_id=owner.id,
         token_hash=hash_token(token),
+        public_token=token,
         title=payload.title,
         expires_at=datetime.now(UTC) + timedelta(minutes=payload.expires_in_minutes),
     )

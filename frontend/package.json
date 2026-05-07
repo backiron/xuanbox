@@ -14,9 +14,9 @@
     "lucide-vue-next": "latest",
     "naive-ui": "latest",
     "pinia": "latest",
+    "qrcode": "^1.5.4",
     "vite": "latest",
     "vue": "latest",
     "vue-router": "latest"
-  },
-  "devDependencies": {}
+  }
 }

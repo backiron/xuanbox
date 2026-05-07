@@ -18,6 +18,7 @@ class TransferSessionPublic(BaseModel):
     created_at: datetime
     upload_url: str | None = None
     token: str | None = None
+    public_token: str | None = None
 
     model_config = {"from_attributes": True}
 
