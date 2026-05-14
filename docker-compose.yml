@@ -53,10 +53,15 @@ services:
       MASTER_KEY: ${MASTER_KEY:-dev-only-change-this-master-key}
       STORAGE_ROOT: /data/xuanbox/storage
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+      RECEIPT_AI_ASSIST_ENABLED: ${RECEIPT_AI_ASSIST_ENABLED:-false}
+      RECEIPT_AI_BASE_URL: ${RECEIPT_AI_BASE_URL:-http://host.docker.internal:11434}
+      RECEIPT_AI_MODEL: ${RECEIPT_AI_MODEL:-qwen2.5:3b}
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:
       - ./data/storage:/data/xuanbox/storage
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     command: >
       sh -c "alembic upgrade head &&
              uvicorn app.main:app --host 0.0.0.0 --port 8000"
@@ -76,6 +81,7 @@ services:
         condition: service_healthy
     environment:
       VITE_DROP_PUBLIC_ORIGIN: ${DROP_PUBLIC_ORIGIN:-}
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
     ports:
       - "${WEB_PORT:-5173}:5173"
     command: npm run dev
@@ -100,8 +106,13 @@ services:
       MASTER_KEY: ${MASTER_KEY:-dev-only-change-this-master-key}
       STORAGE_ROOT: /data/xuanbox/storage
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+      RECEIPT_AI_ASSIST_ENABLED: ${RECEIPT_AI_ASSIST_ENABLED:-false}
+      RECEIPT_AI_BASE_URL: ${RECEIPT_AI_BASE_URL:-http://host.docker.internal:11434}
+      RECEIPT_AI_MODEL: ${RECEIPT_AI_MODEL:-qwen2.5:3b}
     volumes:
       - ./data/storage:/data/xuanbox/storage
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     command: python -m app.workers.ocr_worker
 
 volumes:

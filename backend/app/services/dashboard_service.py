@@ -19,7 +19,12 @@ async def dashboard_summary(db: AsyncSession, owner: User) -> DashboardSummary:
     )
     photos_count = await db.scalar(select(func.count(PhotoAsset.id)).where(PhotoAsset.owner_id == owner.id))
     files_count = await db.scalar(
-        select(func.count(FileAsset.id)).where(FileAsset.owner_id == owner.id, FileAsset.is_deleted.is_(False), FileAsset.source != "system_import")
+        select(func.count(FileAsset.id)).where(
+            FileAsset.owner_id == owner.id,
+            FileAsset.is_deleted.is_(False),
+            FileAsset.source.not_in(["system_import", "avatar", "inbox_upload"]),
+            FileAsset.file_category != "photo",
+        )
     )
     receipts_count = await db.scalar(select(func.count(Receipt.id)).where(Receipt.owner_id == owner.id))
     pending_ocr_count = await db.scalar(

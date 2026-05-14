@@ -9,6 +9,11 @@ class TagCreateRequest(BaseModel):
     color: str = Field(default="#1E3A5F", max_length=32)
 
 
+class TagUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=80)
+    color: str | None = Field(default=None, max_length=32)
+
+
 class TagAttachRequest(BaseModel):
     target_type: str = Field(min_length=1, max_length=40)
     target_id: UUID

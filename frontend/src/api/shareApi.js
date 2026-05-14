@@ -13,15 +13,21 @@ export const shareApi = {
   remove(id) {
     return http.delete(`/shares/${id}`)
   },
+  archive(id) {
+    return http.delete(`/shares/${id}/archive`)
+  },
+  archiveInactive() {
+    return http.post('/shares/archive-inactive')
+  },
   publicMetadata(token) {
     return http.get(`/public-share/${token}`)
   },
   verifyPassword(token, password) {
     return http.post(`/public-share/${token}/verify-password`, { password })
   },
-  publicDownload(token, password) {
+  publicDownload(token, accessToken) {
     return http.get(`/public-share/${token}/download`, {
-      params: password ? { password } : {},
+      headers: accessToken ? { 'X-Share-Access': accessToken } : {},
       responseType: 'blob'
     })
   }

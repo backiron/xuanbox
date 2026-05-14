@@ -24,6 +24,9 @@ export const photoApi = {
   },
   favorite(photoId, isFavorite) {
     return http.patch(`/photos/${photoId}/favorite`, null, { params: { is_favorite: isFavorite } })
+  },
+  remove(photoId) {
+    return http.delete(`/photos/${photoId}`)
   }
 }
 

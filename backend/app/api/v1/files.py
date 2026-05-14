@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, File, Form, UploadFile
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user, get_session
+from app.core.dependencies import get_session, require_user_app
+from app.core.http import attachment_headers
 from app.core.responses import success_response
 from app.models.user import User
 from app.schemas.file_asset import FileAssetPublic, FileUpdateRequest
@@ -28,7 +29,7 @@ async def upload_file_endpoint(
     file: UploadFile = File(...),
     folder_id: UUID | None = Form(default=None),
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user_app),
 ) -> dict:
     file_asset = await upload_file(session, owner=current_user, upload=file, folder_id=folder_id)
     return success_response(FileAssetPublic.model_validate(file_asset).model_dump(mode="json"))
@@ -39,7 +40,7 @@ async def list_files_endpoint(
     folder_id: UUID | None = None,
     root_only: bool = False,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user_app),
 ) -> dict:
     files = await list_files(session, current_user, folder_id=folder_id, root_only=root_only)
     return success_response([FileAssetPublic.model_validate(item).model_dump(mode="json") for item in files])
@@ -49,7 +50,7 @@ async def list_files_endpoint(
 async def get_file_endpoint(
     file_id: UUID,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user_app),
 ) -> dict:
     file_asset = await get_owned_file(session, current_user, file_id)
     return success_response(FileAssetPublic.model_validate(file_asset).model_dump(mode="json"))
@@ -60,7 +61,7 @@ async def update_file_endpoint(
     file_id: UUID,
     payload: FileUpdateRequest,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user_app),
 ) -> dict:
     file_asset = await update_file_metadata(
         session,
@@ -77,10 +78,10 @@ async def update_file_endpoint(
 async def download_file_endpoint(
     file_id: UUID,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user_app),
 ) -> Response:
     file_asset, plain_bytes = await decrypt_owned_file(session, current_user, file_id)
-    headers = {"Content-Disposition": f'attachment; filename="{file_asset.original_filename}"'}
+    headers = attachment_headers(file_asset.original_filename)
     return Response(content=plain_bytes, media_type=file_asset.mime_type or "application/octet-stream", headers=headers)
 
 
@@ -88,7 +89,7 @@ async def download_file_endpoint(
 async def delete_file_endpoint(
     file_id: UUID,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user_app),
 ) -> dict:
     await soft_delete_file(session, current_user, file_id)
     return success_response(message="deleted")
@@ -98,7 +99,7 @@ async def delete_file_endpoint(
 async def purge_file_endpoint(
     file_id: UUID,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user_app),
 ) -> dict:
     await purge_file(session, current_user, file_id)
     return success_response(message="purged")
@@ -108,7 +109,7 @@ async def purge_file_endpoint(
 async def restore_file_endpoint(
     file_id: UUID,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user_app),
 ) -> dict:
     file_asset = await restore_file(session, current_user, file_id)
     return success_response(FileAssetPublic.model_validate(file_asset).model_dump(mode="json"))

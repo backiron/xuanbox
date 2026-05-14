@@ -10,9 +10,11 @@ export const dropApi = {
   items(sessionId) {
     return http.get(`/drop/sessions/${sessionId}/items`)
   },
+  authorizeEvents(sessionId) {
+    return http.post(`/drop/sessions/${sessionId}/events-auth`)
+  },
   eventUrl(sessionId) {
-    const token = localStorage.getItem('xb_access_token')
-    return `/api/v1/drop/sessions/${sessionId}/events?access_token=${encodeURIComponent(token || '')}`
+    return `/api/v1/drop/sessions/${sessionId}/events`
   },
   downloadUrl(itemId) {
     return `/api/v1/drop/items/${itemId}/download`

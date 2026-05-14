@@ -11,6 +11,8 @@ from app.core.security import decode_token
 from app.models.user import User
 
 bearer_scheme = HTTPBearer(auto_error=False)
+CLIENT_TYPE_USER_APP = "user_app"
+CLIENT_TYPE_ADMIN_CONSOLE = "admin_console"
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
@@ -18,10 +20,10 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-async def get_current_user(
+async def get_current_user_payload(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     session: AsyncSession = Depends(get_session),
-) -> User:
+) -> tuple[User, dict]:
     if credentials is None:
         raise AppError("not_authenticated", "Authentication required", 401)
 
@@ -36,6 +38,35 @@ async def get_current_user(
     user = await session.get(User, UUID(user_id))
     if user is None or user.status != "active":
         raise AppError("user_inactive", "User is inactive or does not exist", 401)
+    return user, payload
+
+
+async def get_current_user(
+    current: tuple[User, dict] = Depends(get_current_user_payload),
+) -> User:
+    user, _payload = current
+    return user
+
+
+async def require_user_app(
+    current: tuple[User, dict] = Depends(get_current_user_payload),
+) -> User:
+    user, payload = current
+    if payload.get("client_type") != CLIENT_TYPE_USER_APP:
+        raise AppError("wrong_client_type", "Use a user app session for this action", 403)
+    if user.role in {"owner", "admin"}:
+        raise AppError("admin_uses_admin_console", "Admin accounts must use the admin console", 403)
+    return user
+
+
+async def require_admin_console(
+    current: tuple[User, dict] = Depends(get_current_user_payload),
+) -> User:
+    user, payload = current
+    if payload.get("client_type") != CLIENT_TYPE_ADMIN_CONSOLE:
+        raise AppError("wrong_client_type", "Use an admin console session for this action", 403)
+    if user.role not in {"owner", "admin"}:
+        raise AppError("permission_denied", "Permission denied", 403)
     return user
 
 
@@ -49,4 +80,4 @@ def require_roles(*roles: str):
 
 
 require_owner = require_roles("owner")
-require_admin = require_roles("owner", "admin")
+require_admin = require_admin_console

@@ -21,8 +21,8 @@ import router from './router'
 import './styles/variables.css'
 import './styles/theme.css'
 import './styles/layout.css'
-import './styles/mobile.css'
 import './styles/components.css'
+import './styles/mobile.css'
 
 const naive = create({
   components: [

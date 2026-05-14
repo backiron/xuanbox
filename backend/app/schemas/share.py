@@ -34,6 +34,7 @@ class SharePublic(BaseModel):
     download_count: int
     expires_at: datetime | None
     is_active: bool
+    archived_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
     target_name: str | None = None
@@ -57,3 +58,8 @@ class PublicShareMetadata(BaseModel):
 
 class SharePasswordRequest(BaseModel):
     password: str = Field(min_length=1, max_length=120)
+
+
+class SharePasswordResponse(BaseModel):
+    access_token: str
+    expires_in_seconds: int

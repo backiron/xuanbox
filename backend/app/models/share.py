@@ -23,6 +23,7 @@ class Share(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     download_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True, nullable=False)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True, nullable=True)
 
 
 class ShareAccessLog(UUIDPrimaryKeyMixin, Base):

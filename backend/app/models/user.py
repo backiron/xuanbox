@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import BigInteger, DateTime, String
+from sqlalchemy import BigInteger, DateTime, Integer, String
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -19,9 +19,13 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     display_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     avatar_file_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     role: Mapped[str] = mapped_column(String(32), default=USER_ROLE_USER, nullable=False)
+    plan: Mapped[str] = mapped_column(String(32), default="internal", nullable=False)
     status: Mapped[str] = mapped_column(String(32), default=USER_STATUS_ACTIVE, nullable=False)
     storage_limit_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    vault_pin_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    vault_pin_failed_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    vault_pin_locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     devices = relationship("Device", back_populates="owner", cascade="all, delete-orphan")
     files = relationship("FileAsset", back_populates="owner")

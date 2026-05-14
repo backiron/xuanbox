@@ -1,32 +1,61 @@
 :root {
-  --xb-color-primary: #1e3a5f;
-  --xb-color-primary-soft: #e8eef7;
-  --xb-color-accent: #7c3aed;
-  --xb-color-success: #10b981;
-  --xb-color-warning: #f59e0b;
-  --xb-color-danger: #ef4444;
+  --xb-color-primary: #4e83ff;
+  --xb-color-primary-strong: #2f65ff;
+  --xb-color-primary-soft: rgba(78, 131, 255, 0.16);
+  --xb-color-accent: #8b5cff;
+  --xb-color-cyan: #11c7f4;
+  --xb-color-success: #2ee98f;
+  --xb-color-warning: #ffaf45;
+  --xb-color-danger: #ff5f6d;
 
-  --xb-bg-page: #f6f8fb;
-  --xb-bg-card: #ffffff;
-  --xb-bg-sidebar: #0f172a;
+  --xb-bg-page: #060a0f;
+  --xb-bg-card: rgba(18, 24, 32, 0.82);
+  --xb-bg-card-strong: rgba(24, 31, 42, 0.94);
+  --xb-bg-sidebar: rgba(7, 12, 18, 0.9);
+  --xb-bg-elevated: rgba(255, 255, 255, 0.055);
 
-  --xb-text-main: #0f172a;
-  --xb-text-muted: #64748b;
-  --xb-border: #e2e8f0;
+  --xb-text-main: #f3f7ff;
+  --xb-text-muted: #8f9db2;
+  --xb-text-soft: #c9d5e7;
+  --xb-border: rgba(190, 213, 255, 0.16);
+  --xb-border-strong: rgba(207, 225, 255, 0.32);
 
-  --xb-radius-sm: 8px;
-  --xb-radius-md: 12px;
-  --xb-radius-lg: 16px;
-  --xb-radius-xl: 24px;
+  --xb-radius-sm: 6px;
+  --xb-radius-md: 8px;
+  --xb-radius-lg: 10px;
+  --xb-radius-xl: 18px;
 
-  --xb-shadow-card: 0 8px 24px rgba(15, 23, 42, 0.08);
+  --xb-shadow-card: 0 20px 60px rgba(0, 0, 0, 0.36);
+  --xb-glow-primary: 0 0 0 1px rgba(93, 143, 255, 0.28), 0 0 28px rgba(53, 107, 255, 0.22);
 }
 
 [data-theme='dark'] {
-  --xb-bg-page: #0b1020;
-  --xb-bg-card: #151b2e;
-  --xb-bg-sidebar: #080c18;
-  --xb-text-main: #f8fafc;
-  --xb-text-muted: #94a3b8;
-  --xb-border: rgba(255, 255, 255, 0.08);
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+  --xb-color-primary: #2563eb;
+  --xb-color-primary-strong: #1d4ed8;
+  --xb-color-primary-soft: rgba(37, 99, 235, 0.1);
+  --xb-color-accent: #6d5dfc;
+  --xb-color-cyan: #0ea5e9;
+  --xb-color-success: #16a34a;
+  --xb-color-warning: #d97706;
+  --xb-color-danger: #dc2626;
+
+  --xb-bg-page: #edf3fb;
+  --xb-bg-card: rgba(255, 255, 255, 0.84);
+  --xb-bg-card-strong: rgba(255, 255, 255, 0.94);
+  --xb-bg-sidebar: rgba(247, 250, 255, 0.92);
+  --xb-bg-elevated: rgba(15, 23, 42, 0.055);
+
+  --xb-text-main: #111827;
+  --xb-text-muted: #64748b;
+  --xb-text-soft: #334155;
+  --xb-border: rgba(80, 100, 130, 0.2);
+  --xb-border-strong: rgba(37, 99, 235, 0.34);
+
+  --xb-shadow-card: 0 20px 50px rgba(59, 78, 110, 0.16);
+  --xb-glow-primary: 0 0 0 1px rgba(37, 99, 235, 0.2), 0 14px 34px rgba(37, 99, 235, 0.16);
 }

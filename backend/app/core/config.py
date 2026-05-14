@@ -34,6 +34,24 @@ class Settings(BaseSettings):
     BACKUP_SCHEDULE_HOURS: int = Field(default=24, ge=0)
 
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:8080,http://127.0.0.1:5173"
+    CORS_ALLOW_ORIGIN_REGEX: str | None = (
+        r"https?://(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|"
+        r"172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}|"
+        r"192\.168\.\d{1,3}\.\d{1,3})(:\d+)?"
+    )
+
+    RECEIPT_AI_ASSIST_ENABLED: bool = False
+    RECEIPT_AI_MODEL: str = "qwen2.5:3b"
+    RECEIPT_AI_BASE_URL: str = "http://host.docker.internal:11434"
+    RECEIPT_AI_TIMEOUT_SECONDS: int = Field(default=20, ge=1, le=120)
+    RECEIPT_AI_MAX_CHARS: int = Field(default=6000, ge=500, le=20000)
+
+    DOCUMENT_AI_ENABLED: bool = False
+    DOCUMENT_AI_MODEL: str = "qwen2.5:3b"
+    DOCUMENT_AI_BASE_URL: str = "http://host.docker.internal:11434"
+    DOCUMENT_AI_TIMEOUT_SECONDS: int = Field(default=30, ge=1, le=120)
+    DOCUMENT_AI_MAX_CHARS: int = Field(default=6000, ge=500, le=20000)
+    DOCUMENT_AI_CONCURRENCY: int = Field(default=1, ge=1, le=4)
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -46,6 +64,13 @@ class Settings(BaseSettings):
     @classmethod
     def validate_cors_origins(cls, value: str) -> str:
         return value.strip()
+
+    @field_validator("CORS_ALLOW_ORIGIN_REGEX")
+    @classmethod
+    def validate_cors_regex(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip() or None
 
     @cached_property
     def database_url(self) -> str:

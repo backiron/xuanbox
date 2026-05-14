@@ -9,6 +9,7 @@ from app.core.database import AsyncSessionLocal
 from app.models.backup_task import BackupTask
 from app.models.user import User
 from app.services.backup_service import create_backup
+from app.services.document_intelligence_service import DOCUMENT_EXTRACT_TASK_TYPE, process_document_extract_task
 from app.services.ocr_service import OCR_TASK_TYPE, process_receipt_ocr_task
 from app.services.worker_service import claim_next_worker_task, mark_task_failed
 
@@ -24,6 +25,8 @@ async def process_once() -> bool:
         try:
             if task.task_type == OCR_TASK_TYPE:
                 await process_receipt_ocr_task(session, task)
+            elif task.task_type == DOCUMENT_EXTRACT_TASK_TYPE:
+                await process_document_extract_task(session, task)
             else:
                 await mark_task_failed(session, task, f"Unknown task type: {task.task_type}")
             await session.commit()

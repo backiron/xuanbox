@@ -17,6 +17,8 @@ defineProps({
       <h2>{{ title }}</h2>
       <p v-if="subtitle">{{ subtitle }}</p>
     </div>
-    <slot />
+    <div class="xb-page-actions">
+      <slot />
+    </div>
   </div>
 </template>

@@ -7,8 +7,14 @@ export const receiptApi = {
   upload(formData, config = {}) {
     return http.post('/receipts/upload', formData, config)
   },
+  createFromFile(fileId, params = {}) {
+    return http.post(`/receipts/from-file/${fileId}`, null, { params })
+  },
   update(id, payload) {
     return http.patch(`/receipts/${id}`, payload)
+  },
+  remove(id) {
+    return http.delete(`/receipts/${id}`)
   },
   startOcr(id) {
     return http.post(`/receipts/${id}/ocr`)

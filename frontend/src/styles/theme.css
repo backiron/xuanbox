@@ -5,14 +5,31 @@
 html,
 body,
 #app {
+  width: 100%;
   min-height: 100%;
   margin: 0;
 }
 
-body {
+html {
   background: var(--xb-bg-page);
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(95, 128, 170, 0.18), transparent 32rem),
+    radial-gradient(circle at 84% 12%, rgba(78, 131, 255, 0.12), transparent 28rem),
+    linear-gradient(135deg, #05080d 0%, #0b1118 46%, #05070b 100%);
+  background-attachment: fixed;
   color: var(--xb-text-main);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+}
+
+[data-theme='light'] body {
+  background:
+    radial-gradient(circle at 14% 0%, rgba(37, 99, 235, 0.13), transparent 30rem),
+    radial-gradient(circle at 88% 10%, rgba(14, 165, 233, 0.12), transparent 28rem),
+    linear-gradient(135deg, #eef5ff 0%, #f8fbff 48%, #e9f1fb 100%);
 }
 
 a {
@@ -23,4 +40,42 @@ a {
 button,
 input {
   font: inherit;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+select {
+  color-scheme: dark;
+}
+
+[data-theme='light'] select {
+  color-scheme: light;
+}
+
+select option {
+  background: #111821;
+  color: #f4f7fb;
+}
+
+[data-theme='light'] select option {
+  background: #ffffff;
+  color: #111827;
+}
+
+select option:checked {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+button {
+  color: inherit;
+}
+
+::selection {
+  background: rgba(78, 131, 255, 0.38);
 }

@@ -16,6 +16,8 @@ async def create_invite(db: AsyncSession, payload: InviteCreateRequest, creator:
         raise AppError("invalid_invite_expiry", "Invite expiration must be in the future", 400)
     if payload.role_to_assign not in {"admin", "user", "guest"}:
         raise AppError("invalid_role", "Invite role must be admin, user, or guest", 400)
+    if payload.role_to_assign == "admin" and creator.role != "owner":
+        raise AppError("owner_required", "Only the owner can create admin invites", 403)
 
     invite = Invite(
         invite_code=generate_invite_code(),

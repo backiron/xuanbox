@@ -4,11 +4,14 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user, get_session
+from app.core.dependencies import get_session, require_user_app
+from app.core.http import attachment_headers
 from app.core.responses import success_response
 from app.models.user import User
-from app.schemas.share import PublicShareMetadata, ShareCreateRequest, SharePasswordRequest, SharePublic, ShareUpdateRequest
+from app.schemas.share import PublicShareMetadata, ShareCreateRequest, SharePasswordRequest, SharePasswordResponse, SharePublic, ShareUpdateRequest
 from app.services.share_service import (
+    archive_inactive_shares,
+    archive_share,
     create_share,
     deactivate_share,
     download_public_share,
@@ -19,6 +22,8 @@ from app.services.share_service import (
     public_share_metadata,
     target_name,
     update_share,
+    create_share_access_token,
+    SHARE_ACCESS_SECONDS,
     verify_share_password,
     write_share_access_log,
 )
@@ -45,7 +50,7 @@ async def _share_public(db: AsyncSession, share) -> dict:
 async def create_share_endpoint(
     payload: ShareCreateRequest,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user_app),
 ) -> dict:
     share = await create_share(session, current_user, payload)
     return success_response(await _share_public(session, share))
@@ -55,9 +60,12 @@ async def create_share_endpoint(
 async def list_shares_endpoint(
     mode: str = "created",
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user_app),
 ) -> dict:
-    shares = await list_received_shares(session, current_user) if mode == "received" else await list_created_shares(session, current_user)
+    if mode == "received":
+        shares = await list_received_shares(session, current_user)
+    else:
+        shares = await list_created_shares(session, current_user, archived=mode == "archived")
     return success_response([await _share_public(session, share) for share in shares])
 
 
@@ -65,7 +73,7 @@ async def list_shares_endpoint(
 async def get_share_endpoint(
     share_id: UUID,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user_app),
 ) -> dict:
     share = await get_owned_share(session, current_user, share_id)
     return success_response(await _share_public(session, share))
@@ -76,7 +84,7 @@ async def update_share_endpoint(
     share_id: UUID,
     payload: ShareUpdateRequest,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user_app),
 ) -> dict:
     share = await update_share(session, current_user, share_id, payload)
     return success_response(await _share_public(session, share))
@@ -86,10 +94,29 @@ async def update_share_endpoint(
 async def delete_share_endpoint(
     share_id: UUID,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user_app),
 ) -> dict:
     await deactivate_share(session, current_user, share_id)
     return success_response(message="deactivated")
+
+
+@router.post("/archive-inactive")
+async def archive_inactive_shares_endpoint(
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_user_app),
+) -> dict:
+    count = await archive_inactive_shares(session, current_user)
+    return success_response({"count": count}, message="archived")
+
+
+@router.delete("/{share_id}/archive")
+async def archive_share_endpoint(
+    share_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_user_app),
+) -> dict:
+    await archive_share(session, current_user, share_id)
+    return success_response(message="archived")
 
 
 @public_router.get("/{token}")
@@ -143,7 +170,8 @@ async def verify_public_share_password_endpoint(
         user_agent=request.headers.get("user-agent"),
     )
     await session.commit()
-    return success_response(message="verified")
+    token = create_share_access_token(share)
+    return success_response(SharePasswordResponse(access_token=token, expires_in_seconds=SHARE_ACCESS_SECONDS).model_dump())
 
 
 @public_router.get("/{token}/download")
@@ -151,15 +179,18 @@ async def download_public_share_endpoint(
     token: str,
     request: Request,
     password: str | None = None,
+    access_token: str | None = None,
     session: AsyncSession = Depends(get_session),
 ) -> Response:
+    header_token = request.headers.get("x-share-access")
     share = await get_public_share(session, token, action="share.download", ip_address=_client_ip(request), user_agent=request.headers.get("user-agent"))
     file_asset, plain_bytes = await download_public_share(
         session,
         share,
         password=password,
+        access_token=header_token or access_token,
         ip_address=_client_ip(request),
         user_agent=request.headers.get("user-agent"),
     )
-    headers = {"Content-Disposition": f'attachment; filename="{file_asset.original_filename}"'}
+    headers = attachment_headers(file_asset.original_filename)
     return Response(content=plain_bytes, media_type=file_asset.mime_type or "application/octet-stream", headers=headers)

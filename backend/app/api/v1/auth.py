@@ -10,6 +10,7 @@ from app.schemas.auth import (
     ChangePasswordRequest,
     InviteRegisterRequest,
     LoginRequest,
+    PublicRegisterRequest,
     RefreshTokenRequest,
 )
 from app.schemas.user import UserPublic
@@ -40,6 +41,25 @@ async def register_by_invite(
     return success_response(tokens.model_dump())
 
 
+@router.post("/register")
+async def register(
+    payload: PublicRegisterRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    tokens = await auth_service.register_open(session, payload, request)
+    return success_response(tokens.model_dump())
+
+
+@router.get("/registration-settings")
+async def registration_settings(
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    from app.services.system_settings_service import get_public_auth_settings
+
+    return success_response(await get_public_auth_settings(session))
+
+
 @router.post("/login")
 async def login(
     payload: LoginRequest,
@@ -47,6 +67,21 @@ async def login(
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     tokens = await auth_service.login(session, payload, request)
+    return success_response(tokens.model_dump())
+
+
+@router.post("/admin-login")
+async def admin_login(
+    payload: LoginRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    tokens = await auth_service.login(
+        session,
+        payload,
+        request,
+        client_type=auth_service.CLIENT_TYPE_ADMIN_CONSOLE,
+    )
     return success_response(tokens.model_dump())
 
 

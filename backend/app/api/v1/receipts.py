@@ -5,13 +5,13 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user, get_session
+from app.core.dependencies import get_session, require_user_app
 from app.core.responses import success_response
 from app.models.user import User
 from app.schemas.ocr import OcrConfirmRequest, OcrTaskPublic
 from app.schemas.receipt import ReceiptCreateRequest, ReceiptPublic, ReceiptUpdateRequest
 from app.services.ocr_service import confirm_ocr_task, create_receipt_ocr_task, list_receipt_ocr_tasks, retry_ocr_task
-from app.services.receipt_service import create_receipt_from_upload, list_receipts, update_receipt
+from app.services.receipt_service import create_receipt_for_file, create_receipt_from_upload, delete_receipt, list_receipts, update_receipt
 
 router = APIRouter()
 
@@ -23,7 +23,7 @@ async def list_receipts_endpoint(
     merchant: str | None = None,
     year: int | None = None,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user_app),
 ) -> dict:
     receipts = await list_receipts(session, current_user, q=q, category=category, merchant=merchant, year=year)
     return success_response([ReceiptPublic.model_validate(receipt).model_dump(mode="json") for receipt in receipts])
@@ -40,7 +40,7 @@ async def upload_receipt_endpoint(
     warranty_until: date | None = Form(default=None),
     notes: str | None = Form(default=None),
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user_app),
 ) -> dict:
     payload = ReceiptCreateRequest(
         merchant=merchant,
@@ -52,6 +52,22 @@ async def upload_receipt_endpoint(
         notes=notes,
     )
     receipt = await create_receipt_from_upload(session, current_user, file, payload)
+    await create_receipt_ocr_task(session, current_user, receipt.id)
+    await session.refresh(receipt)
+    return success_response(ReceiptPublic.model_validate(receipt).model_dump(mode="json"))
+
+
+@router.post("/from-file/{file_id}")
+async def create_receipt_from_file_endpoint(
+    file_id: UUID,
+    merchant: str | None = None,
+    category: str | None = None,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_user_app),
+) -> dict:
+    receipt = await create_receipt_for_file(session, current_user, file_id, merchant=merchant, category=category)
+    await create_receipt_ocr_task(session, current_user, receipt.id)
+    await session.refresh(receipt)
     return success_response(ReceiptPublic.model_validate(receipt).model_dump(mode="json"))
 
 
@@ -60,17 +76,27 @@ async def update_receipt_endpoint(
     receipt_id: UUID,
     payload: ReceiptUpdateRequest,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user_app),
 ) -> dict:
     receipt = await update_receipt(session, current_user, receipt_id, payload)
     return success_response(ReceiptPublic.model_validate(receipt).model_dump(mode="json"))
+
+
+@router.delete("/{receipt_id}")
+async def delete_receipt_endpoint(
+    receipt_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_user_app),
+) -> dict:
+    await delete_receipt(session, current_user, receipt_id)
+    return success_response(message="receipt deleted")
 
 
 @router.post("/{receipt_id}/ocr")
 async def create_receipt_ocr_endpoint(
     receipt_id: UUID,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user_app),
 ) -> dict:
     task = await create_receipt_ocr_task(session, current_user, receipt_id)
     return success_response(OcrTaskPublic.model_validate(task).model_dump(mode="json"))
@@ -80,7 +106,7 @@ async def create_receipt_ocr_endpoint(
 async def list_receipt_ocr_endpoint(
     receipt_id: UUID,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user_app),
 ) -> dict:
     tasks = await list_receipt_ocr_tasks(session, current_user, receipt_id)
     return success_response([OcrTaskPublic.model_validate(task).model_dump(mode="json") for task in tasks])
@@ -92,7 +118,7 @@ async def confirm_receipt_ocr_endpoint(
     task_id: UUID,
     payload: OcrConfirmRequest,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user_app),
 ) -> dict:
     task = await confirm_ocr_task(session, current_user, receipt_id, task_id, payload)
     return success_response(OcrTaskPublic.model_validate(task).model_dump(mode="json"))
@@ -103,7 +129,7 @@ async def retry_receipt_ocr_endpoint(
     receipt_id: UUID,
     task_id: UUID,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_user_app),
 ) -> dict:
     task = await retry_ocr_task(session, current_user, receipt_id, task_id)
     return success_response(OcrTaskPublic.model_validate(task).model_dump(mode="json"))

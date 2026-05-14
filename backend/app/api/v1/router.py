@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import admin, albums, auth, dashboard, devices, documents, drop, files, folders, health, invites, photos, receipts, shares, tags, trash
+from app.api.v1 import admin, albums, auth, dashboard, devices, documents, drop, files, folders, health, important_docs, inbox, intelligence, invites, messages, photos, receipts, search, settings, shares, tags, trash
 
 api_router = APIRouter()
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
@@ -8,14 +8,21 @@ api_router.include_router(albums.router, prefix="/albums", tags=["albums"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
 api_router.include_router(invites.router, prefix="/invites", tags=["invites"])
+api_router.include_router(messages.admin_router, prefix="/admin/messages", tags=["admin-messages"])
 api_router.include_router(devices.router, prefix="/devices", tags=["devices"])
 api_router.include_router(documents.router, prefix="/documents", tags=["documents"])
 api_router.include_router(drop.router, prefix="/drop", tags=["drop"])
 api_router.include_router(files.router, prefix="/files", tags=["files"])
 api_router.include_router(folders.router, prefix="/folders", tags=["folders"])
 api_router.include_router(health.router, prefix="/health", tags=["health"])
+api_router.include_router(important_docs.router, prefix="/important-docs", tags=["important-docs"])
+api_router.include_router(inbox.router, prefix="/inbox", tags=["inbox"])
+api_router.include_router(intelligence.router, prefix="/intelligence", tags=["intelligence"])
+api_router.include_router(messages.router, prefix="/messages", tags=["messages"])
 api_router.include_router(photos.router, prefix="/photos", tags=["photos"])
 api_router.include_router(receipts.router, prefix="/receipts", tags=["receipts"])
+api_router.include_router(search.router, prefix="/search", tags=["search"])
+api_router.include_router(settings.router, prefix="/settings", tags=["settings"])
 api_router.include_router(shares.router, prefix="/shares", tags=["shares"])
 api_router.include_router(shares.public_router, prefix="/public-share", tags=["public-share"])
 api_router.include_router(tags.router, prefix="/tags", tags=["tags"])

@@ -24,6 +24,7 @@ class AuthSession(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=True,
     )
     refresh_token_hash: Mapped[str] = mapped_column(String(128), unique=True, index=True, nullable=False)
+    client_type: Mapped[str] = mapped_column(String(32), default="user_app", nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

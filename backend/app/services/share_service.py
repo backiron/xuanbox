@@ -1,12 +1,13 @@
 import secrets
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
-from app.core.security import hash_password, verify_password
+from app.core.security import create_access_token, decode_token, hash_password, verify_password
+from app.models.document_asset import DocumentAsset
 from app.models.album import Album
 from app.models.file_asset import FileAsset
 from app.models.photo_asset import PhotoAsset
@@ -19,6 +20,9 @@ from app.services.file_service import decrypt_file_asset
 ALLOWED_TARGET_TYPES = {"file", "photo", "receipt", "document", "album"}
 ALLOWED_PERMISSIONS = {"read", "download", "upload", "comment"}
 DOWNLOADABLE_TARGET_TYPES = {"file", "photo", "receipt", "document"}
+DEFAULT_PUBLIC_SHARE_DAYS = 7
+DEFAULT_PUBLIC_MAX_DOWNLOADS = 3
+SHARE_ACCESS_SECONDS = 10 * 60
 
 
 async def _find_shared_user(db: AsyncSession, username_or_email: str | None) -> User | None:
@@ -41,6 +45,28 @@ async def _target_exists(db: AsyncSession, owner: User, target_type: str, target
         return await db.scalar(select(Receipt).where(Receipt.id == target_id, Receipt.owner_id == owner.id)) is not None
     if target_type == "album":
         return await db.scalar(select(Album).where(Album.id == target_id, Album.owner_id == owner.id)) is not None
+    return False
+
+
+async def _is_vault_locked_target(db: AsyncSession, owner: User, target_type: str, target_id: UUID) -> bool:
+    if target_type == "document":
+        document = await db.scalar(
+            select(DocumentAsset).where(
+                DocumentAsset.file_id == target_id,
+                DocumentAsset.owner_id == owner.id,
+                DocumentAsset.security_level == "vault_locked",
+            )
+        )
+        return document is not None
+    if target_type == "file":
+        document = await db.scalar(
+            select(DocumentAsset).where(
+                DocumentAsset.file_id == target_id,
+                DocumentAsset.owner_id == owner.id,
+                DocumentAsset.security_level == "vault_locked",
+            )
+        )
+        return document is not None
     return False
 
 
@@ -92,8 +118,10 @@ async def target_name(db: AsyncSession, share: Share) -> str | None:
     return None
 
 
-async def list_created_shares(db: AsyncSession, owner: User) -> list[Share]:
-    result = await db.scalars(select(Share).where(Share.owner_id == owner.id).order_by(Share.created_at.desc()))
+async def list_created_shares(db: AsyncSession, owner: User, *, archived: bool = False) -> list[Share]:
+    statement = select(Share).where(Share.owner_id == owner.id)
+    statement = statement.where(Share.archived_at.is_not(None) if archived else Share.archived_at.is_(None))
+    result = await db.scalars(statement.order_by(Share.created_at.desc()))
     return list(result)
 
 
@@ -115,6 +143,13 @@ async def create_share(db: AsyncSession, owner: User, payload: ShareCreateReques
     shared_user = await _find_shared_user(db, payload.shared_with_username)
     if payload.shared_with_username and shared_user is None:
         raise AppError("shared_user_not_found", "Shared user not found", 404)
+    if shared_user is None and await _is_vault_locked_target(db, owner, target_type, payload.target_id):
+        raise AppError("public_share_denied_for_vault", "Important docs cannot be shared through a public link", 403)
+    expires_at = payload.expires_at
+    max_downloads = payload.max_downloads
+    if shared_user is None:
+        expires_at = expires_at or (datetime.now(UTC) + timedelta(days=DEFAULT_PUBLIC_SHARE_DAYS))
+        max_downloads = max_downloads or DEFAULT_PUBLIC_MAX_DOWNLOADS
 
     share = Share(
         owner_id=owner.id,
@@ -124,8 +159,8 @@ async def create_share(db: AsyncSession, owner: User, payload: ShareCreateReques
         public_token=secrets.token_urlsafe(32),
         permission=permission,
         password_hash=hash_password(payload.password) if payload.password else None,
-        max_downloads=payload.max_downloads,
-        expires_at=payload.expires_at,
+        max_downloads=max_downloads,
+        expires_at=expires_at,
     )
     db.add(share)
     await db.commit()
@@ -164,6 +199,31 @@ async def deactivate_share(db: AsyncSession, owner: User, share_id: UUID) -> Non
     share = await get_owned_share(db, owner, share_id)
     share.is_active = False
     await db.commit()
+
+
+def is_archiveable(share: Share) -> bool:
+    return (
+        not share.is_active
+        or _is_expired(share)
+        or (share.max_downloads is not None and share.download_count >= share.max_downloads)
+    )
+
+
+async def archive_share(db: AsyncSession, owner: User, share_id: UUID) -> None:
+    share = await get_owned_share(db, owner, share_id)
+    if not is_archiveable(share):
+        raise AppError("share_archive_denied", "Only inactive, expired, or completed shares can be archived", 400)
+    share.archived_at = datetime.now(UTC)
+    await db.commit()
+
+
+async def archive_inactive_shares(db: AsyncSession, owner: User) -> int:
+    shares = await list_created_shares(db, owner)
+    archiveable = [share for share in shares if is_archiveable(share)]
+    for share in archiveable:
+        share.archived_at = datetime.now(UTC)
+    await db.commit()
+    return len(archiveable)
 
 
 def _is_expired(share: Share) -> bool:
@@ -223,6 +283,28 @@ async def verify_share_password(db: AsyncSession, share: Share, password: str | 
         raise AppError("invalid_share_password", "Invalid share password", 403)
 
 
+def create_share_access_token(share: Share) -> str:
+    expires_at = datetime.now(UTC) + timedelta(seconds=SHARE_ACCESS_SECONDS)
+    return create_access_token(
+        str(share.id),
+        {
+            "type": "share_access",
+            "share_id": str(share.id),
+            "exp": int(expires_at.timestamp()),
+        },
+    )
+
+
+def verify_share_access_token(share: Share, token: str | None) -> None:
+    if not share.password_hash:
+        return
+    if not token:
+        raise AppError("share_access_required", "Unlock this share first", 403)
+    payload = decode_token(token)
+    if payload.get("type") != "share_access" or payload.get("share_id") != str(share.id):
+        raise AppError("invalid_share_access", "Share access has expired or is invalid", 403)
+
+
 async def public_share_metadata(db: AsyncSession, share: Share) -> tuple[str, FileAsset | None]:
     name = await target_name(db, share)
     file_asset = None
@@ -236,6 +318,7 @@ async def download_public_share(
     share: Share,
     *,
     password: str | None,
+    access_token: str | None,
     ip_address: str | None,
     user_agent: str | None,
 ) -> tuple[FileAsset, bytes]:
@@ -243,7 +326,11 @@ async def download_public_share(
         await write_share_access_log(db, share, action="share.download", success=False, ip_address=ip_address, user_agent=user_agent, failure_reason="permission_denied")
         await db.commit()
         raise AppError("share_download_denied", "This share does not allow downloads", 403)
-    await verify_share_password(db, share, password, ip_address=ip_address, user_agent=user_agent)
+    if share.password_hash:
+        if access_token:
+            verify_share_access_token(share, access_token)
+        else:
+            await verify_share_password(db, share, password, ip_address=ip_address, user_agent=user_agent)
     file_asset = await _target_file(db, share)
     plain_bytes = decrypt_file_asset(file_asset)
     share.download_count += 1

@@ -37,8 +37,15 @@ async def create_transfer_session(db: AsyncSession, owner: User, payload: Transf
 
 
 async def list_transfer_sessions(db: AsyncSession, owner: User) -> list[TransferSession]:
+    now = datetime.now(UTC)
     result = await db.scalars(
-        select(TransferSession).where(TransferSession.owner_id == owner.id).order_by(TransferSession.created_at.desc())
+        select(TransferSession)
+        .where(
+            TransferSession.owner_id == owner.id,
+            TransferSession.status == "open",
+            TransferSession.expires_at > now,
+        )
+        .order_by(TransferSession.created_at.desc())
     )
     return list(result)
 
@@ -64,6 +71,14 @@ async def upload_transfer_item(db: AsyncSession, token: str, upload: UploadFile)
     if owner is None:
         raise AppError("owner_not_found", "Transfer owner no longer exists", 404)
     file_asset = await upload_file(db, owner=owner, upload=upload, source="xuandrop_upload")
+    saved_to = "files"
+    if file_asset.mime_type and file_asset.mime_type.startswith("image/"):
+        try:
+            await create_photo_from_file(db, owner, file_asset.id)
+            saved_to = "photos"
+        except AppError as exc:
+            if exc.error_code != "invalid_photo":
+                raise
     item = TransferItem(
         session_id=session.id,
         owner_id=owner.id,
@@ -71,6 +86,8 @@ async def upload_transfer_item(db: AsyncSession, token: str, upload: UploadFile)
         original_filename=file_asset.original_filename,
         mime_type=file_asset.mime_type,
         file_size=file_asset.file_size,
+        status="saved",
+        saved_to=saved_to,
     )
     db.add(item)
     await db.flush()

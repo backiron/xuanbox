@@ -55,8 +55,11 @@ async def list_documents(
     q: str | None = None,
     document_type: str | None = None,
     security_level: str | None = None,
+    include_vault_locked: bool = False,
 ) -> list[DocumentAsset]:
     statement = select(DocumentAsset).where(DocumentAsset.owner_id == owner.id)
+    if not include_vault_locked:
+        statement = statement.where(DocumentAsset.security_level != "vault_locked")
     if q:
         like = f"%{q}%"
         statement = statement.where(DocumentAsset.title.ilike(like) | DocumentAsset.issuer.ilike(like) | DocumentAsset.note.ilike(like))
@@ -76,6 +79,9 @@ async def create_document_from_upload(
 ) -> DocumentAsset:
     file_asset = await upload_file(db, owner=owner, upload=upload, source="document_upload")
     file_asset.file_category = "document"
+    security_level = _validate_security_level(payload.security_level)
+    if security_level == "vault_locked":
+        raise AppError("vault_route_required", "Use Important docs to create vault locked documents", 400)
     document = DocumentAsset(
         owner_id=owner.id,
         file_id=file_asset.id,
@@ -85,7 +91,7 @@ async def create_document_from_upload(
         issued_date=payload.issued_date,
         expires_at=payload.expires_at,
         note=payload.note,
-        security_level=_validate_security_level(payload.security_level),
+        security_level=security_level,
     )
     db.add(document)
     await db.commit()
@@ -98,11 +104,16 @@ async def create_document_for_file(
     owner: User,
     file_id: UUID,
     payload: DocumentCreateRequest,
+    *,
+    allow_vault_locked: bool = False,
 ) -> DocumentAsset:
     await get_owned_file(db, owner, file_id)
     existing = await db.scalar(select(DocumentAsset).where(DocumentAsset.file_id == file_id, DocumentAsset.owner_id == owner.id))
     if existing:
         raise AppError("document_exists", "This file is already saved as a document", 409)
+    security_level = _validate_security_level(payload.security_level)
+    if security_level == "vault_locked" and not allow_vault_locked:
+        raise AppError("vault_route_required", "Use Important docs to create vault locked documents", 400)
     document = DocumentAsset(
         owner_id=owner.id,
         file_id=file_id,
@@ -112,7 +123,7 @@ async def create_document_for_file(
         issued_date=payload.issued_date,
         expires_at=payload.expires_at,
         note=payload.note,
-        security_level=_validate_security_level(payload.security_level),
+        security_level=security_level,
     )
     db.add(document)
     await db.commit()
@@ -142,7 +153,10 @@ async def update_document(db: AsyncSession, owner: User, document_id: UUID, payl
     if "note" in payload.model_fields_set:
         document.note = payload.note
     if payload.security_level is not None:
-        document.security_level = _validate_security_level(payload.security_level)
+        security_level = _validate_security_level(payload.security_level)
+        if security_level == "vault_locked":
+            raise AppError("vault_route_required", "Use Important docs to manage vault locked documents", 400)
+        document.security_level = security_level
     await db.commit()
     await db.refresh(document)
     return document
@@ -156,6 +170,8 @@ async def decrypt_document(
     password: str | None = None,
 ) -> tuple[DocumentAsset, FileAsset, bytes]:
     document = await get_owned_document(db, owner, document_id)
+    if document.security_level == "vault_locked":
+        raise AppError("vault_unlock_required", "Unlock Important docs first", 403)
     if document.security_level in SECOND_FACTOR_LEVELS and not verify_password(password or "", owner.password_hash):
         raise AppError("document_reauth_required", "Password verification required for this document", 403)
     file_asset = await get_owned_file(db, owner, document.file_id)
@@ -171,6 +187,7 @@ async def list_expiring_documents(db: AsyncSession, owner: User, *, days: int = 
     result = await db.scalars(
         select(DocumentAsset)
         .where(DocumentAsset.owner_id == owner.id, DocumentAsset.expires_at.is_not(None))
+        .where(DocumentAsset.security_level != "vault_locked")
         .where(DocumentAsset.expires_at >= today, DocumentAsset.expires_at <= until)
         .order_by(DocumentAsset.expires_at.asc())
     )

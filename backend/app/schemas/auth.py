@@ -18,6 +18,14 @@ class InviteRegisterRequest(BaseModel):
     device_name: str | None = Field(default=None, max_length=120)
 
 
+class PublicRegisterRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=64)
+    email: EmailStr
+    password: str = Field(min_length=10, max_length=128)
+    display_name: str | None = Field(default=None, max_length=120)
+    device_name: str | None = Field(default=None, max_length=120)
+
+
 class LoginRequest(BaseModel):
     username_or_email: str = Field(min_length=3, max_length=255)
     password: str = Field(min_length=1, max_length=128)
@@ -38,3 +46,4 @@ class TokenPair(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     expires_in: int
+    client_type: str = "user_app"

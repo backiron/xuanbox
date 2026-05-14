@@ -5,13 +5,16 @@ import { Download, FileLock2, Filter, Save, Search, ShieldAlert, Upload } from '
 import PageHeader from '../../components/common/PageHeader.vue'
 import EmptyState from '../../components/common/EmptyState.vue'
 import { documentApi } from '../../api/documentApi'
+import { useDialogStore } from '../../stores/dialogStore'
 
 const documents = ref([])
 const loading = ref(false)
 const uploadProgress = ref(0)
+const draggingDocuments = ref(false)
 const filters = ref({ q: '', document_type: '', security_level: '' })
 const editing = ref(null)
 const error = ref('')
+const dialog = useDialogStore()
 const draft = ref({
   document_type: 'contract',
   title: '',
@@ -72,6 +75,10 @@ function daysUntil(value) {
   return Math.ceil((expiry - today) / 86400000)
 }
 
+function titleFromFile(file) {
+  return file.name.replace(/\.[^/.]+$/, '') || 'Document'
+}
+
 async function loadDocuments() {
   loading.value = true
   error.value = ''
@@ -86,24 +93,49 @@ async function loadDocuments() {
   }
 }
 
-async function onDocumentFile(event) {
-  const file = event.target.files?.[0]
-  if (!file || !draft.value.title) return
-  const formData = new FormData()
-  formData.append('file', file)
-  for (const [key, value] of Object.entries(cleanPayload(draft.value))) {
-    if (value !== null) formData.append(key, value)
-  }
+async function uploadDocumentFiles(files) {
+  const pickedFiles = Array.from(files || [])
+  if (!pickedFiles.length) return
   uploadProgress.value = 1
-  await documentApi.upload(formData, {
-    onUploadProgress(progressEvent) {
-      if (progressEvent.total) uploadProgress.value = Math.round((progressEvent.loaded / progressEvent.total) * 100)
+  for (const file of pickedFiles) {
+    const payload = cleanPayload({
+      ...draft.value,
+      title: draft.value.title || titleFromFile(file)
+    })
+    const formData = new FormData()
+    formData.append('file', file)
+    for (const [key, value] of Object.entries(payload)) {
+      if (value !== null) formData.append(key, value)
     }
-  })
+    await documentApi.upload(formData, {
+      onUploadProgress(progressEvent) {
+        if (progressEvent.total) uploadProgress.value = Math.round((progressEvent.loaded / progressEvent.total) * 100)
+      }
+    })
+  }
   uploadProgress.value = 0
-  event.target.value = ''
   draft.value = { document_type: 'contract', title: '', issuer: '', issued_date: '', expires_at: '', security_level: 'normal', note: '' }
   await loadDocuments()
+}
+
+async function onDocumentFile(event) {
+  await uploadDocumentFiles(event.target.files)
+  event.target.value = ''
+}
+
+function onDragEnter(event) {
+  if (!event.dataTransfer?.types?.includes('Files')) return
+  draggingDocuments.value = true
+}
+
+function onDragLeave(event) {
+  if (event.currentTarget.contains(event.relatedTarget)) return
+  draggingDocuments.value = false
+}
+
+async function onDocumentDrop(event) {
+  draggingDocuments.value = false
+  await uploadDocumentFiles(event.dataTransfer?.files)
 }
 
 function startEdit(document) {
@@ -119,7 +151,7 @@ async function saveEdit() {
 async function downloadDocument(item) {
   let password = ''
   if (item.security_level === 'high_sensitive' || item.security_level === 'vault_locked') {
-    password = window.prompt('Password required') || ''
+    password = await dialog.prompt({ title: 'Password required', label: 'Account password', inputType: 'password' }) || ''
     if (!password) return
   }
   const response = await documentApi.download(item.id, password)
@@ -136,17 +168,31 @@ onMounted(loadDocuments)
 </script>
 
 <template>
+  <div
+    class="xb-upload-page"
+    :class="{ 'is-dragging': draggingDocuments }"
+    @dragenter.prevent="onDragEnter"
+    @dragover.prevent="draggingDocuments = true"
+    @dragleave="onDragLeave"
+    @drop.prevent="onDocumentDrop"
+  >
   <PageHeader title="Documents" subtitle="Save IDs, contracts, licenses, and other important documents with expiry reminders and security levels.">
-    <label class="xb-upload-button" :class="{ 'is-disabled': !draft.title }">
+    <label class="xb-upload-button">
       <Upload :size="18" />
       Upload Document
-      <input type="file" accept="image/*,.pdf,.doc,.docx,.txt" :disabled="!draft.title" @change="onDocumentFile" />
+      <input type="file" accept="image/*,.pdf,.doc,.docx,.txt" multiple @change="onDocumentFile" />
     </label>
   </PageHeader>
 
   <div v-if="uploadProgress" class="xb-progress">
     <span :style="{ width: `${uploadProgress}%` }"></span>
   </div>
+
+  <section class="xb-upload-drop-hint" :class="{ 'is-visible': draggingDocuments }">
+    <Upload :size="18" />
+    <strong>Drop documents to upload</strong>
+    <span>{{ draft.title ? 'Current details will be applied.' : 'File names will be used as titles.' }}</span>
+  </section>
 
   <section class="xb-document-layout">
     <aside class="xb-panel xb-document-form">
@@ -245,4 +291,5 @@ onMounted(loadDocuments)
       </div>
     </form>
   </section>
+  </div>
 </template>

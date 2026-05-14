@@ -5,10 +5,14 @@ from uuid import UUID, uuid4
 
 from fastapi import UploadFile
 from sqlalchemy import select
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
+from app.models.document_asset import DocumentAsset
 from app.models.file_asset import FileAsset
+from app.models.photo_asset import PhotoAsset
+from app.models.receipt import Receipt
 from app.models.user import User
 from app.services.audit_service import write_audit_log
 from app.services.encryption_service import (
@@ -72,6 +76,13 @@ async def upload_file(
         target_id=str(file_asset.id),
         metadata_json={"filename": original_filename, "size": len(plain_bytes)},
     )
+    from app.services.document_intelligence_service import enqueue_document_intelligence_task
+
+    await enqueue_document_intelligence_task(db, owner=owner, file_asset=file_asset, source_type=file_asset.file_category)
+    if file_asset.file_category == "photo":
+        from app.services.photo_service import create_photo_record_for_asset
+
+        await create_photo_record_for_asset(db, owner, file_asset, plain_bytes)
     await db.commit()
     await db.refresh(file_asset)
     return file_asset
@@ -89,6 +100,8 @@ async def create_encrypted_asset_from_bytes(
     file_category: str | None = None,
     derivative_type: str | None = None,
 ) -> FileAsset:
+    if derivative_type is None:
+        await ensure_storage_quota(db, owner, len(plain_bytes))
     file_id = uuid4()
     file_key = generate_file_key()
     encrypted_payload, nonce, auth_tag = encrypt_bytes(plain_bytes, file_key)
@@ -120,6 +133,19 @@ async def create_encrypted_asset_from_bytes(
     return file_asset
 
 
+async def ensure_storage_quota(db: AsyncSession, owner: User, incoming_bytes: int) -> None:
+    if owner.storage_limit_bytes is None:
+        return
+    used_bytes = await db.scalar(
+        select(func.coalesce(func.sum(FileAsset.file_size), 0)).where(
+            FileAsset.owner_id == owner.id,
+            FileAsset.is_deleted.is_(False),
+        )
+    )
+    if int(used_bytes or 0) + incoming_bytes > owner.storage_limit_bytes:
+        raise AppError("storage_quota_exceeded", "Storage quota exceeded", 403)
+
+
 async def list_files(
     db: AsyncSession,
     owner: User,
@@ -128,23 +154,45 @@ async def list_files(
     root_only: bool = False,
 ) -> list[FileAsset]:
     statement = select(FileAsset).where(FileAsset.owner_id == owner.id)
+    vault_file_ids = select(DocumentAsset.file_id).where(
+        DocumentAsset.owner_id == owner.id,
+        DocumentAsset.security_level == "vault_locked",
+    )
+    statement = statement.where(FileAsset.id.not_in(vault_file_ids))
     if not include_deleted:
         statement = statement.where(FileAsset.is_deleted.is_(False))
     if folder_id is not None:
         statement = statement.where(FileAsset.folder_id == folder_id)
     elif root_only:
         statement = statement.where(FileAsset.folder_id.is_(None))
-    statement = statement.where(FileAsset.source != "system_import")
+    statement = statement.where(FileAsset.source.not_in(["system_import", "avatar", "inbox_upload"]))
+    statement = statement.where(FileAsset.file_category != "photo")
     result = await db.scalars(statement.order_by(FileAsset.created_at.desc()))
     return list(result)
 
 
-async def get_owned_file(db: AsyncSession, owner: User, file_id: UUID, allow_deleted: bool = False) -> FileAsset:
+async def get_owned_file(
+    db: AsyncSession,
+    owner: User,
+    file_id: UUID,
+    allow_deleted: bool = False,
+    allow_vault_locked: bool = False,
+) -> FileAsset:
     file_asset = await db.scalar(
         select(FileAsset).where(FileAsset.id == file_id, FileAsset.owner_id == owner.id)
     )
     if file_asset is None or (file_asset.is_deleted and not allow_deleted):
         raise AppError("file_not_found", "File not found", 404)
+    if not allow_vault_locked:
+        vault_document = await db.scalar(
+            select(DocumentAsset.id).where(
+                DocumentAsset.file_id == file_id,
+                DocumentAsset.owner_id == owner.id,
+                DocumentAsset.security_level == "vault_locked",
+            )
+        )
+        if vault_document:
+            raise AppError("file_not_found", "File not found", 404)
     return file_asset
 
 
@@ -164,10 +212,23 @@ def decrypt_file_asset(file_asset: FileAsset) -> bytes:
 
 async def soft_delete_file(db: AsyncSession, owner: User, file_id: UUID) -> None:
     file_asset = await get_owned_file(db, owner, file_id)
+    await ensure_file_can_be_deleted(db, owner, file_id)
     file_asset.is_deleted = True
     file_asset.deleted_at = datetime.now(UTC)
     await write_audit_log(db, action="file.delete", actor_user_id=owner.id, target_type="file", target_id=str(file_id))
     await db.commit()
+
+
+async def ensure_file_can_be_deleted(db: AsyncSession, owner: User, file_id: UUID) -> None:
+    receipt_id = await db.scalar(select(Receipt.id).where(Receipt.owner_id == owner.id, Receipt.file_id == file_id).limit(1))
+    document_id = await db.scalar(select(DocumentAsset.id).where(DocumentAsset.owner_id == owner.id, DocumentAsset.file_id == file_id).limit(1))
+    photo_id = await db.scalar(select(PhotoAsset.id).where(PhotoAsset.owner_id == owner.id, PhotoAsset.file_id == file_id).limit(1))
+    if receipt_id or document_id or photo_id:
+        raise AppError(
+            "file_in_use",
+            "This file is used by a photo, receipt, or document. Remove that item first.",
+            409,
+        )
 
 
 async def update_file_metadata(
@@ -205,7 +266,7 @@ async def restore_file(db: AsyncSession, owner: User, file_id: UUID) -> FileAsse
 async def list_trash(db: AsyncSession, owner: User) -> list[FileAsset]:
     result = await db.scalars(
         select(FileAsset)
-        .where(FileAsset.owner_id == owner.id, FileAsset.is_deleted.is_(True))
+        .where(FileAsset.owner_id == owner.id, FileAsset.is_deleted.is_(True), FileAsset.file_category != "photo")
         .order_by(FileAsset.deleted_at.desc().nullslast())
     )
     return list(result)

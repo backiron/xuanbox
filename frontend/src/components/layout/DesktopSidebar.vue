@@ -1,35 +1,23 @@
 <script setup>
-import {
-  Archive,
-  ClipboardList,
-  FileText,
-  Gauge,
-  HardDrive,
-  Image,
-  ReceiptText,
-  Send,
-  Share2,
-  Settings,
-  ShieldCheck
-} from 'lucide-vue-next'
+import XbAssetIcon from '../common/XbAssetIcon.vue'
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: Gauge },
-  { to: '/photos', label: 'Photos', icon: Image },
-  { to: '/files', label: 'Files', icon: HardDrive },
-  { to: '/documents', label: 'Documents', icon: ClipboardList },
-  { to: '/receipts', label: 'Receipts', icon: ReceiptText },
-  { to: '/drop', label: 'XuanDrop', icon: Send },
-  { to: '/shared', label: 'Shared', icon: Share2 },
-  { to: '/settings', label: 'Settings', icon: Settings },
-  { to: '/admin', label: 'Admin', icon: ShieldCheck }
+  { to: '/', label: 'Dashboard', icon: 'dashboard' },
+  { to: '/inbox', label: 'Inbox', icon: 'upload' },
+  { to: '/photos', label: 'Photos', icon: 'photos' },
+  { to: '/files', label: 'Files', icon: 'files' },
+  { to: '/receipts', label: 'Receipts', icon: 'receipts' },
+  { to: '/drop', label: 'XuanDrop', icon: 'xuandrop' },
+  { to: '/shared', label: 'Shared', icon: 'share' },
+  { to: '/messages', label: 'Messages', icon: 'notifications' },
+  { to: '/settings', label: 'Settings', icon: 'settings' }
 ]
 </script>
 
 <template>
   <aside class="xb-sidebar">
     <div class="xb-logo">
-      <Archive :size="26" />
+      <XbAssetIcon name="logo" :size="34" />
       <div>
         <strong>XuanBox</strong>
         <span>玄匣</span>
@@ -37,15 +25,15 @@ const navItems = [
     </div>
     <nav class="xb-sidebar-nav">
       <router-link v-for="item in navItems" :key="item.to" :to="item.to" class="xb-nav-link">
-        <component :is="item.icon" :size="18" />
+        <XbAssetIcon :name="item.icon" :size="22" />
         <span>{{ item.label }}</span>
       </router-link>
     </nav>
     <div class="xb-storage-mini">
-      <FileText :size="18" />
+      <XbAssetIcon name="storage" :size="24" />
       <div>
         <strong>Private Vault</strong>
-        <span>Encrypted local storage</span>
+        <span>Encrypted personal archive</span>
       </div>
     </div>
   </aside>

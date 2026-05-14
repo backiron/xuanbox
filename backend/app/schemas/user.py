@@ -9,7 +9,9 @@ class UserPublic(BaseModel):
     username: str
     email: EmailStr
     display_name: str | None
+    avatar_file_id: UUID | None
     role: str
+    plan: str
     status: str
     storage_limit_bytes: int | None
     created_at: datetime

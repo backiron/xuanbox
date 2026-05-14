@@ -10,6 +10,7 @@ const token = computed(() => route.params.token)
 const metadata = ref(null)
 const password = ref('')
 const verified = ref(false)
+const shareAccessToken = ref('')
 const loading = ref(false)
 const error = ref('')
 
@@ -29,8 +30,10 @@ async function loadMetadata() {
 async function verifyPassword() {
   error.value = ''
   try {
-    await shareApi.verifyPassword(token.value, password.value)
+    const response = await shareApi.verifyPassword(token.value, password.value)
+    shareAccessToken.value = response.data.data.access_token
     verified.value = true
+    password.value = ''
   } catch (err) {
     error.value = err.response?.data?.error?.message || 'Password check failed'
   }
@@ -39,7 +42,7 @@ async function verifyPassword() {
 async function downloadShare() {
   error.value = ''
   try {
-    const response = await shareApi.publicDownload(token.value, password.value)
+    const response = await shareApi.publicDownload(token.value, shareAccessToken.value)
     const blobUrl = URL.createObjectURL(response.data)
     const anchor = document.createElement('a')
     anchor.href = blobUrl

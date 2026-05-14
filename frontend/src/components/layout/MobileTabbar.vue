@@ -1,20 +1,21 @@
 <script setup>
-import { ClipboardList, Files, Home, Image, Share2, User } from 'lucide-vue-next'
+import XbAssetIcon from '../common/XbAssetIcon.vue'
 
 const tabs = [
-  { to: '/', label: 'Home', icon: Home },
-  { to: '/photos', label: 'Photos', icon: Image },
-  { to: '/files', label: 'Files', icon: Files },
-  { to: '/documents', label: 'Docs', icon: ClipboardList },
-  { to: '/shared', label: 'Shared', icon: Share2 },
-  { to: '/settings', label: 'Me', icon: User }
+  { to: '/', label: 'Home', icon: 'dashboard' },
+  { to: '/inbox', label: 'Inbox', icon: 'upload' },
+  { to: '/photos', label: 'Photos', icon: 'photos' },
+  { to: '/files', label: 'Files', icon: 'files' },
+  { to: '/receipts', label: 'Receipts', icon: 'receipts' },
+  { to: '/drop', label: 'Drop', icon: 'xuandrop' },
+  { to: '/settings', label: 'Me', icon: 'users' }
 ]
 </script>
 
 <template>
   <nav class="xb-mobile-tabbar">
-    <router-link v-for="tab in tabs" :key="tab.to" :to="tab.to" class="xb-mobile-tab">
-      <component :is="tab.icon" :size="20" />
+    <router-link v-for="tab in tabs" :key="`${tab.to}-${tab.label}`" :to="tab.to" class="xb-mobile-tab">
+      <XbAssetIcon :name="tab.icon" :size="22" />
       <span>{{ tab.label }}</span>
     </router-link>
   </nav>
