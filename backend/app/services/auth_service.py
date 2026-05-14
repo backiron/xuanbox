@@ -7,7 +7,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.constants import USER_ROLE_ADMIN, USER_ROLE_OWNER, USER_STATUS_ACTIVE
+from app.core.constants import USER_ROLE_ADMIN, USER_ROLE_OWNER, USER_ROLE_USER, USER_STATUS_ACTIVE
 from app.core.errors import AppError
 from app.core.security import (
     create_access_token,
