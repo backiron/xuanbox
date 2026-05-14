@@ -649,6 +649,10 @@
     grid-template-columns: 1fr;
   }
 
+  .xb-about-links {
+    display: grid;
+  }
+
   .xb-settings-card-header {
     align-items: flex-start;
     flex-direction: column;

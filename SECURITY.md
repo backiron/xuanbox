@@ -10,6 +10,8 @@ XuanBox is currently in early preview. Security fixes are applied to the main br
 
 Do not publish sensitive vulnerability details in a public issue.
 
+Send security reports to [xuanbox@vianbeni.ca](mailto:xuanbox@vianbeni.ca).
+
 When reporting a vulnerability, include:
 
 - Affected version or commit.
@@ -18,7 +20,7 @@ When reporting a vulnerability, include:
 - Whether user files, credentials, shares, backups, or admin functions are involved.
 - Suggested mitigation, if known.
 
-The maintainer will acknowledge valid reports when a private contact channel is available and will coordinate fixes before public disclosure.
+VIANBENI will review valid reports and coordinate fixes before public disclosure when appropriate.
 
 ## In Scope
 

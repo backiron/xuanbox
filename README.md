@@ -1,5 +1,7 @@
 # XuanBox
 
+A VIANBENI open-source project.
+
 XuanBox is a self-hosted private file vault for personal and small-team use. It provides encrypted file storage, photo management, receipt capture, local document intelligence, controlled sharing, and nearby-device transfer through XuanDrop.
 
 The project is designed for operators who want to run their own private storage service on local hardware or a trusted server. XuanBox is not a hosted cloud service and does not require a third-party account.
@@ -79,6 +81,16 @@ XuanBox is released under the GNU Affero General Public License v3.0. See [LICEN
 
 Commercial licenses are available for organizations that need closed-source integration, managed deployments, hosted services, or support terms outside the AGPL. See [Commercial Licensing](COMMERCIAL.md).
 
+The XuanBox and VIANBENI names, logos, and brand assets are not licensed under the AGPL. See [Trademarks](TRADEMARKS.md).
+
 ## Contributing
 
 Contributions are welcome after the project stabilizes. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening issues or pull requests.
+
+## Project
+
+XuanBox is developed and maintained by VIANBENI.
+
+- Website: [vianbeni.ca](https://vianbeni.ca)
+- Contact: [xuanbox@vianbeni.ca](mailto:xuanbox@vianbeni.ca)
+- Repository: [github.com/keikozhang57/xuanbox](https://github.com/keikozhang57/xuanbox)

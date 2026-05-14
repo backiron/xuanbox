@@ -5,6 +5,8 @@ import { useRouter } from 'vue-router'
 import {
   Camera,
   Database,
+  ExternalLink,
+  Info,
   Lock,
   LogOut,
   Moon,
@@ -34,6 +36,7 @@ const authStore = useAuthStore()
 const dialog = useDialogStore()
 const themeStore = useThemeStore()
 const { t, locale } = useI18n()
+const appVersion = '0.1.0'
 
 const activeSection = ref('profile')
 const devices = ref([])
@@ -53,7 +56,8 @@ const sections = computed(() => ([
   { key: 'devices', label: t('pages.settings.sectionLabel.devices'), icon: Laptop },
   { key: 'storage', label: t('pages.settings.sectionLabel.storage'), icon: Database },
   { key: 'appearance', label: t('pages.settings.sectionLabel.appearance'), icon: Moon },
-  { key: 'privacy', label: t('pages.settings.sectionLabel.notes'), icon: Lock }
+  { key: 'privacy', label: t('pages.settings.sectionLabel.notes'), icon: Lock },
+  { key: 'about', label: t('pages.settings.sectionLabel.about'), icon: Info }
 ]))
 
 const localeOptions = [
@@ -430,6 +434,46 @@ onMounted(loadAll)
       <section v-if="activeSection === 'privacy'" class="xb-panel xb-settings-card xb-privacy-notes">
         <h3>{{ t('pages.settings.privacyNotes') }}</h3>
         <p v-for="(line, index) in privacyNotes" :key="index">{{ line }}</p>
+      </section>
+
+      <section v-if="activeSection === 'about'" class="xb-settings-stack">
+        <div class="xb-panel xb-settings-card">
+          <div class="xb-settings-card-header">
+            <div>
+              <h3>{{ t('pages.settings.aboutTitle') }}</h3>
+              <p>{{ t('pages.settings.aboutSubtitle') }}</p>
+            </div>
+            <Info :size="22" />
+          </div>
+          <dl class="xb-settings-facts xb-about-facts">
+            <div><dt>{{ t('pages.settings.aboutProduct') }}</dt><dd>XuanBox</dd></div>
+            <div><dt>{{ t('pages.settings.aboutVersion') }}</dt><dd>{{ appVersion }}</dd></div>
+            <div><dt>{{ t('pages.settings.aboutMaintainer') }}</dt><dd>VIANBENI</dd></div>
+            <div><dt>{{ t('pages.settings.aboutLicense') }}</dt><dd>AGPL-3.0</dd></div>
+          </dl>
+          <div class="xb-about-links">
+            <a href="https://vianbeni.ca" target="_blank" rel="noreferrer">
+              <ExternalLink :size="15" />
+              {{ t('pages.settings.aboutWebsite') }}
+            </a>
+            <a href="https://github.com/keikozhang57/xuanbox" target="_blank" rel="noreferrer">
+              <ExternalLink :size="15" />
+              {{ t('pages.settings.aboutSource') }}
+            </a>
+            <a href="mailto:xuanbox@vianbeni.ca">
+              <ExternalLink :size="15" />
+              xuanbox@vianbeni.ca
+            </a>
+          </div>
+        </div>
+
+        <div class="xb-panel xb-settings-card xb-privacy-notes">
+          <h3>{{ t('pages.settings.openSourceTitle') }}</h3>
+          <p>{{ t('pages.settings.openSourceText') }}</p>
+          <p>{{ t('pages.settings.commercialText') }}</p>
+          <p>{{ t('pages.settings.trademarkText') }}</p>
+          <p>{{ t('pages.settings.securityModelText') }}</p>
+        </div>
       </section>
     </div>
   </section>

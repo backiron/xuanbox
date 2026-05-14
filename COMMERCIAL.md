@@ -1,37 +1,46 @@
 # Commercial Licensing
 
-XuanBox is available under the GNU Affero General Public License v3.0 for community use, inspection, modification, and self-hosting.
+XuanBox is a VIANBENI open-source project.
 
-A separate commercial license is available for organizations that need rights or support terms that are not compatible with the AGPL.
+The community edition is licensed under the GNU Affero General Public License v3.0. This license allows use, study, modification, distribution, and self-hosting when its terms are followed.
 
-## When A Commercial License May Be Appropriate
+A separate commercial license is available for organizations that need to use XuanBox in ways that are not compatible with AGPL-3.0.
 
-Consider a commercial license if you plan to:
+## When To Contact Us
 
-- Offer XuanBox as part of a hosted or managed service.
+Contact VIANBENI before you:
+
+- Offer XuanBox as a hosted or managed service.
 - Integrate XuanBox into a closed-source product.
-- Distribute a modified version without AGPL source distribution obligations.
-- Require deployment assistance, private support, or agreed response times.
-- Need custom enterprise terms, procurement paperwork, or security review support.
+- Distribute modified versions without AGPL source distribution obligations.
+- Use XuanBox as part of a paid customer-facing product or service.
+- Need private deployment support, custom terms, or procurement documentation.
 
-## Community Edition
+## Commercial License
 
-The community edition is intended for self-hosted personal, family, lab, and small-team deployments. It includes the core vault, upload flows, sharing, XuanDrop, admin controls, OCR, search, and optional local AI integration.
+A commercial license may include:
 
-## Commercial Features And Services
-
-Commercial offerings may include:
-
+- Closed-source integration rights.
+- Hosted-service rights.
 - Managed deployment support.
-- Enterprise backup and retention policy design.
-- Advanced audit and compliance exports.
-- Organization policy templates.
-- Priority security updates.
+- Security review support.
+- Priority maintenance.
 - Custom integration work.
-- Commercial licensing for closed-source or hosted use.
+- Enterprise support terms.
+
+Commercial terms are provided separately. They are not granted by this repository.
+
+## Trademarks
+
+Commercial licensing does not automatically grant trademark rights. The XuanBox and VIANBENI names, logos, and brand assets require separate permission for commercial use, hosted offerings, or public distribution that could be confused with the official project.
+
+See [TRADEMARKS.md](TRADEMARKS.md).
 
 ## Contact
 
-Commercial licensing terms are not fixed in this repository. Open a private contact channel with the project maintainer before using XuanBox in a commercial hosted service or closed-source distribution.
+- Commercial licensing: [xuanbox@vianbeni.ca](mailto:xuanbox@vianbeni.ca)
+- Website: [vianbeni.ca](https://vianbeni.ca)
+
+If you are not sure whether your use requires a commercial license, contact VIANBENI before distributing or offering the service.
 
 This file is a licensing overview, not legal advice.

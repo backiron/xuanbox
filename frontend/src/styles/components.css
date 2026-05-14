@@ -2597,6 +2597,34 @@ body.xb-lightbox-open {
   text-transform: capitalize;
 }
 
+.xb-about-facts {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.xb-about-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.xb-about-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--xb-border);
+  border-radius: var(--xb-radius-sm);
+  color: var(--xb-link);
+  background: rgba(255, 255, 255, 0.03);
+  text-decoration: none;
+}
+
+.xb-about-links a:hover {
+  border-color: rgba(93, 143, 255, 0.55);
+  background: rgba(78, 131, 255, 0.12);
+}
+
 .xb-privacy-notes p {
   margin: 0;
   color: var(--xb-text-soft);
