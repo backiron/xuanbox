@@ -18,6 +18,7 @@ import {
 
 import App from './App.vue'
 import router from './router'
+import { i18n } from './i18n'
 import './styles/variables.css'
 import './styles/theme.css'
 import './styles/layout.css'
@@ -41,4 +42,10 @@ const naive = create({
   ]
 })
 
-createApp(App).use(createPinia()).use(router).use(naive).mount('#app')
+const app = createApp(App)
+
+app.use(createPinia())
+app.use(i18n)
+app.use(router)
+app.use(naive)
+app.mount('#app')

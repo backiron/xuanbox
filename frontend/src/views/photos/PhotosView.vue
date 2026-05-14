@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Album, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, Download, Edit3, FileCheck2, FolderInput, ImagePlus, ReceiptText, Share2, ShieldCheck, Square, Trash2, Upload, X } from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
 import PageHeader from '../../components/common/PageHeader.vue'
 import EmptyState from '../../components/common/EmptyState.vue'
 import { importantDocApi } from '../../api/fileApi'
@@ -32,6 +33,7 @@ let thumbHydrateTimer = 0
 let cleanupViewportListener = null
 const dialog = useDialogStore()
 const router = useRouter()
+const { t } = useI18n()
 
 const totalPages = computed(() => Math.max(1, Math.ceil(photos.value.length / pageSize.value)))
 const pageStart = computed(() => (currentPage.value - 1) * pageSize.value)
@@ -155,7 +157,7 @@ async function onPhotoDrop(event) {
 }
 
 async function createAlbum() {
-  const title = await dialog.prompt({ title: 'New album', label: 'Album name', placeholder: 'Japan trip' })
+  const title = await dialog.prompt({ title: t('pages.photos.newAlbum'), label: t('pages.photos.albumName'), placeholder: t('pages.photos.albumPlaceholder') })
   if (!title) return
   const response = await albumApi.create({ title })
   await loadAlbums()
@@ -223,11 +225,11 @@ function toggleEditMode() {
 async function deletePhotos(targetPhotos = selectedPhotos.value) {
   if (!targetPhotos.length) return
   const confirmed = await dialog.confirm({
-    title: targetPhotos.length === 1 ? 'Delete photo' : 'Delete selected photos',
+    title: targetPhotos.length === 1 ? t('pages.photos.deletePhoto') : t('pages.photos.deleteSelectedPhotos'),
     message: targetPhotos.length === 1
-      ? 'This photo will be removed from Photos.'
-      : `${targetPhotos.length} photos will be removed from Photos.`,
-    confirmText: 'Delete',
+      ? t('pages.photos.deletePhotoMessage')
+      : t('pages.photos.deleteSelectedMessage', { count: targetPhotos.length }),
+    confirmText: t('common.actions.delete'),
     danger: true
   })
   if (!confirmed) return
@@ -288,9 +290,9 @@ async function savePhotoAsReceipt(photo = activePreview.value) {
   if (!photo?.file_id) return
   const receipt = await receiptApi.createFromFile(photo.file_id, { category: 'photo import' })
   await dialog.confirm({
-    title: 'Saved as receipt',
-    message: 'This photo now appears in Receipts. OCR will run in the background and you can review fields there.',
-    confirmText: 'Open Receipts'
+    title: t('pages.photos.savedAsReceiptTitle'),
+    message: t('pages.photos.savedAsReceiptMessage'),
+    confirmText: t('pages.photos.openReceipts')
   })
   closePreview()
   await router.push('/receipts')
@@ -300,27 +302,27 @@ async function savePhotoAsReceipt(photo = activePreview.value) {
 async function addPhotoToImportantDocs(photo = activePreview.value) {
   if (!photo?.file_id) return
   if (!vaultStatus.value.pin_set) {
-    const pin = await dialog.prompt({ title: 'Set Important docs PIN', label: '6 digit PIN', placeholder: '123456' })
+    const pin = await dialog.prompt({ title: t('pages.files.importantVaultPinTitleSetup'), label: t('pages.files.importantVaultPinLabel'), placeholder: '123456' })
     if (!pin) return
     const response = await importantDocApi.setup(pin)
     importantUnlockToken.value = response.data.data.unlock_token
     await loadVaultStatus()
   } else if (!importantUnlockToken.value) {
-    const pin = await dialog.prompt({ title: 'Unlock Important docs', label: 'Vault PIN', placeholder: '6 digits' })
+    const pin = await dialog.prompt({ title: t('pages.files.importantVaultPinTitleUnlock'), label: t('pages.files.importantVaultPinLabel'), placeholder: t('common.placeholders.importantDocPin') })
     if (!pin) return
     const response = await importantDocApi.unlock(pin)
     importantUnlockToken.value = response.data.data.unlock_token
   }
   await importantDocApi.createFromFile(photo.file_id, {
-    title: `Photo document ${new Date(photo.uploaded_at || Date.now()).toLocaleDateString()}`,
+    title: t('pages.photos.photoDocumentTitle', { date: new Date(photo.uploaded_at || Date.now()).toLocaleDateString() }),
     document_type: 'photo_document',
     security_level: 'vault_locked',
-    note: 'Created from Photos'
+    note: t('pages.photos.createdFromPhotos')
   }, importantUnlockToken.value)
   await dialog.confirm({
-    title: 'Added to Important docs',
-    message: 'The original photo is now also protected in Important docs.',
-    confirmText: 'OK'
+    title: t('pages.photos.addImportantTitle'),
+    message: t('pages.photos.addImportantMsg'),
+    confirmText: t('pages.files.dialogOk')
   })
 }
 
@@ -386,18 +388,18 @@ onBeforeUnmount(() => {
     @dragleave="onDragLeave"
     @drop.prevent="onPhotoDrop"
   >
-    <PageHeader title="Photos" subtitle="Timeline, thumbnails, previews, albums and original downloads all load through protected APIs.">
+    <PageHeader :title="t('pages.photos.title')" :subtitle="t('pages.photos.subtitle')">
       <button class="xb-secondary-button" type="button" :class="{ 'is-active': editMode }" @click="toggleEditMode">
         <Edit3 :size="18" />
-        {{ editMode ? 'Done' : 'Edit' }}
+        {{ editMode ? t('common.actions.done') : t('common.actions.edit') }}
       </button>
       <button class="xb-secondary-button" type="button" @click="createAlbum">
         <ImagePlus :size="18" />
-        Album
+        {{ t('pages.photos.album') }}
       </button>
       <label class="xb-upload-button">
         <Upload :size="18" />
-        Upload Photo
+        {{ t('pages.photos.upload') }}
         <input type="file" accept="image/*" multiple @change="onPhotoChange" />
       </label>
     </PageHeader>
@@ -408,31 +410,31 @@ onBeforeUnmount(() => {
 
     <section class="xb-photo-drop-hint" :class="{ 'is-visible': draggingPhotos }">
       <Upload :size="18" />
-      <strong>Drop photos to upload</strong>
-      <span>{{ activeAlbumId ? 'They will also be added to this album.' : 'They will appear in Timeline.' }}</span>
+      <strong>{{ t('pages.photos.dropLabel') }}</strong>
+      <span>{{ activeAlbumId ? t('pages.photos.dropDescInAlbum') : t('pages.photos.dropDescTimeline') }}</span>
     </section>
 
     <section v-if="editMode" class="xb-action-bar xb-photo-manage-bar">
-      <strong>{{ selectedPhotos.length ? `${selectedPhotos.length} selected` : 'Select photos' }}</strong>
-      <button v-if="selectedPhotos.length" class="xb-text-button" type="button" @click="clearSelection">Clear</button>
+      <strong>{{ selectedPhotos.length ? t('pages.photos.selectCount', { count: selectedPhotos.length }) : t('pages.photos.selectLabel') }}</strong>
+      <button v-if="selectedPhotos.length" class="xb-text-button" type="button" @click="clearSelection">{{ t('pages.photos.selectClear') }}</button>
       <button v-if="selectedPhotos.length" class="xb-text-button" type="button" @click="shareSelectedPhotos">
         <Share2 :size="16" />
-        Share
+        {{ t('pages.photos.share') }}
       </button>
       <button v-if="selectedPhotos.length" class="xb-text-button" type="button" @click="openMoveModal">
         <FolderInput :size="16" />
-        Move to
+        {{ t('pages.photos.moveTo') }}
       </button>
       <button v-if="selectedPhotos.length" class="xb-text-button xb-danger-button" type="button" @click="deletePhotos()">
         <Trash2 :size="16" />
-        Delete
+        {{ t('common.actions.delete') }}
       </button>
     </section>
 
     <section class="xb-album-strip xb-album-strip-desktop">
       <button class="xb-album-pill" :class="{ 'is-active': activeAlbumId === null }" type="button" @click="selectAlbum(null)">
         <Album :size="16" />
-        Timeline
+        {{ t('pages.photos.timeline') }}
       </button>
       <button v-for="album in albums" :key="album.id" class="xb-album-pill" :class="{ 'is-active': activeAlbumId === album.id }" type="button" @click="selectAlbum(album.id)">
         <Album :size="16" />
@@ -443,7 +445,7 @@ onBeforeUnmount(() => {
     <section class="xb-album-strip xb-album-strip-mobile">
       <button class="xb-album-pill" :class="{ 'is-active': activeAlbumId === null }" type="button" @click="selectAlbum(null)">
         <Album :size="16" />
-        Timeline
+        {{ t('pages.photos.timeline') }}
       </button>
       <button v-for="album in visibleMobileAlbums" :key="album.id" class="xb-album-pill" :class="{ 'is-active': activeAlbumId === album.id }" type="button" @click="selectAlbum(album.id)">
         <Album :size="16" />
@@ -451,7 +453,7 @@ onBeforeUnmount(() => {
       </button>
       <details v-if="hiddenMobileAlbums.length" class="xb-album-more">
         <summary class="xb-album-pill" :class="{ 'is-active': hiddenMobileAlbums.some((album) => album.id === activeAlbumId) }">
-          <span>... More</span>
+          <span>{{ t('pages.photos.more') }}</span>
           <ChevronDown :size="15" />
         </summary>
         <nav>
@@ -462,7 +464,7 @@ onBeforeUnmount(() => {
       </details>
     </section>
 
-    <EmptyState v-if="!loading && photos.length === 0" title="No photos yet" description="Upload your first photo to start building your private timeline." />
+    <EmptyState v-if="!loading && photos.length === 0" :title="t('pages.photos.noData')" :description="t('pages.photos.noDataHint')" />
 
     <section v-else class="xb-timeline">
       <div v-for="group in groupedPhotos" :key="group.label" class="xb-timeline-group">
@@ -487,14 +489,14 @@ onBeforeUnmount(() => {
     <nav v-if="photos.length > pageSize" class="xb-pagination" aria-label="Photo pages">
       <div class="xb-pagination-meta">
         <span>{{ pageStart + 1 }}-{{ pageEnd }} / {{ photos.length }}</span>
-        <strong>Page {{ currentPage }} of {{ totalPages }}</strong>
+        <strong>{{ t('pages.photos.photoPage', { current: currentPage, total: totalPages }) }}</strong>
       </div>
       <button class="xb-secondary-button" type="button" :disabled="currentPage === 1" @click="goToPage(currentPage - 1)">
         <ChevronLeft :size="17" />
-        Prev
+        {{ t('pages.photos.prev') }}
       </button>
       <button class="xb-secondary-button" type="button" :disabled="currentPage === totalPages" @click="goToPage(currentPage + 1)">
-        Next
+        {{ t('pages.photos.next') }}
         <ChevronRight :size="17" />
       </button>
     </nav>
@@ -502,10 +504,10 @@ onBeforeUnmount(() => {
     <section v-if="moveModalOpen" class="xb-modal-backdrop" @click.self="closeMoveModal">
       <form class="xb-modal xb-photo-move-modal" @submit.prevent="moveSelectedToAlbum">
         <FolderInput :size="24" />
-        <h3>Move to album</h3>
-        <p>{{ selectedPhotos.length }} selected photo{{ selectedPhotos.length > 1 ? 's' : '' }} will stay in Timeline and appear in the chosen album.</p>
+        <h3>{{ t('pages.photos.moveToAlbumTitle') }}</h3>
+        <p>{{ t('pages.photos.moveToAlbumHint', { count: selectedPhotos.length }) }}</p>
         <label>
-          Album
+          {{ t('pages.photos.album') }}
           <select v-model="moveAlbumId" required>
             <option v-for="album in albums" :key="album.id" :value="album.id">{{ album.title }}</option>
           </select>
@@ -513,9 +515,9 @@ onBeforeUnmount(() => {
         <div class="xb-modal-actions">
           <button class="xb-primary-button" type="submit">
             <FolderInput :size="16" />
-            Move
+            {{ t('common.actions.move') }}
           </button>
-          <button class="xb-secondary-button" type="button" @click="closeMoveModal">Cancel</button>
+          <button class="xb-secondary-button" type="button" @click="closeMoveModal">{{ t('common.actions.cancel') }}</button>
         </div>
       </form>
     </section>
@@ -544,7 +546,7 @@ onBeforeUnmount(() => {
           </button>
           <button class="xb-icon-button xb-lightbox-close-button" type="button" title="Close preview" @click="closePreview">
             <X :size="20" />
-            <span class="xb-lightbox-close-label">Close</span>
+            <span class="xb-lightbox-close-label">{{ t('common.actions.close') }}</span>
           </button>
         </div>
         <button class="xb-lightbox-edge left" type="button" @click="stepPreview(-1)">

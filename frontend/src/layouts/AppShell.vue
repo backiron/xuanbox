@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/authStore'
 import { useThemeStore } from '../stores/themeStore'
 import DesktopSidebar from '../components/layout/DesktopSidebar.vue'
@@ -9,9 +10,10 @@ import MobileTabbar from '../components/layout/MobileTabbar.vue'
 import MobileTopbar from '../components/layout/MobileTopbar.vue'
 
 const route = useRoute()
+const { t } = useI18n()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
-const title = computed(() => route.meta.title || route.name || 'XuanBox')
+const title = computed(() => route.meta.titleKey ? t(route.meta.titleKey) : (route.meta.title || t('app.title')))
 
 onMounted(async () => {
   themeStore.hydrate()

@@ -6,9 +6,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-xuanbox}
       POSTGRES_USER: ${POSTGRES_USER:-xuanbox}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-xuanbox_dev_password}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - xuanbox-postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -21,8 +19,6 @@ services:
     image: redis:7-alpine
     container_name: xuanbox-redis
     restart: unless-stopped
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - xuanbox-redis-data:/data
     healthcheck:
@@ -42,22 +38,28 @@ services:
       xuanbox-redis:
         condition: service_healthy
     environment:
-      DEBUG: ${DEBUG:-true}
+      DEBUG: ${DEBUG:-false}
       POSTGRES_HOST: xuanbox-postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB:-xuanbox}
       POSTGRES_USER: ${POSTGRES_USER:-xuanbox}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-xuanbox_dev_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       REDIS_URL: redis://xuanbox-redis:6379/0
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-only-change-this-jwt-secret}
-      MASTER_KEY: ${MASTER_KEY:-dev-only-change-this-master-key}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+      MASTER_KEY: ${MASTER_KEY:?MASTER_KEY is required}
       STORAGE_ROOT: /data/xuanbox/storage
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
-      RECEIPT_AI_ASSIST_ENABLED: ${RECEIPT_AI_ASSIST_ENABLED:-false}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:15173}
+      CORS_ALLOW_ORIGIN_REGEX: ${CORS_ALLOW_ORIGIN_REGEX:-}
+      RECEIPT_AI_ASSIST_ENABLED: ${RECEIPT_AI_ASSIST_ENABLED:-true}
       RECEIPT_AI_BASE_URL: ${RECEIPT_AI_BASE_URL:-http://host.docker.internal:11434}
-      RECEIPT_AI_MODEL: ${RECEIPT_AI_MODEL:-qwen2.5:3b}
+      RECEIPT_AI_MODEL: ${RECEIPT_AI_MODEL:-qwen2.5:1.5b}
+      DOCUMENT_AI_ENABLED: ${DOCUMENT_AI_ENABLED:-true}
+      DOCUMENT_AI_BASE_URL: ${DOCUMENT_AI_BASE_URL:-http://host.docker.internal:11434}
+      DOCUMENT_AI_MODEL: ${DOCUMENT_AI_MODEL:-qwen2.5:1.5b}
+      DOCUMENT_AI_CONCURRENCY: ${DOCUMENT_AI_CONCURRENCY:-1}
+      BACKUP_SCHEDULE_HOURS: ${BACKUP_SCHEDULE_HOURS:-24}
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "${API_PORT:-18080}:8000"
     volumes:
       - ./data/storage:/data/xuanbox/storage
     extra_hosts:
@@ -74,20 +76,17 @@ services:
   xuanbox-web:
     build:
       context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
+        VITE_DROP_PUBLIC_ORIGIN: ${DROP_PUBLIC_ORIGIN:-}
     container_name: xuanbox-web
     restart: unless-stopped
     depends_on:
       xuanbox-api:
         condition: service_healthy
-    environment:
-      VITE_DROP_PUBLIC_ORIGIN: ${DROP_PUBLIC_ORIGIN:-}
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
     ports:
-      - "${WEB_PORT:-5173}:5173"
-    volumes:
-      - ./frontend:/app
-      - xuanbox-web-node-modules:/app/node_modules
-    command: npm run dev
+      - "${WEB_PORT:-15173}:80"
 
   xuanbox-worker:
     build:
@@ -98,20 +97,26 @@ services:
       xuanbox-api:
         condition: service_healthy
     environment:
-      DEBUG: ${DEBUG:-true}
+      DEBUG: ${DEBUG:-false}
       POSTGRES_HOST: xuanbox-postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB:-xuanbox}
       POSTGRES_USER: ${POSTGRES_USER:-xuanbox}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-xuanbox_dev_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       REDIS_URL: redis://xuanbox-redis:6379/0
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-only-change-this-jwt-secret}
-      MASTER_KEY: ${MASTER_KEY:-dev-only-change-this-master-key}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+      MASTER_KEY: ${MASTER_KEY:?MASTER_KEY is required}
       STORAGE_ROOT: /data/xuanbox/storage
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
-      RECEIPT_AI_ASSIST_ENABLED: ${RECEIPT_AI_ASSIST_ENABLED:-false}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:15173}
+      CORS_ALLOW_ORIGIN_REGEX: ${CORS_ALLOW_ORIGIN_REGEX:-}
+      RECEIPT_AI_ASSIST_ENABLED: ${RECEIPT_AI_ASSIST_ENABLED:-true}
       RECEIPT_AI_BASE_URL: ${RECEIPT_AI_BASE_URL:-http://host.docker.internal:11434}
-      RECEIPT_AI_MODEL: ${RECEIPT_AI_MODEL:-qwen2.5:3b}
+      RECEIPT_AI_MODEL: ${RECEIPT_AI_MODEL:-qwen2.5:1.5b}
+      DOCUMENT_AI_ENABLED: ${DOCUMENT_AI_ENABLED:-true}
+      DOCUMENT_AI_BASE_URL: ${DOCUMENT_AI_BASE_URL:-http://host.docker.internal:11434}
+      DOCUMENT_AI_MODEL: ${DOCUMENT_AI_MODEL:-qwen2.5:1.5b}
+      DOCUMENT_AI_CONCURRENCY: ${DOCUMENT_AI_CONCURRENCY:-1}
+      BACKUP_SCHEDULE_HOURS: ${BACKUP_SCHEDULE_HOURS:-24}
     volumes:
       - ./data/storage:/data/xuanbox/storage
     extra_hosts:
@@ -121,4 +126,3 @@ services:
 volumes:
   xuanbox-postgres-data:
   xuanbox-redis-data:
-  xuanbox-web-node-modules:

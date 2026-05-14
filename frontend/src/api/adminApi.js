@@ -10,6 +10,9 @@ export const adminApi = {
   createBackup() {
     return http.post('/admin/backups')
   },
+  deleteBackup(id) {
+    return http.delete(`/admin/backups/${id}`)
+  },
   createMessage(payload) {
     return http.post('/admin/messages', payload)
   },

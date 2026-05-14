@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { CheckCircle2, Mail, RefreshCw } from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
 
 import PageHeader from '../../components/common/PageHeader.vue'
 import { messageApi } from '../../api/messageApi'
@@ -8,6 +9,7 @@ import { messageApi } from '../../api/messageApi'
 const messages = ref([])
 const loading = ref(false)
 const error = ref('')
+const { t } = useI18n()
 
 function formatDate(value) {
   if (!value) return ''
@@ -21,7 +23,7 @@ async function loadMessages() {
     const response = await messageApi.list()
     messages.value = response.data.data
   } catch (err) {
-    error.value = err.response?.data?.error?.message || 'Unable to load messages'
+    error.value = err.response?.data?.error?.message || t('pages.messages.noMessages')
   } finally {
     loading.value = false
   }
@@ -36,10 +38,10 @@ onMounted(loadMessages)
 </script>
 
 <template>
-  <PageHeader title="Messages" subtitle="System announcements and direct messages from your XuanBox administrator.">
+  <PageHeader :title="t('pages.messages.title')" :subtitle="t('pages.messages.subtitle')">
     <button class="xb-secondary-button" type="button" :disabled="loading" @click="loadMessages">
       <RefreshCw :size="16" />
-      Refresh
+      {{ t('common.actions.refresh') }}
     </button>
   </PageHeader>
 
@@ -50,17 +52,17 @@ onMounted(loadMessages)
       <Mail :size="22" />
       <div>
         <strong>{{ message.title }}</strong>
-        <span>{{ message.level }} · {{ formatDate(message.created_at) }}</span>
+        <span>{{ message.level }} / {{ formatDate(message.created_at) }}</span>
         <p>{{ message.body }}</p>
       </div>
       <button v-if="!message.read_at" class="xb-secondary-button" type="button" @click="markRead(message)">
         <CheckCircle2 :size="16" />
-        Mark read
+        {{ t('pages.messages.markRead') }}
       </button>
     </article>
     <div v-if="!loading && messages.length === 0" class="xb-empty-state">
-      <h3>No messages yet</h3>
-      <p>System notices and admin messages will appear here.</p>
+      <h3>{{ t('pages.messages.noMessages') }}</h3>
+      <p>{{ t('pages.messages.noMessagesDesc') }}</p>
     </div>
   </section>
 </template>

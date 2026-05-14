@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   ArrowLeft,
   Download,
@@ -24,6 +25,7 @@ import { receiptApi } from '../../api/receiptApi'
 import { useDialogStore } from '../../stores/dialogStore'
 
 const files = ref([])
+const { t } = useI18n()
 const folders = ref([])
 const allFolders = ref([])
 const importantDocs = ref([])
@@ -69,11 +71,11 @@ const pendingImportantFile = ref(null)
 const dialog = useDialogStore()
 const tagPalette = ['#4e83ff', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#f97316', '#e879f9']
 
-const pageTitle = computed(() => activeFileScope.value === 'important' ? 'Important docs' : currentFolderName.value)
+const pageTitle = computed(() => activeFileScope.value === 'important' ? t('pages.files.importantDocs') : currentFolderName.value)
 const pageSubtitle = computed(() => activeFileScope.value === 'important'
-  ? 'PIN protected IDs, contracts, licenses and other high-value documents.'
-  : 'Encrypted file storage with folders, tags, trash and protected downloads.')
-const currentFolderName = computed(() => folderStack.value.at(-1)?.name || 'All files')
+  ? t('pages.files.pageSubtitleImportant')
+  : t('pages.files.pageSubtitleAll'))
+const currentFolderName = computed(() => folderStack.value.at(-1)?.name || t('pages.files.allFiles'))
 const selectedFiles = computed(() => files.value.filter((file) => selectedIds.value.has(file.id)))
 const visibleMobileFolders = computed(() => folders.value.slice(0, 2))
 const hiddenMobileFolders = computed(() => folders.value.slice(2))
@@ -116,7 +118,7 @@ function folderLabel(folder) {
 }
 
 function folderNameById(folderId) {
-  if (!folderId) return 'All files'
+  if (!folderId) return t('pages.files.allFiles')
   return allFolders.value.find((folder) => folder.id === folderId)?.name
     || folderStack.value.find((folder) => folder.id === folderId)?.name
     || 'Unknown folder'
@@ -159,7 +161,7 @@ async function uploadFiles(pickedFiles) {
   if (imageFiles.length) {
     await dialog.confirm({
       title: 'Use Inbox for images',
-      message: 'Images from Files upload are photo-first. Use Dashboard or Inbox when you want to decide whether an image becomes a Photo, File, or Receipt.',
+      message: 'Images are managed in Photos. Use Dashboard or Inbox if you want to decide whether an image should become a Photo, File, or Receipt.',
       confirmText: 'OK'
     })
     return
@@ -724,23 +726,23 @@ onMounted(loadFiles)
   <PageHeader :title="pageTitle" :subtitle="pageSubtitle">
     <button v-if="currentFolderId" class="xb-secondary-button" type="button" @click="goBack">
       <ArrowLeft :size="18" />
-      Back
+      {{ t('pages.files.back') }}
     </button>
     <button class="xb-secondary-button" type="button" @click="toggleTrashPanel">
       <Trash2 :size="18" />
-      Trash
+      {{ t('pages.files.trash') }}
     </button>
     <button class="xb-secondary-button" type="button" @click="createTag">
       <Tag :size="18" />
-      Tag
+      {{ t('pages.files.addTag') }}
     </button>
     <button class="xb-secondary-button" type="button" @click="createFolder">
       <FolderPlus :size="18" />
-      New folder
+      {{ t('pages.files.newFolder') }}
     </button>
     <label class="xb-upload-button">
       <Upload :size="18" />
-      Upload
+      {{ t('common.actions.upload') }}
       <input type="file" multiple @change="onFileChange" />
     </label>
   </PageHeader>
@@ -751,34 +753,34 @@ onMounted(loadFiles)
 
   <section class="xb-upload-drop-hint" :class="{ 'is-visible': draggingFiles }">
     <Upload :size="18" />
-    <strong>Drop files to upload</strong>
-    <span>{{ currentFolderId ? 'They will be saved in this folder.' : 'Images should go to Photos.' }}</span>
+    <strong>{{ t('pages.files.dropFiles') }}</strong>
+    <span>{{ currentFolderId ? t('pages.files.dropFolderHint') : t('pages.files.dropRootHint') }}</span>
   </section>
 
   <section class="xb-file-scope-tabs">
     <button class="xb-album-pill" :class="{ 'is-active': activeFileScope === 'all' }" type="button" @click="openAllFiles">
       <Folder :size="16" />
-      All files
+      {{ t('pages.files.allFiles') }}
     </button>
     <button class="xb-album-pill" :class="{ 'is-active': activeFileScope === 'important' }" type="button" @click="openImportantDocs">
       <ShieldCheck :size="16" />
-      Important docs
+      {{ t('pages.files.importantDocs') }}
     </button>
   </section>
 
   <section v-if="activeFileScope === 'all' && selectedFiles.length" class="xb-action-bar">
-    <strong>{{ selectedFiles.length }} selected</strong>
-    <button class="xb-text-button" type="button" @click="bulkFavorite">Favorite</button>
+    <strong>{{ t('pages.photos.selectCount', { count: selectedFiles.length }) }}</strong>
+    <button class="xb-text-button" type="button" @click="bulkFavorite">{{ t('pages.files.favorite') }}</button>
     <button class="xb-text-button" type="button" @click="openTagModal(selectedFiles)">
-      Tag
+      {{ t('pages.files.addTag') }}
     </button>
-    <button class="xb-text-button" type="button" @click="bulkMove">Move</button>
-    <button class="xb-text-button xb-danger-button" type="button" @click="bulkDelete">Delete</button>
+    <button class="xb-text-button" type="button" @click="bulkMove">{{ t('pages.files.move') }}</button>
+    <button class="xb-text-button xb-danger-button" type="button" @click="bulkDelete">{{ t('common.actions.delete') }}</button>
   </section>
 
   <section v-if="activeFileScope === 'all' && showTrash" class="xb-panel xb-trash-panel">
-    <h3>Trash</h3>
-    <p v-if="trash.length === 0">Trash is empty.</p>
+    <h3>{{ t('pages.files.trash') }}</h3>
+    <p v-if="trash.length === 0">{{ t('pages.files.trashEmpty') }}</p>
     <article v-for="file in trash" :key="file.id" class="xb-file-row">
       <div>
         <strong>{{ file.display_name }}</strong>
@@ -801,7 +803,7 @@ onMounted(loadFiles)
       <section class="xb-folder-strip-mobile">
         <button class="xb-album-pill" :class="{ 'is-active': currentFolderId === null }" type="button" @click="openRootFolder">
           <Folder :size="16" />
-          All files
+          {{ t('pages.files.allFiles') }}
         </button>
         <button
           v-for="folder in visibleMobileFolders"
@@ -816,7 +818,7 @@ onMounted(loadFiles)
         </button>
         <details v-if="hiddenMobileFolders.length" class="xb-album-more">
           <summary class="xb-album-pill">
-            <span>More</span>
+            <span>{{ t('common.actions.more') }}</span>
               <span aria-hidden="true">v</span>
           </summary>
           <nav>
@@ -833,11 +835,11 @@ onMounted(loadFiles)
             <Folder :size="20" />
             {{ folder.name }}
           </button>
-          <button class="xb-text-button" type="button" @click="renameFolder(folder)">Rename</button>
+          <button class="xb-text-button" type="button" @click="renameFolder(folder)">{{ t('pages.files.rename') }}</button>
         </article>
       </div>
 
-      <EmptyState v-if="!loading && files.length === 0 && folders.length === 0" title="No files here" description="Upload a small local test file to verify the encrypted storage chain." />
+      <EmptyState v-if="!loading && files.length === 0 && folders.length === 0" :title="t('pages.files.noFilesHere')" :description="t('pages.files.emptyHint')" />
 
       <div v-else class="xb-file-list">
         <article v-for="file in files" :key="file.id" class="xb-file-row" :class="{ 'is-active': activeFile?.id === file.id }">
@@ -1000,7 +1002,7 @@ onMounted(loadFiles)
       </template>
       <template v-else>
         <h3>Details</h3>
-        <p>Select a file to inspect metadata, tags and actions.</p>
+        <p>Select a file to view details, manage tags, download it, or move it.</p>
       </template>
     </aside>
   </div>

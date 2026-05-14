@@ -21,24 +21,24 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/login', component: LoginView },
-    { path: '/admin/login', component: AdminLoginView, meta: { adminPublic: true } },
+    { path: '/admin/login', component: AdminLoginView, meta: { adminPublic: true, titleKey: 'pages.adminAuth.title' } },
     { path: '/drop/public/:token', component: PublicDropView, meta: { public: true } },
     { path: '/public-share/:token', component: PublicShareView, meta: { public: true } },
-    { path: '/admin-console', name: 'admin-console', component: AdminDashboardView, meta: { title: 'Admin Console', admin: true } },
+    { path: '/admin-console', name: 'admin-console', component: AdminDashboardView, meta: { titleKey: 'routes.adminConsole', admin: true } },
     {
       path: '/',
       component: AppShell,
       children: [
-        { path: '', name: 'dashboard', component: DashboardView, meta: { title: 'Dashboard' } },
-        { path: 'inbox', name: 'inbox', component: InboxView, meta: { title: 'Inbox' } },
-        { path: 'photos', name: 'photos', component: PhotosView, meta: { title: 'Photos' } },
-        { path: 'files', name: 'files', component: FilesView, meta: { title: 'Files' } },
-        { path: 'receipts', name: 'receipts', component: ReceiptsView, meta: { title: 'Receipts' } },
-        { path: 'drop', name: 'drop', component: XuanDropView, meta: { title: 'XuanDrop' } },
-        { path: 'shared', name: 'shared', component: SharedView, meta: { title: 'Shared' } },
-        { path: 'settings', name: 'settings', component: SettingsView, meta: { title: 'Settings' } },
-        { path: 'messages', name: 'messages', component: MessagesView, meta: { title: 'Messages' } },
-        { path: 'search', name: 'search', component: SearchView, meta: { title: 'Search' } }
+        { path: '', name: 'dashboard', component: DashboardView, meta: { titleKey: 'routes.dashboard' } },
+        { path: 'inbox', name: 'inbox', component: InboxView, meta: { titleKey: 'routes.inbox' } },
+        { path: 'photos', name: 'photos', component: PhotosView, meta: { titleKey: 'routes.photos' } },
+        { path: 'files', name: 'files', component: FilesView, meta: { titleKey: 'routes.files' } },
+        { path: 'receipts', name: 'receipts', component: ReceiptsView, meta: { titleKey: 'routes.receipts' } },
+        { path: 'drop', name: 'drop', component: XuanDropView, meta: { titleKey: 'routes.drop' } },
+        { path: 'shared', name: 'shared', component: SharedView, meta: { titleKey: 'routes.shared' } },
+        { path: 'settings', name: 'settings', component: SettingsView, meta: { titleKey: 'routes.settings' } },
+        { path: 'messages', name: 'messages', component: MessagesView, meta: { titleKey: 'routes.messages' } },
+        { path: 'search', name: 'search', component: SearchView, meta: { titleKey: 'routes.search' } }
       ]
     }
   ]

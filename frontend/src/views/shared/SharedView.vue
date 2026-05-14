@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { Archive, Check, Copy, FileText, Image, Link, LockKeyhole, RefreshCw, ReceiptText, Shield, Trash2, UserRound, X } from 'lucide-vue-next'
 
 import PageHeader from '../../components/common/PageHeader.vue'
@@ -11,6 +12,7 @@ import { receiptApi } from '../../api/receiptApi'
 import { shareApi } from '../../api/shareApi'
 
 const route = useRoute()
+const { t } = useI18n()
 const activeTab = ref('created')
 const shareMode = ref('public')
 const targetType = ref('file')
@@ -37,14 +39,13 @@ const form = reactive({
 })
 
 const targetTypes = [
-  { value: 'file', label: 'Files', icon: FileText },
-  { value: 'photo', label: 'Photos', icon: Image },
-  { value: 'receipt', label: 'Receipts', icon: ReceiptText }
+  { value: 'file', labelKey: 'pages.shared.targetTypeFile', icon: FileText },
+  { value: 'photo', labelKey: 'pages.shared.targetTypePhoto', icon: Image },
+  { value: 'receipt', labelKey: 'pages.shared.targetTypeReceipt', icon: ReceiptText }
 ]
 
-const permissionLabels = {
-  download: 'Download',
-  read: 'View'
+function permissionLabel(value) {
+  return value === 'read' ? t('pages.shared.downloadText') : t('pages.shared.download')
 }
 
 function defaultExpiry() {
@@ -94,7 +95,7 @@ const selectedTargets = computed(() => {
 const inactiveShareCount = computed(() => createdShares.value.filter((share) => statusFor(share) !== 'Active').length)
 
 function photoLabel(photo) {
-  return `Photo ${formatDate(photo.taken_at || photo.uploaded_at)}`
+  return `${t('pages.shared.targetTypePhoto')} ${formatDate(photo.taken_at || photo.uploaded_at)}`
 }
 
 function formatSize(bytes) {
@@ -104,7 +105,7 @@ function formatSize(bytes) {
 }
 
 function formatDate(value) {
-  if (!value) return 'No expiry'
+  if (!value) return t('common.file.noExpiry')
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
@@ -167,9 +168,17 @@ function statusFor(share) {
   return 'Active'
 }
 
+function statusLabel(share) {
+  const status = statusFor(share)
+  if (status === 'Active') return t('pages.shared.statusActive')
+  if (status === 'Expired') return t('pages.shared.statusExpired')
+  if (status === 'Limit reached') return t('pages.shared.statusLimitReached')
+  return t('pages.shared.statusInactive')
+}
+
 function shareMeta(share) {
   const limit = share.max_downloads ? `${share.download_count} / ${share.max_downloads}` : `${share.download_count} / unlimited`
-  return `${share.target_type} · ${permissionLabels[share.permission] || share.permission} · ${limit} downloads`
+  return `${share.target_type} · ${permissionLabel(share.permission)} · ${limit} ${t('pages.shared.downloads')}`
 }
 
 async function hydratePhotoThumbs(rows) {
@@ -207,7 +216,7 @@ async function loadAll() {
     applyRouteSelection()
     applyDefaultTarget()
   } catch (err) {
-    error.value = err.response?.data?.error?.message || 'Unable to load shares'
+    error.value = err.response?.data?.error?.message || t('pages.shared.loadError')
   } finally {
     loading.value = false
   }
@@ -233,11 +242,11 @@ async function createShare() {
     }
     form.password = ''
     if (shareMode.value !== 'user') form.shared_with_username = ''
-    success.value = targets.length > 1 ? `${targets.length} shares created.` : (shareMode.value === 'user' ? 'Share created for user.' : 'Public link created.')
+    success.value = targets.length > 1 ? t('pages.shared.sharesCreated', { count: targets.length }) : (shareMode.value === 'user' ? t('pages.shared.userCreated') : t('pages.shared.publicCreated'))
     await loadAll()
     await copyShare(responses[0].data.data)
   } catch (err) {
-    error.value = err.response?.data?.error?.message || 'Unable to create share'
+    error.value = err.response?.data?.error?.message || t('pages.shared.createError')
   } finally {
     creating.value = false
   }
@@ -264,7 +273,7 @@ async function archiveShare(share) {
 async function archiveInactiveShares() {
   if (!inactiveShareCount.value) return
   const response = await shareApi.archiveInactive()
-  success.value = `${response.data.data.count} share${response.data.data.count === 1 ? '' : 's'} archived.`
+  success.value = t('pages.shared.archivedCount', { count: response.data.data.count })
   await loadAll()
 }
 
@@ -277,10 +286,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <PageHeader title="Shared" subtitle="Create controlled download links for files, photos, and receipts.">
+  <PageHeader :title="t('pages.shared.title')" :subtitle="t('pages.shared.subtitle')">
     <button class="xb-secondary-button" type="button" @click="loadAll">
       <RefreshCw :size="16" />
-      Refresh
+      {{ t('common.actions.refresh') }}
     </button>
   </PageHeader>
 
@@ -289,31 +298,31 @@ onBeforeUnmount(() => {
       <div class="xb-share-form-head">
         <Shield :size="22" />
         <div>
-          <h3>Create share</h3>
-          <p>Generate a revocable link with optional password, expiry, and download limits.</p>
+          <h3>{{ t('pages.shared.createTitle') }}</h3>
+          <p>{{ t('pages.shared.createDesc') }}</p>
         </div>
       </div>
 
       <div class="xb-share-mode">
         <button type="button" :class="{ 'is-active': shareMode === 'public' }" @click="setShareMode('public')">
           <Link :size="16" />
-          Public link
+          {{ t('pages.shared.publicLink') }}
         </button>
         <button type="button" :class="{ 'is-active': shareMode === 'user' }" @click="setShareMode('user')">
           <UserRound :size="16" />
-          XuanBox user
+          {{ t('pages.shared.userLink') }}
         </button>
       </div>
 
       <div class="xb-share-target-tabs">
         <button v-for="type in targetTypes" :key="type.value" type="button" :class="{ 'is-active': targetType === type.value }" @click="setTargetType(type.value)">
           <component :is="type.icon" :size="16" />
-          {{ type.label }}
+          {{ t(type.labelKey) }}
         </button>
       </div>
 
       <label>
-        Item
+        {{ t('pages.shared.item') }}
         <select v-if="targetType !== 'photo'" v-model="form.target_key">
           <option v-for="target in targetOptions" :key="target.key" :value="target.key">
             {{ target.label }}{{ target.meta ? ` · ${target.meta}` : '' }}
@@ -349,42 +358,42 @@ onBeforeUnmount(() => {
       </div>
 
       <label>
-        Permission
+        {{ t('pages.shared.permission') }}
         <select v-model="form.permission">
-          <option value="download">Download file</option>
-          <option value="read">View/download</option>
+          <option value="download">{{ t('pages.shared.download') }}</option>
+          <option value="read">{{ t('pages.shared.downloadText') }}</option>
         </select>
       </label>
 
       <label v-if="shareMode === 'user'">
-        Share with XuanBox user
-        <input v-model.trim="form.shared_with_username" placeholder="username or email" />
+        {{ t('pages.shared.shareWithUser') }}
+        <input v-model.trim="form.shared_with_username" :placeholder="t('common.placeholders.usernameOrEmail')" />
       </label>
 
       <div class="xb-share-form-grid">
         <label>
-          Password
-          <input v-model="form.password" type="password" placeholder="optional" />
+          {{ t('pages.shared.withPassword') }}
+          <input v-model="form.password" type="password" :placeholder="t('common.placeholders.optional')" />
         </label>
         <label>
-          Max downloads
-          <input v-model="form.max_downloads" min="1" type="number" placeholder="unlimited" />
+          {{ t('pages.shared.maxDownloads') }}
+          <input v-model="form.max_downloads" min="1" type="number" :placeholder="t('common.states.unlimited')" />
         </label>
       </div>
 
       <label>
-        Expires
+        {{ t('pages.shared.expires') }}
         <input v-model="form.expires_at" type="datetime-local" />
       </label>
 
       <div class="xb-share-security-note">
         <LockKeyhole :size="16" />
-        <span>{{ shareMode === 'public' ? 'Public links default to 7 days and 3 downloads. Add a password for sensitive files.' : 'User shares are visible in Shared with me, but a revocable link is still created for access.' }}</span>
+        <span>{{ shareMode === 'public' ? t('pages.shared.publicSecurityNote') : t('pages.shared.userSecurityNote') }}</span>
       </div>
 
       <button class="xb-primary-button" type="submit" :disabled="creating || !selectedTargets.length || (shareMode === 'user' && !form.shared_with_username)">
         <LockKeyhole :size="16" />
-        {{ creating ? 'Creating...' : (selectedTargets.length > 1 ? `Create ${selectedTargets.length} links` : 'Create and copy link') }}
+        {{ creating ? t('pages.shared.creating') : (selectedTargets.length > 1 ? t('pages.shared.createLinks', { count: selectedTargets.length }) : t('pages.shared.createAndCopy')) }}
       </button>
       <p v-if="success" class="xb-form-success">{{ success }}</p>
       <p v-if="error" class="xb-form-error">{{ error }}</p>
@@ -392,17 +401,17 @@ onBeforeUnmount(() => {
 
     <section class="xb-share-results">
       <div class="xb-tabs xb-share-tabs">
-        <button type="button" :class="{ 'is-active': activeTab === 'created' }" @click="activeTab = 'created'">My shares</button>
-        <button type="button" :class="{ 'is-active': activeTab === 'received' }" @click="activeTab = 'received'">Received</button>
-        <button type="button" :class="{ 'is-active': activeTab === 'archived' }" @click="activeTab = 'archived'">Archive</button>
+        <button type="button" :class="{ 'is-active': activeTab === 'created' }" @click="activeTab = 'created'">{{ t('pages.shared.myShares') }}</button>
+        <button type="button" :class="{ 'is-active': activeTab === 'received' }" @click="activeTab = 'received'">{{ t('pages.shared.received') }}</button>
+        <button type="button" :class="{ 'is-active': activeTab === 'archived' }" @click="activeTab = 'archived'">{{ t('pages.shared.archived') }}</button>
       </div>
 
       <button v-if="activeTab === 'created' && inactiveShareCount" class="xb-secondary-button xb-share-archive-all" type="button" @click="archiveInactiveShares">
         <Archive :size="16" />
-        Archive inactive
+        {{ t('pages.shared.archiveInactive') }}
       </button>
 
-      <EmptyState v-if="!loading && visibleShares.length === 0" title="No shares yet" description="Create a link when you are ready to send something securely." />
+      <EmptyState v-if="!loading && visibleShares.length === 0" :title="t('pages.shared.noShares')" :description="t('pages.shared.noSharesDesc')" />
 
       <div v-else class="xb-share-list">
         <article v-for="share in visibleShares" :key="share.id" class="xb-share-card" :class="{ 'is-inactive': statusFor(share) !== 'Active' }">
@@ -415,19 +424,19 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <div class="xb-share-card-side">
-            <span class="xb-share-status" :class="{ 'is-active': statusFor(share) === 'Active' }">{{ statusFor(share) }}</span>
+            <span class="xb-share-status" :class="{ 'is-active': statusFor(share) === 'Active' }">{{ statusLabel(share) }}</span>
             <div class="xb-row-actions">
               <button class="xb-text-button" type="button" @click="copyShare(share)">
                 <component :is="copiedId === share.id ? Check : Copy" :size="16" />
-                {{ copiedId === share.id ? 'Copied' : 'Copy link' }}
+                {{ copiedId === share.id ? t('pages.shared.copied') : t('pages.shared.copyLink') }}
               </button>
               <button v-if="activeTab === 'created' && share.is_active" class="xb-text-button xb-danger-button" type="button" @click="cancelShare(share)">
                 <Trash2 :size="16" />
-                Cancel
+                {{ t('pages.shared.cancel') }}
               </button>
               <button v-if="activeTab === 'created' && statusFor(share) !== 'Active'" class="xb-text-button" type="button" @click="archiveShare(share)">
                 <Archive :size="16" />
-                Archive
+                {{ t('pages.shared.archive') }}
               </button>
             </div>
           </div>

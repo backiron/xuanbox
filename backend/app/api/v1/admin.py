@@ -19,7 +19,7 @@ from app.services.admin_service import (
     list_plan_policies,
     worker_status,
 )
-from app.services.backup_service import create_backup
+from app.services.backup_service import create_backup, delete_backup
 from app.services.message_service import list_admin_messages
 from app.services.system_settings_service import get_admin_system_settings, update_admin_system_settings
 
@@ -112,6 +112,7 @@ async def admin_update_system_settings_endpoint(
         current_user,
         registration_mode=payload.get("registration_mode"),
         default_free_storage_mb=payload.get("default_free_storage_mb"),
+        auto_backup_enabled=payload.get("auto_backup_enabled"),
     )
     return success_response(settings)
 
@@ -164,3 +165,13 @@ async def admin_create_backup_endpoint(
 ) -> dict:
     backup = await create_backup(session, current_user)
     return success_response(BackupTaskPublic.model_validate(backup).model_dump(mode="json"))
+
+
+@router.delete("/backups/{backup_id}")
+async def admin_delete_backup_endpoint(
+    backup_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_admin),
+) -> dict:
+    await delete_backup(session, current_user, backup_id)
+    return success_response({"deleted": True})

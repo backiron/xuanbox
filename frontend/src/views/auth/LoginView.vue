@@ -1,13 +1,16 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { KeyRound, UserPlus } from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
+
 import { authApi } from '../../api/authApi'
 import XbAssetIcon from '../../components/common/XbAssetIcon.vue'
 import { useAuthStore } from '../../stores/authStore'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { t } = useI18n()
 const mode = ref('login')
 const error = ref('')
 const loading = ref(false)
@@ -16,7 +19,14 @@ const loginForm = reactive({ username_or_email: '', password: '' })
 const registerForm = reactive({ username: '', email: '', password: '', display_name: '' })
 const inviteForm = reactive({ invite_code: '', username: '', email: '', password: '', display_name: '' })
 const ownerForm = reactive({ username: '', email: '', password: '', display_name: '' })
-const authSettings = ref({ open_registration_enabled: false, invite_registration_enabled: true })
+const authSettings = ref({ open_registration_enabled: false, invite_registration_enabled: false, bootstrap_available: false })
+
+const modeTitle = computed(() => ({
+  login: t('pages.auth.loginTitle'),
+  register: t('pages.auth.registerTitle'),
+  invite: t('pages.auth.inviteTitle'),
+  owner: t('pages.auth.ownerTitle')
+})[mode.value])
 
 function applyTokens(response) {
   authStore.setTokens(response.data.data)
@@ -41,7 +51,7 @@ async function submit() {
     }
     router.push('/')
   } catch (err) {
-    error.value = err.response?.data?.error?.message || err.response?.data?.message || 'Authentication failed'
+    error.value = err.response?.data?.error?.message || err.response?.data?.message || t('pages.auth.authFailed')
   } finally {
     loading.value = false
   }
@@ -51,8 +61,17 @@ onMounted(async () => {
   try {
     const response = await authApi.registrationSettings()
     authSettings.value = response.data.data
+    if (mode.value === 'owner' && !authSettings.value.bootstrap_available) {
+      mode.value = 'login'
+    }
+    if (mode.value === 'register' && !authSettings.value.open_registration_enabled) {
+      mode.value = 'login'
+    }
+    if (mode.value === 'invite' && !authSettings.value.invite_registration_enabled) {
+      mode.value = 'login'
+    }
   } catch {
-    authSettings.value = { open_registration_enabled: false, invite_registration_enabled: true }
+    authSettings.value = { open_registration_enabled: false, invite_registration_enabled: false, bootstrap_available: false }
   }
 })
 </script>
@@ -62,52 +81,58 @@ onMounted(async () => {
     <section class="xb-auth-brand">
       <div class="xb-auth-logo">
         <XbAssetIcon name="logo" :size="42" />
-        <span>XuanBox 玄匣</span>
+        <span>XuanBox</span>
       </div>
-      <h1>Your Private Digital Vault</h1>
-      <p>Photos, files, receipts and documents. Securely stored in your own encrypted workspace.</p>
+      <h1>{{ t('pages.auth.heroTitle') }}</h1>
+      <p>{{ t('pages.auth.heroDesc') }}</p>
     </section>
     <form class="xb-login-panel xb-auth-form" @submit.prevent="submit">
       <div class="xb-tabs">
-        <button type="button" :class="{ 'is-active': mode === 'login' }" @click="mode = 'login'">Sign in</button>
-        <button v-if="authSettings.open_registration_enabled" type="button" :class="{ 'is-active': mode === 'register' }" @click="mode = 'register'">Register</button>
-        <button v-if="authSettings.invite_registration_enabled" type="button" :class="{ 'is-active': mode === 'invite' }" @click="mode = 'invite'">Invite</button>
-        <button type="button" :class="{ 'is-active': mode === 'owner' }" @click="mode = 'owner'">Bootstrap</button>
+        <button type="button" :class="{ 'is-active': mode === 'login' }" @click="mode = 'login'">{{ t('pages.auth.signInTab') }}</button>
+        <button v-if="authSettings.open_registration_enabled" type="button" :class="{ 'is-active': mode === 'register' }" @click="mode = 'register'">
+          {{ t('pages.auth.registerTab') }}
+        </button>
+        <button v-if="authSettings.invite_registration_enabled" type="button" :class="{ 'is-active': mode === 'invite' }" @click="mode = 'invite'">
+          {{ t('pages.auth.inviteTab') }}
+        </button>
+        <button v-if="authSettings.bootstrap_available" type="button" :class="{ 'is-active': mode === 'owner' }" @click="mode = 'owner'">
+          {{ t('pages.auth.bootstrapTab') }}
+        </button>
       </div>
 
-      <h2>{{ mode === 'login' ? 'Sign in' : mode === 'register' ? 'Create account' : mode === 'invite' ? 'Register by invite' : 'Create owner' }}</h2>
+      <h2>{{ modeTitle }}</h2>
 
       <template v-if="mode === 'login'">
-        <label>Account <input v-model="loginForm.username_or_email" autocomplete="username" required /></label>
-        <label>Password <input v-model="loginForm.password" type="password" autocomplete="current-password" required /></label>
+        <label>{{ t('pages.auth.account') }} <input v-model="loginForm.username_or_email" autocomplete="username" required /></label>
+        <label>{{ t('pages.auth.password') }} <input v-model="loginForm.password" type="password" autocomplete="current-password" required /></label>
       </template>
 
       <template v-else-if="mode === 'register'">
-        <label>Username <input v-model="registerForm.username" minlength="3" required /></label>
-        <label>Email <input v-model="registerForm.email" type="email" required /></label>
-        <label>Display name <input v-model="registerForm.display_name" /></label>
-        <label>Password <input v-model="registerForm.password" type="password" minlength="10" required /></label>
+        <label>{{ t('pages.auth.username') }} <input v-model="registerForm.username" minlength="3" required /></label>
+        <label>{{ t('pages.auth.email') }} <input v-model="registerForm.email" type="email" required /></label>
+        <label>{{ t('pages.auth.displayName') }} <input v-model="registerForm.display_name" /></label>
+        <label>{{ t('pages.auth.password') }} <input v-model="registerForm.password" type="password" minlength="10" required /></label>
       </template>
 
       <template v-else-if="mode === 'invite'">
-        <label>Invite code <input v-model="inviteForm.invite_code" required /></label>
-        <label>Username <input v-model="inviteForm.username" minlength="3" required /></label>
-        <label>Email <input v-model="inviteForm.email" type="email" required /></label>
-        <label>Display name <input v-model="inviteForm.display_name" /></label>
-        <label>Password <input v-model="inviteForm.password" type="password" minlength="10" required /></label>
+        <label>{{ t('pages.auth.inviteTab') }} <input v-model="inviteForm.invite_code" required /></label>
+        <label>{{ t('pages.auth.username') }} <input v-model="inviteForm.username" minlength="3" required /></label>
+        <label>{{ t('pages.auth.email') }} <input v-model="inviteForm.email" type="email" required /></label>
+        <label>{{ t('pages.auth.displayName') }} <input v-model="inviteForm.display_name" /></label>
+        <label>{{ t('pages.auth.password') }} <input v-model="inviteForm.password" type="password" minlength="10" required /></label>
       </template>
 
       <template v-else>
-        <label>Username <input v-model="ownerForm.username" minlength="3" required /></label>
-        <label>Email <input v-model="ownerForm.email" type="email" required /></label>
-        <label>Display name <input v-model="ownerForm.display_name" /></label>
-        <label>Password <input v-model="ownerForm.password" type="password" minlength="10" required /></label>
+        <label>{{ t('pages.auth.username') }} <input v-model="ownerForm.username" minlength="3" required /></label>
+        <label>{{ t('pages.auth.email') }} <input v-model="ownerForm.email" type="email" required /></label>
+        <label>{{ t('pages.auth.displayName') }} <input v-model="ownerForm.display_name" /></label>
+        <label>{{ t('pages.auth.password') }} <input v-model="ownerForm.password" type="password" minlength="10" required /></label>
       </template>
 
       <p v-if="error" class="xb-form-error">{{ error }}</p>
       <button class="xb-primary-button" type="submit" :disabled="loading">
         <component :is="mode === 'login' ? KeyRound : UserPlus" :size="16" />
-        {{ loading ? 'Working...' : mode === 'login' ? 'Sign in' : 'Continue' }}
+        {{ loading ? t('pages.auth.working') : (mode === 'login' ? t('pages.auth.loginTitle') : t('common.actions.continue')) }}
       </button>
     </form>
   </main>

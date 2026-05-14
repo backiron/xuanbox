@@ -8,6 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.errors import AppError
 from app.models.backup_task import BackupTask
 from app.models.user import User
 from app.services.admin_service import backup_directory
@@ -57,6 +58,24 @@ async def create_backup(db: AsyncSession, actor: User, *, backup_type: str = "ma
     await db.commit()
     await db.refresh(task)
     return task
+
+
+async def delete_backup(db: AsyncSession, actor: User, backup_id) -> None:
+    task = await db.get(BackupTask, backup_id)
+    if task is None:
+        raise AppError("backup_not_found", "Backup not found", 404)
+    if task.backup_path:
+        path = Path(task.backup_path)
+        backup_root = backup_directory().resolve()
+        try:
+            resolved_path = path.resolve()
+        except OSError:
+            resolved_path = path
+        if resolved_path.is_file() and backup_root in resolved_path.parents:
+            resolved_path.unlink()
+    await write_audit_log(db, action="backup.delete", actor_user_id=actor.id, target_type="backup", target_id=str(task.id))
+    await db.delete(task)
+    await db.commit()
 
 
 async def _write_backup_archive(db: AsyncSession, task: BackupTask) -> tuple[Path, dict]:

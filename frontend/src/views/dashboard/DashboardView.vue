@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Upload
 } from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
 
 import { dashboardApi } from '../../api/documentApi'
 import { dropApi } from '../../api/dropApi'
@@ -24,6 +25,7 @@ import { inboxApi } from '../../api/inboxApi'
 import { photoApi } from '../../api/photoApi'
 
 const router = useRouter()
+const { t } = useI18n()
 const summary = ref(null)
 const recentFiles = ref([])
 const recentPhotos = ref([])
@@ -44,12 +46,16 @@ const storagePercent = computed(() => Math.min(100, Math.round((storageUsed.valu
 const activeDrop = computed(() => dropSessions.value[0] || null)
 
 const statCards = computed(() => [
-  { label: 'Inbox', value: formatNumber(pendingInbox.value.length), hint: 'Awaiting review', icon: Inbox, tone: 'cyan', to: '/inbox' },
-  { label: 'Photos', value: formatNumber(metrics.value.photos_count), hint: 'Timeline items', icon: Image, tone: 'purple', to: '/photos' },
-  { label: 'Files', value: formatNumber(metrics.value.files_count), hint: 'Encrypted assets', icon: FileText, tone: 'blue', to: '/files' },
-  { label: 'Receipts', value: formatNumber(metrics.value.receipts_count), hint: 'OCR capable', icon: ReceiptText, tone: 'orange', to: '/receipts' },
-  { label: 'Shares', value: formatNumber(activeDrop.value ? 1 : 0), hint: 'Drop sessions', icon: Share2, tone: 'blue', to: '/shared' }
+  { label: t('routes.inbox'), value: formatNumber(pendingInbox.value.length), hint: t('pages.dashboard.statAwaitingReview'), icon: Inbox, tone: 'cyan', to: '/inbox' },
+  { label: t('routes.photos'), value: formatNumber(metrics.value.photos_count), hint: t('pages.dashboard.statTimelineItems'), icon: Image, tone: 'purple', to: '/photos' },
+  { label: t('routes.files'), value: formatNumber(metrics.value.files_count), hint: t('pages.dashboard.statEncryptedAssets'), icon: FileText, tone: 'blue', to: '/files' },
+  { label: t('routes.receipts'), value: formatNumber(metrics.value.receipts_count), hint: t('pages.dashboard.statOcrCapable'), icon: ReceiptText, tone: 'orange', to: '/receipts' },
+  { label: t('pages.dashboard.shares'), value: formatNumber(activeDrop.value ? 1 : 0), hint: t('pages.dashboard.statDropSessions'), icon: Share2, tone: 'blue', to: '/shared' }
 ])
+
+function pluralSuffix(count) {
+  return count === 1 ? '' : 's'
+}
 
 function formatNumber(value = 0) {
   return new Intl.NumberFormat(undefined).format(value || 0)
@@ -142,12 +148,12 @@ async function uploadFiles(files) {
       uploadedCount += 1
     }
   } catch (err) {
-    uploadError.value = err.response?.data?.message || 'Upload did not finish. Check Inbox for any uploaded items.'
+    uploadError.value = err.response?.data?.message || t('pages.dashboard.uploadFailed')
   } finally {
     uploadProgress.value = 0
   }
   if (uploadedCount > 0) {
-    uploadMessage.value = `${uploadedCount} item${uploadedCount > 1 ? 's' : ''} added to Inbox for review.`
+    uploadMessage.value = t('pages.dashboard.uploadAdded', { count: uploadedCount, plural: pluralSuffix(uploadedCount) })
     try {
       await router.push({ path: '/inbox', query: { uploaded: String(Date.now()) } })
     } catch {
@@ -200,17 +206,22 @@ onBeforeUnmount(() => {
   >
     <div class="xb-dashboard-head">
       <div>
-        <h2>Overview</h2>
-        <p>Private vault status, recent activity, quick upload, and device transfer.</p>
+        <h2>{{ t('pages.dashboard.title') }}</h2>
+        <p>{{ t('pages.dashboard.subtitle') }}</p>
       </div>
       <div class="xb-dashboard-head-actions">
         <router-link to="/files" class="xb-secondary-button">
           <FolderOpen :size="16" />
-          Browse vault
+          {{ t('pages.dashboard.browseVault') }}
         </router-link>
-        <label class="xb-upload-button">
+        <label
+          class="xb-upload-button"
+          @dragenter.prevent="onDragEnter"
+          @dragover.prevent="draggingFiles = true"
+          @drop.prevent="onFileDrop"
+        >
           <Upload :size="16" />
-          Upload
+          {{ t('pages.dashboard.quickUpload') }}
           <input type="file" multiple @click="resetFileInput" @change="onFileChange" />
         </label>
       </div>
@@ -224,23 +235,23 @@ onBeforeUnmount(() => {
 
     <section class="xb-upload-drop-hint" :class="{ 'is-visible': draggingFiles }">
       <Upload :size="18" />
-      <strong>Drop files to upload</strong>
-          <span>Files will wait in Inbox until you choose where they belong.</span>
+      <strong>{{ t('pages.dashboard.dropFilesHint') }}</strong>
+      <span>{{ t('pages.dashboard.dropFilesDescription') }}</span>
     </section>
 
     <section class="xb-dashboard-overview">
       <article class="xb-storage-card">
         <div class="xb-card-kicker">
           <HardDrive :size="18" />
-          Storage
+          {{ t('pages.dashboard.storage') }}
         </div>
         <div class="xb-storage-value">
           <strong>{{ formatBytes(storageUsed) }}</strong>
           <span>/ 2.00 TB</span>
         </div>
         <div class="xb-storage-meta">
-          <span>Used {{ storagePercent }}%</span>
-          <span>{{ loading ? 'Syncing' : 'Encrypted' }}</span>
+          <span>{{ t('pages.dashboard.usedPercent', { count: storagePercent }) }}</span>
+          <span>{{ loading ? t('common.states.syncing') : t('common.states.encrypted') }}</span>
         </div>
         <div class="xb-storage-bar">
           <span :style="{ width: `${storagePercent}%` }"></span>
@@ -261,14 +272,14 @@ onBeforeUnmount(() => {
       <router-link v-if="pendingInbox.length" to="/inbox" class="xb-dashboard-panel xb-inbox-alert">
         <Inbox :size="28" />
         <div>
-          <strong>{{ pendingInbox.length }} upload{{ pendingInbox.length > 1 ? 's' : '' }} waiting in Inbox</strong>
-          <span>Open Inbox to save them as Photos, Files, or Receipts.</span>
+          <strong>{{ t('pages.dashboard.waitingInInbox', { count: pendingInbox.length, plural: pluralSuffix(pendingInbox.length) }) }}</strong>
+          <span>{{ t('pages.dashboard.openInboxHint') }}</span>
         </div>
       </router-link>
 
       <article class="xb-dashboard-panel xb-recent-panel">
         <div class="xb-panel-title">
-          <h3>Recent Files</h3>
+          <h3>{{ t('pages.dashboard.files') }}</h3>
           <router-link to="/files">View all</router-link>
         </div>
         <div v-if="recentFiles.length" class="xb-dashboard-list">
@@ -281,12 +292,12 @@ onBeforeUnmount(() => {
             <time>{{ formatDate(file.updated_at) }}</time>
           </router-link>
         </div>
-        <p v-else class="xb-muted">{{ loading ? 'Loading files...' : 'No files uploaded yet.' }}</p>
+        <p v-else class="xb-muted">{{ loading ? t('pages.dashboard.loadingFiles') : t('pages.dashboard.noFilesYet') }}</p>
       </article>
 
       <article class="xb-dashboard-panel">
         <div class="xb-panel-title">
-          <h3>Recent Photos</h3>
+          <h3>{{ t('pages.dashboard.photos') }}</h3>
           <router-link to="/photos">View all</router-link>
         </div>
         <div v-if="recentPhotos.length" class="xb-dashboard-photos">
@@ -295,33 +306,38 @@ onBeforeUnmount(() => {
             <Image v-else :size="24" />
           </router-link>
         </div>
-        <p v-else class="xb-muted">{{ loading ? 'Loading photos...' : 'No photos in the timeline yet.' }}</p>
+        <p v-else class="xb-muted">{{ loading ? t('pages.dashboard.loadingPhotos') : t('pages.dashboard.noPhotosYet') }}</p>
       </article>
 
       <article class="xb-dashboard-panel xb-upload-drop">
         <div class="xb-panel-title">
-          <h3>Quick Upload</h3>
-          <router-link to="/inbox">Inbox</router-link>
+          <h3>{{ t('pages.dashboard.quickUpload') }}</h3>
+          <router-link to="/inbox">{{ t('routes.inbox') }}</router-link>
         </div>
-        <label class="xb-drop-upload-target">
+        <label
+          class="xb-drop-upload-target"
+          @dragenter.prevent="onDragEnter"
+          @dragover.prevent="draggingFiles = true"
+          @drop.prevent="onFileDrop"
+        >
           <CloudUpload :size="34" />
-          <strong>Drop files or photos into XuanBox</strong>
-          <span>Uploads go to Inbox first, then you choose Photo, File, or Receipt.</span>
+          <strong>{{ t('pages.dashboard.dropHint') }}</strong>
+          <span>{{ t('pages.dashboard.dropHintDesc') }}</span>
           <input type="file" multiple @click="resetFileInput" @change="onFileChange" />
         </label>
       </article>
 
       <article class="xb-dashboard-panel xb-xuandrop-card">
         <div class="xb-panel-title">
-          <h3>XuanDrop</h3>
-          <router-link to="/drop">Open</router-link>
+          <h3>{{ t('routes.drop') }}</h3>
+          <router-link to="/drop">{{ t('common.actions.open') }}</router-link>
         </div>
         <div class="xb-device-transfer">
           <div class="xb-phone-glyph"></div>
           <Send :size="28" />
           <div>
-            <strong>{{ activeDrop?.title || 'Ready for nearby devices' }}</strong>
-            <span>{{ activeDrop ? `Expires ${formatDate(activeDrop.expires_at)}` : 'Create a session to receive files from another device.' }}</span>
+            <strong>{{ activeDrop?.title || t('pages.dashboard.readyForNearby') }}</strong>
+            <span>{{ activeDrop ? `${t('pages.dashboard.expiresPrefix', { date: formatDate(activeDrop.expires_at) })}` : t('pages.dashboard.transferHint') }}</span>
           </div>
         </div>
       </article>
@@ -331,9 +347,9 @@ onBeforeUnmount(() => {
       <router-link to="/files" class="xb-footer-action">
         <ShieldCheck :size="20" />
         <div>
-          <strong>Important docs</strong>
-          <span v-if="summary?.expiring_documents?.length">{{ summary.expiring_documents.length }} item needs attention</span>
-          <span v-else>No documents expiring in the next 90 days.</span>
+          <strong>{{ t('pages.dashboard.importantDocs') }}</strong>
+          <span v-if="summary?.expiring_documents?.length">{{ t('pages.dashboard.expiringDocsSuffix', { count: summary.expiring_documents.length }) }}</span>
+          <span v-else>{{ t('pages.dashboard.noExpiringDocs') }}</span>
         </div>
         <AlertTriangle v-if="summary?.expiring_documents?.length" :size="18" />
         <CheckCircle2 v-else :size="18" />
@@ -341,15 +357,15 @@ onBeforeUnmount(() => {
       <router-link to="/shared" class="xb-footer-action">
         <Share2 :size="20" />
         <div>
-          <strong>Secure Sharing</strong>
-          <span>Create password-protected links with limits and expiry.</span>
+          <strong>{{ t('pages.dashboard.secureSharing') }}</strong>
+          <span>{{ t('pages.dashboard.secureSharingHint') }}</span>
         </div>
       </router-link>
       <router-link to="/settings" class="xb-footer-action">
         <ShieldCheck :size="20" />
         <div>
-          <strong>Device Security</strong>
-          <span>Review trusted devices and account sessions.</span>
+          <strong>{{ t('pages.dashboard.deviceSecurity') }}</strong>
+          <span>{{ t('pages.dashboard.deviceSecurityHint') }}</span>
         </div>
       </router-link>
     </section>

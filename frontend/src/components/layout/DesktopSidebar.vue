@@ -1,16 +1,19 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import XbAssetIcon from '../common/XbAssetIcon.vue'
 
+const { t } = useI18n()
+
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: 'dashboard' },
-  { to: '/inbox', label: 'Inbox', icon: 'upload' },
-  { to: '/photos', label: 'Photos', icon: 'photos' },
-  { to: '/files', label: 'Files', icon: 'files' },
-  { to: '/receipts', label: 'Receipts', icon: 'receipts' },
-  { to: '/drop', label: 'XuanDrop', icon: 'xuandrop' },
-  { to: '/shared', label: 'Shared', icon: 'share' },
-  { to: '/messages', label: 'Messages', icon: 'notifications' },
-  { to: '/settings', label: 'Settings', icon: 'settings' }
+  { to: '/', label: () => t('routes.dashboard'), icon: 'dashboard' },
+  { to: '/inbox', label: () => t('routes.inbox'), icon: 'upload' },
+  { to: '/photos', label: () => t('routes.photos'), icon: 'photos' },
+  { to: '/files', label: () => t('routes.files'), icon: 'files' },
+  { to: '/receipts', label: () => t('routes.receipts'), icon: 'receipts' },
+  { to: '/drop', label: () => t('routes.drop'), icon: 'xuandrop' },
+  { to: '/shared', label: () => t('routes.shared'), icon: 'share' },
+  { to: '/messages', label: () => t('routes.messages'), icon: 'notifications' },
+  { to: '/settings', label: () => t('routes.settings'), icon: 'settings' }
 ]
 </script>
 
@@ -20,20 +23,20 @@ const navItems = [
       <XbAssetIcon name="logo" :size="34" />
       <div>
         <strong>XuanBox</strong>
-        <span>玄匣</span>
+        <span>{{ t('layout.sidebar.privateVaultTitle') }}</span>
       </div>
     </div>
     <nav class="xb-sidebar-nav">
       <router-link v-for="item in navItems" :key="item.to" :to="item.to" class="xb-nav-link">
         <XbAssetIcon :name="item.icon" :size="22" />
-        <span>{{ item.label }}</span>
+        <span>{{ item.label() }}</span>
       </router-link>
     </nav>
     <div class="xb-storage-mini">
       <XbAssetIcon name="storage" :size="24" />
       <div>
-        <strong>Private Vault</strong>
-        <span>Encrypted personal archive</span>
+        <strong>{{ t('layout.sidebar.privateVaultTitle') }}</strong>
+        <span>{{ t('layout.sidebar.privateVaultDescription') }}</span>
       </div>
     </div>
   </aside>

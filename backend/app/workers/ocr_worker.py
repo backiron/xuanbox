@@ -11,6 +11,7 @@ from app.models.user import User
 from app.services.backup_service import create_backup
 from app.services.document_intelligence_service import DOCUMENT_EXTRACT_TASK_TYPE, process_document_extract_task
 from app.services.ocr_service import OCR_TASK_TYPE, process_receipt_ocr_task
+from app.services.system_settings_service import get_auto_backup_enabled
 from app.services.worker_service import claim_next_worker_task, mark_task_failed
 
 logger = logging.getLogger("xuanbox.worker")
@@ -41,6 +42,8 @@ async def run_scheduled_backup_if_due() -> None:
     if settings.BACKUP_SCHEDULE_HOURS <= 0:
         return
     async with AsyncSessionLocal() as session:
+        if not await get_auto_backup_enabled(session):
+            return
         cutoff = datetime.now(UTC) - timedelta(hours=settings.BACKUP_SCHEDULE_HOURS)
         recent = await session.scalar(
             select(BackupTask)

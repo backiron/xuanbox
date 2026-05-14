@@ -2,9 +2,11 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search } from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
 import XbAssetIcon from '../common/XbAssetIcon.vue'
 import { http } from '../../api/http'
 import { useAuthStore } from '../../stores/authStore'
+import { setLocale } from '../../i18n'
 
 defineProps({
   title: {
@@ -18,6 +20,9 @@ const router = useRouter()
 const query = ref('')
 const avatarObjectUrl = ref('')
 const userInitial = computed(() => (authStore.user?.display_name || authStore.user?.username || 'M').slice(0, 1).toUpperCase())
+const { t, locale } = useI18n()
+const currentLocaleLabel = computed(() => locale.value === 'zh-CN' ? '中' : 'EN')
+const localeTitle = computed(() => locale.value === 'zh-CN' ? '切换到英文' : 'Switch to Chinese')
 
 function submitSearch() {
   const q = query.value.trim()
@@ -28,6 +33,10 @@ function submitSearch() {
 function clearAvatarObjectUrl() {
   if (avatarObjectUrl.value) URL.revokeObjectURL(avatarObjectUrl.value)
   avatarObjectUrl.value = ''
+}
+
+function toggleLocale() {
+  setLocale(locale.value === 'zh-CN' ? 'en' : 'zh-CN')
 }
 
 async function loadAvatar() {
@@ -51,15 +60,18 @@ onBeforeUnmount(clearAvatarObjectUrl)
     <div class="xb-topbar-actions">
       <form class="xb-search" @submit.prevent="submitSearch">
         <XbAssetIcon name="search" :size="18" />
-        <input v-model="query" placeholder="Search files, photos, receipts" />
-        <button type="submit" title="Search">
+        <input v-model="query" :placeholder="t('layout.topbar.searchLabel')" />
+        <button type="submit" :title="t('layout.topbar.searchButton')">
           <Search :size="16" />
-          <span>Search</span>
+          <span>{{ t('layout.topbar.searchButton') }}</span>
         </button>
       </form>
-      <router-link to="/messages" class="xb-icon-button" title="Notifications">
+      <router-link to="/messages" class="xb-icon-button" :title="t('layout.topbar.notifications')">
         <XbAssetIcon name="notifications" :size="18" />
       </router-link>
+      <button class="xb-language-toggle" type="button" :title="localeTitle" @click="toggleLocale">
+        {{ currentLocaleLabel }}
+      </button>
       <router-link class="xb-user-chip" to="/settings">
         <span class="xb-user-avatar">
           <img v-if="avatarObjectUrl" :src="avatarObjectUrl" alt="" />

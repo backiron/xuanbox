@@ -2,10 +2,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { Download, LockKeyhole } from 'lucide-vue-next'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 import { shareApi } from '../../api/shareApi'
 
 const route = useRoute()
+const { t } = useI18n()
 const token = computed(() => route.params.token)
 const metadata = ref(null)
 const password = ref('')
@@ -21,7 +23,7 @@ async function loadMetadata() {
     const response = await shareApi.publicMetadata(token.value)
     metadata.value = response.data.data
   } catch (err) {
-    error.value = err.response?.data?.error?.message || 'Share is unavailable'
+    error.value = err.response?.data?.error?.message || t('pages.publicShare.unavailable')
   } finally {
     loading.value = false
   }
@@ -35,7 +37,7 @@ async function verifyPassword() {
     verified.value = true
     password.value = ''
   } catch (err) {
-    error.value = err.response?.data?.error?.message || 'Password check failed'
+    error.value = err.response?.data?.error?.message || t('pages.publicShare.failPassword')
   }
 }
 
@@ -51,12 +53,12 @@ async function downloadShare() {
     URL.revokeObjectURL(blobUrl)
     await loadMetadata()
   } catch (err) {
-    error.value = err.response?.data?.error?.message || 'Download failed'
+    error.value = err.response?.data?.error?.message || t('pages.publicShare.failDownload')
   }
 }
 
 function formatDate(value) {
-  if (!value) return 'No expiry'
+  if (!value) return t('common.file.noExpiry')
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
@@ -69,22 +71,22 @@ onMounted(loadMetadata)
       <LockKeyhole :size="34" />
       <template v-if="metadata">
         <h1>{{ metadata.target_name }}</h1>
-        <p>{{ metadata.owner_name }} shared this {{ metadata.target_type }} through XuanBox.</p>
+        <p>{{ t('pages.publicShare.downloadedFrom', { owner: metadata.owner_name, type: metadata.target_type }) }}</p>
         <div class="xb-public-share-meta">
           <span>{{ metadata.permission }}</span>
-          <span>{{ metadata.download_count }} / {{ metadata.max_downloads || '∞' }} downloads</span>
+          <span>{{ t('pages.publicShare.maxDownloads', { count: metadata.download_count, limit: metadata.max_downloads || t('common.states.unlimited') }) }}</span>
           <span>{{ formatDate(metadata.expires_at) }}</span>
         </div>
         <form v-if="metadata.requires_password && !verified" class="xb-public-share-password" @submit.prevent="verifyPassword">
-          <input v-model="password" type="password" placeholder="Password" />
-          <button class="xb-primary-button" type="submit">Unlock</button>
+          <input v-model="password" type="password" :placeholder="t('pages.publicShare.password')" />
+          <button class="xb-primary-button" type="submit">{{ t('pages.publicShare.unlock') }}</button>
         </form>
         <button v-else class="xb-primary-button" type="button" @click="downloadShare">
           <Download :size="16" />
-          Download
+          {{ t('pages.publicShare.download') }}
         </button>
       </template>
-      <p v-else-if="loading">Loading share...</p>
+      <p v-else-if="loading">{{ t('pages.publicShare.loading') }}</p>
       <p v-if="error" class="xb-form-error">{{ error }}</p>
     </section>
   </main>

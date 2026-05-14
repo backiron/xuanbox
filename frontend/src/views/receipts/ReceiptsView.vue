@@ -1,6 +1,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { Camera, Download, FileImage, FileSearch, MoreHorizontal, ReceiptText, RotateCcw, Save, Search, Trash2, Upload, X } from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
 import PageHeader from '../../components/common/PageHeader.vue'
 import EmptyState from '../../components/common/EmptyState.vue'
 import { fileApi } from '../../api/fileApi'
@@ -20,6 +21,7 @@ const receiptSheet = ref(null)
 const rawTextOpen = ref(false)
 const activePreview = ref({ url: '', type: '', loading: false, error: '' })
 const dialog = useDialogStore()
+const { t } = useI18n()
 
 function cleanPayload(source) {
   return {
@@ -34,18 +36,18 @@ function cleanPayload(source) {
 }
 
 function formatMoney(receipt) {
-  if (receipt.amount === null || receipt.amount === undefined) return 'No amount'
+  if (receipt.amount === null || receipt.amount === undefined) return t('pages.receipts.noAmount')
   return `${receipt.currency} ${Number(receipt.amount).toFixed(2)}`
 }
 
 function receiptStatusLabel(receipt) {
   const labels = {
-    not_started: 'Needs OCR',
-    pending: 'Queued',
-    processing: 'Reading',
-    completed: 'Needs review',
-    confirmed: 'Confirmed',
-    failed: 'Failed'
+    not_started: t('pages.receipts.status.not_started'),
+    pending: t('pages.receipts.status.pending'),
+    processing: t('pages.receipts.status.processing'),
+    completed: t('pages.receipts.status.completed'),
+    confirmed: t('pages.receipts.status.confirmed'),
+    failed: t('pages.receipts.status.failed')
   }
   return labels[receipt.ocr_status] || receipt.ocr_status
 }
@@ -137,9 +139,9 @@ async function deleteReceipt(receipt) {
   const wasSheetOpen = receiptSheet.value?.id === receipt.id
   if (wasSheetOpen) closeReceiptSheet()
   const confirmed = await dialog.confirm({
-    title: 'Delete receipt',
-    message: 'This removes the receipt record and OCR review data. The original file stays in storage if it is used elsewhere.',
-    confirmText: 'Delete',
+    title: t('pages.receipts.deleteTitle'),
+    message: t('pages.receipts.deleteMessage'),
+    confirmText: t('common.actions.delete'),
     danger: true
   })
   if (!confirmed && wasSheetOpen && receipts.value.some((item) => item.id === receipt.id)) {
@@ -173,7 +175,7 @@ async function loadReceiptPreview(receipt) {
       error: ''
     }
   } catch (error) {
-    activePreview.value = { url: '', type: '', loading: false, error: 'Preview unavailable.' }
+    activePreview.value = { url: '', type: '', loading: false, error: t('pages.receipts.noImage') }
   }
 }
 
@@ -252,20 +254,20 @@ onBeforeUnmount(cleanupPreview)
     @dragleave="onDragLeave"
     @drop.prevent="onReceiptDrop"
   >
-    <PageHeader title="Receipts" subtitle="Encrypted receipt captures with automatic OCR, review, original attachments, filters, and search.">
+    <PageHeader :title="t('pages.receipts.title')" :subtitle="t('pages.receipts.subtitle')">
       <label class="xb-secondary-button">
         <Camera :size="18" />
-        Take Photo
+        {{ t('pages.receipts.takePhoto') }}
         <input type="file" accept="image/*" capture="environment" @change="onReceiptFile" />
       </label>
       <label class="xb-upload-button xb-receipt-upload-pill">
         <Upload :size="18" />
-        Upload
+        {{ t('common.actions.upload') }}
         <input type="file" accept="image/*,.pdf" multiple @change="onReceiptFile" />
       </label>
       <button class="xb-secondary-button xb-receipt-manual-pill" type="button" @click="manualEntryOpen = true">
         <ReceiptText :size="18" />
-        Manual Add
+        {{ t('pages.receipts.manualAdd') }}
       </button>
     </PageHeader>
 
@@ -275,45 +277,45 @@ onBeforeUnmount(cleanupPreview)
 
     <section class="xb-upload-drop-hint" :class="{ 'is-visible': draggingReceipts }">
       <Upload :size="18" />
-      <strong>Drop receipts to upload</strong>
-      <span>Images and PDFs are encrypted, attached, and queued for OCR.</span>
+      <strong>{{ t('pages.receipts.dropLabel') }}</strong>
+      <span>{{ t('pages.receipts.uploadHint') }}</span>
     </section>
 
     <section class="xb-receipt-layout">
       <aside class="xb-panel xb-receipt-form">
-        <h3>Manual receipt</h3>
-        <label>Merchant <input v-model="draft.merchant" /></label>
-        <label>Category <input v-model="draft.category" placeholder="Fuel, electronics, groceries" /></label>
-        <label>Amount <input v-model="draft.amount" type="number" step="0.01" /></label>
-        <label>Currency <input v-model="draft.currency" maxlength="8" /></label>
-        <label>Purchase date <input v-model="draft.purchase_date" type="date" /></label>
-        <label>Warranty until <input v-model="draft.warranty_until" type="date" /></label>
-        <label>Notes <textarea v-model="draft.notes" rows="4"></textarea></label>
+        <h3>{{ t('pages.receipts.manualReceipt') }}</h3>
+        <label>{{ t('pages.receipts.merchant') }} <input v-model="draft.merchant" /></label>
+        <label>{{ t('pages.receipts.category') }} <input v-model="draft.category" :placeholder="t('pages.receipts.categoryPlaceholder')" /></label>
+        <label>{{ t('pages.receipts.amount') }} <input v-model="draft.amount" type="number" step="0.01" /></label>
+        <label>{{ t('pages.receipts.currency') }} <input v-model="draft.currency" maxlength="8" /></label>
+        <label>{{ t('pages.receipts.purchaseDate') }} <input v-model="draft.purchase_date" type="date" /></label>
+        <label>{{ t('pages.receipts.warrantyUntil') }} <input v-model="draft.warranty_until" type="date" /></label>
+        <label>{{ t('pages.receipts.notes') }} <textarea v-model="draft.notes" rows="4"></textarea></label>
       </aside>
 
       <section>
         <div class="xb-filter-bar">
           <div class="xb-filter-field">
             <Search :size="16" />
-            <input v-model="filters.q" placeholder="Search receipts and OCR text" @keyup.enter="loadReceipts" />
+            <input v-model="filters.q" :placeholder="t('pages.receipts.searchPlaceholder')" @keyup.enter="loadReceipts" />
           </div>
           <button class="xb-secondary-button xb-filter-submit" type="button" aria-label="Search receipts" @click="loadReceipts">
             <Search :size="16" />
           </button>
         </div>
 
-        <EmptyState v-if="!loading && receipts.length === 0" title="No receipts yet" description="Upload a receipt photo or PDF, then review the detected fields." />
+        <EmptyState v-if="!loading && receipts.length === 0" :title="t('pages.receipts.noData')" :description="t('pages.receipts.noDataHint')" />
 
         <div v-else class="xb-receipt-list">
           <article v-for="receipt in receipts" :key="receipt.id" class="xb-receipt-row" @click="openReceiptSheet(receipt)">
             <div class="xb-receipt-row-main">
-              <strong>{{ receipt.merchant || 'Unknown merchant' }}</strong>
-              <span>{{ receipt.category || 'Uncategorized' }} / {{ receipt.purchase_date || 'No date' }}</span>
+              <strong>{{ receipt.merchant || t('pages.receipts.unknownMerchant') }}</strong>
+              <span>{{ t('pages.receipts.rowMetaCategory', { category: receipt.category || t('pages.receipts.unCategorized'), date: receipt.purchase_date || t('common.file.noDate') }) }}</span>
             </div>
             <strong class="xb-receipt-row-amount">{{ formatMoney(receipt) }}</strong>
             <div class="xb-receipt-row-meta">
               <span>{{ receiptStatusLabel(receipt) }}</span>
-              <span>{{ receipt.warranty_until ? `Warranty ${receipt.warranty_until}` : 'No warranty' }}</span>
+              <span>{{ receipt.warranty_until ? t('pages.receipts.rowWarranty', { date: receipt.warranty_until }) : t('pages.receipts.noWarranty') }}</span>
             </div>
             <button class="xb-icon-button xb-receipt-more-button" type="button" title="Receipt actions" @click.stop="openReceiptSheet(receipt)">
               <MoreHorizontal :size="18" />
@@ -321,21 +323,21 @@ onBeforeUnmount(cleanupPreview)
             <div class="xb-row-actions xb-receipt-inline-actions">
               <button class="xb-text-button" type="button" @click.stop="loadOcrReview(receipt)">
                 <FileImage :size="16" />
-                View
+                {{ t('pages.receipts.view') }}
               </button>
               <button v-if="receipt.ocr_status === 'not_started'" class="xb-text-button" type="button" @click.stop="startOcr(receipt)">
                 <FileSearch :size="16" />
-                OCR
+                {{ t('pages.receipts.runOcr') }}
               </button>
               <button v-else class="xb-text-button" type="button" @click.stop="loadOcrReview(receipt)">
                 <RotateCcw v-if="receipt.ocr_status === 'failed'" :size="16" />
                 <FileSearch v-else :size="16" />
                 {{ receiptStatusLabel(receipt) }}
               </button>
-              <button class="xb-text-button" type="button" @click.stop="startEdit(receipt)">Edit</button>
+              <button class="xb-text-button" type="button" @click.stop="startEdit(receipt)">{{ t('common.actions.edit') }}</button>
               <button class="xb-text-button xb-danger-button" type="button" @click.stop="deleteReceipt(receipt)">
                 <Trash2 :size="16" />
-                Delete
+                {{ t('common.actions.delete') }}
               </button>
             </div>
           </article>
@@ -345,40 +347,40 @@ onBeforeUnmount(cleanupPreview)
 
     <section v-if="editing" class="xb-modal-backdrop" @click.self="editing = null">
       <form class="xb-modal" @submit.prevent="saveEdit">
-        <h3>Edit receipt</h3>
-        <label>Merchant <input v-model="editing.merchant" /></label>
-        <label>Category <input v-model="editing.category" /></label>
-        <label>Amount <input v-model="editing.amount" type="number" step="0.01" /></label>
-        <label>Currency <input v-model="editing.currency" maxlength="8" /></label>
-        <label>Purchase date <input v-model="editing.purchase_date" type="date" /></label>
-        <label>Warranty until <input v-model="editing.warranty_until" type="date" /></label>
-        <label>Notes <textarea v-model="editing.notes" rows="4"></textarea></label>
+        <h3>{{ t('pages.receipts.editReceiptTitle') }}</h3>
+        <label>{{ t('pages.receipts.merchant') }} <input v-model="editing.merchant" /></label>
+        <label>{{ t('pages.receipts.category') }} <input v-model="editing.category" /></label>
+        <label>{{ t('pages.receipts.amount') }} <input v-model="editing.amount" type="number" step="0.01" /></label>
+        <label>{{ t('pages.receipts.currency') }} <input v-model="editing.currency" maxlength="8" /></label>
+        <label>{{ t('pages.receipts.purchaseDate') }} <input v-model="editing.purchase_date" type="date" /></label>
+        <label>{{ t('pages.receipts.warrantyUntil') }} <input v-model="editing.warranty_until" type="date" /></label>
+        <label>{{ t('pages.receipts.notes') }} <textarea v-model="editing.notes" rows="4"></textarea></label>
         <div class="xb-row-actions">
           <button class="xb-primary-button" type="submit">
             <Save :size="17" />
-            Save
+            {{ t('common.actions.save') }}
           </button>
-          <button class="xb-secondary-button" type="button" @click="editing = null">Cancel</button>
+          <button class="xb-secondary-button" type="button" @click="editing = null">{{ t('common.actions.cancel') }}</button>
         </div>
       </form>
     </section>
 
     <section v-if="manualEntryOpen" class="xb-modal-backdrop" @click.self="manualEntryOpen = false">
       <form class="xb-modal" @submit.prevent="manualEntryOpen = false">
-        <h3>Manual receipt</h3>
-        <label>Merchant <input v-model="draft.merchant" /></label>
-        <label>Category <input v-model="draft.category" placeholder="Fuel, electronics, groceries" /></label>
-        <label>Amount <input v-model="draft.amount" type="number" step="0.01" /></label>
-        <label>Currency <input v-model="draft.currency" maxlength="8" /></label>
-        <label>Purchase date <input v-model="draft.purchase_date" type="date" /></label>
-        <label>Warranty until <input v-model="draft.warranty_until" type="date" /></label>
-        <label>Notes <textarea v-model="draft.notes" rows="4"></textarea></label>
+        <h3>{{ t('pages.receipts.manualReceiptTitle') }}</h3>
+        <label>{{ t('pages.receipts.merchant') }} <input v-model="draft.merchant" /></label>
+        <label>{{ t('pages.receipts.category') }} <input v-model="draft.category" :placeholder="t('pages.receipts.categoryPlaceholder')" /></label>
+        <label>{{ t('pages.receipts.amount') }} <input v-model="draft.amount" type="number" step="0.01" /></label>
+        <label>{{ t('pages.receipts.currency') }} <input v-model="draft.currency" maxlength="8" /></label>
+        <label>{{ t('pages.receipts.purchaseDate') }} <input v-model="draft.purchase_date" type="date" /></label>
+        <label>{{ t('pages.receipts.warrantyUntil') }} <input v-model="draft.warranty_until" type="date" /></label>
+        <label>{{ t('pages.receipts.notes') }} <textarea v-model="draft.notes" rows="4"></textarea></label>
         <div class="xb-row-actions">
           <button class="xb-primary-button" type="submit">
             <Save :size="17" />
-            Done
+            {{ t('common.actions.done') }}
           </button>
-          <button class="xb-secondary-button" type="button" @click="manualEntryOpen = false">Close</button>
+          <button class="xb-secondary-button" type="button" @click="manualEntryOpen = false">{{ t('common.actions.close') }}</button>
         </div>
       </form>
     </section>
@@ -389,42 +391,42 @@ onBeforeUnmount(cleanupPreview)
           <div class="xb-receipt-sheet-handle"></div>
           <header class="xb-receipt-sheet-head">
             <div>
-              <strong>{{ receiptSheet.merchant || 'Unknown merchant' }}</strong>
-              <span>{{ receiptSheet.category || 'Uncategorized' }} / {{ receiptSheet.purchase_date || 'No date' }}</span>
+              <strong>{{ receiptSheet.merchant || t('pages.receipts.unknownMerchant') }}</strong>
+              <span>{{ receiptSheet.category || t('pages.receipts.unCategorized') }} / {{ receiptSheet.purchase_date || t('pages.receipts.rowMetaDate') }}</span>
             </div>
-            <button class="xb-icon-button" type="button" title="Close" @click="closeReceiptSheet">
+            <button class="xb-icon-button" type="button" :title="t('common.actions.close')" @click="closeReceiptSheet">
               <X :size="18" />
             </button>
           </header>
           <div class="xb-receipt-sheet-summary">
             <span>{{ formatMoney(receiptSheet) }}</span>
             <span>{{ receiptStatusLabel(receiptSheet) }}</span>
-            <span>{{ receiptSheet.warranty_until ? `Warranty ${receiptSheet.warranty_until}` : 'No warranty' }}</span>
+            <span>{{ receiptSheet.warranty_until ? t('pages.receipts.rowWarranty', { date: receiptSheet.warranty_until }) : t('pages.receipts.noWarranty') }}</span>
           </div>
           <div class="xb-receipt-sheet-actions">
             <button class="xb-secondary-button" type="button" @click="loadOcrReview(receiptSheet)">
               <FileImage :size="17" />
-              Review details
+              {{ t('pages.receipts.reviewButton') }}
             </button>
             <button v-if="receiptSheet.ocr_status === 'not_started'" class="xb-secondary-button" type="button" @click="startOcr(receiptSheet)">
               <FileSearch :size="17" />
-              Run OCR
+              {{ t('pages.receipts.runOcr') }}
             </button>
             <button v-else class="xb-secondary-button" type="button" @click="loadOcrReview(receiptSheet)">
               <FileSearch :size="17" />
-              OCR result
+              {{ t('pages.receipts.ocrResult') }}
             </button>
             <button class="xb-secondary-button" type="button" @click="startEdit(receiptSheet)">
               <ReceiptText :size="17" />
-              Edit fields
+              {{ t('pages.receipts.edit') }}
             </button>
             <button class="xb-secondary-button" type="button" @click="downloadOriginal(receiptSheet)">
               <Download :size="17" />
-              Original
+              {{ t('pages.receipts.original') }}
             </button>
             <button class="xb-secondary-button xb-danger-button" type="button" @click="deleteReceipt(receiptSheet)">
               <Trash2 :size="17" />
-              Delete
+              {{ t('common.actions.delete') }}
             </button>
           </div>
         </aside>
@@ -433,57 +435,57 @@ onBeforeUnmount(cleanupPreview)
       <section v-if="ocrReview" class="xb-modal-backdrop xb-receipt-review-backdrop" @click.self="closeOcrReview">
         <form class="xb-modal xb-receipt-review-modal" @submit.prevent="confirmOcr">
           <div class="xb-receipt-review-head">
-            <h3>Receipt capture</h3>
+            <h3>{{ t('pages.receipts.reviewTitle') }}</h3>
             <div class="xb-row-actions">
               <button class="xb-secondary-button" type="button" @click="downloadOriginal(ocrReview.receipt)">
                 <Download :size="17" />
-                Original
+                {{ t('pages.receipts.original') }}
               </button>
-              <button class="xb-icon-button" type="button" title="Close" @click="closeOcrReview">
+              <button class="xb-icon-button" type="button" :title="t('common.actions.close')" @click="closeOcrReview">
                 <X :size="18" />
               </button>
             </div>
           </div>
           <div class="xb-receipt-review-grid">
             <aside class="xb-receipt-preview">
-              <span v-if="activePreview.loading">Loading preview...</span>
+              <span v-if="activePreview.loading">{{ t('pages.receipts.previewLoading') }}</span>
               <span v-else-if="activePreview.error">{{ activePreview.error }}</span>
-              <img v-else-if="activePreview.type.startsWith('image/')" :src="activePreview.url" alt="Receipt preview" />
-              <iframe v-else-if="activePreview.type === 'application/pdf'" :src="activePreview.url" title="Receipt preview"></iframe>
-              <span v-else>Preview is available as original download.</span>
+              <img v-else-if="activePreview.type.startsWith('image/')" :src="activePreview.url" :alt="t('pages.receipts.reviewTitle')" />
+              <iframe v-else-if="activePreview.type === 'application/pdf'" :src="activePreview.url" :title="t('pages.receipts.reviewTitle')"></iframe>
+              <span v-else>{{ t('pages.receipts.previewDownloadHint') }}</span>
             </aside>
             <section class="xb-receipt-review-fields">
               <p v-if="ocrReview.error_message" class="xb-form-error">{{ ocrReview.error_message }}</p>
-              <label>Merchant <input v-model="ocrReview.merchant" /></label>
-              <label>Category <input v-model="ocrReview.category" /></label>
+              <label>{{ t('pages.receipts.merchant') }} <input v-model="ocrReview.merchant" /></label>
+              <label>{{ t('pages.receipts.category') }} <input v-model="ocrReview.category" /></label>
               <div class="xb-two-column-fields">
-                <label>Amount <input v-model="ocrReview.amount" type="number" step="0.01" /></label>
-                <label>Currency <input v-model="ocrReview.currency" maxlength="8" /></label>
+                <label>{{ t('pages.receipts.amount') }} <input v-model="ocrReview.amount" type="number" step="0.01" /></label>
+                <label>{{ t('pages.receipts.currency') }} <input v-model="ocrReview.currency" maxlength="8" /></label>
               </div>
               <div class="xb-two-column-fields">
-                <label>Purchase date <input v-model="ocrReview.purchase_date" type="date" /></label>
-                <label>Warranty until <input v-model="ocrReview.warranty_until" type="date" /></label>
+                <label>{{ t('pages.receipts.purchaseDate') }} <input v-model="ocrReview.purchase_date" type="date" /></label>
+                <label>{{ t('pages.receipts.warrantyUntil') }} <input v-model="ocrReview.warranty_until" type="date" /></label>
               </div>
-              <label>Notes <textarea v-model="ocrReview.notes" rows="3"></textarea></label>
+              <label>{{ t('pages.receipts.notes') }} <textarea v-model="ocrReview.notes" rows="3"></textarea></label>
               <section class="xb-ocr-raw-panel">
                 <button class="xb-secondary-button" type="button" @click="rawTextOpen = !rawTextOpen">
                   <FileSearch :size="16" />
-                  {{ rawTextOpen ? 'Hide OCR text' : 'Show OCR text' }}
+                  {{ rawTextOpen ? t('pages.receipts.hideOcrText') : t('pages.receipts.showOcrText') }}
                 </button>
-                <label v-if="rawTextOpen">Raw OCR text <textarea v-model="ocrReview.raw_text" rows="5" readonly></textarea></label>
+                <label v-if="rawTextOpen">{{ t('pages.receipts.rawOcrText') }} <textarea v-model="ocrReview.raw_text" rows="5" readonly></textarea></label>
               </section>
             </section>
           </div>
           <div class="xb-row-actions">
             <button v-if="ocrReview.task && (ocrReview.task.status === 'completed' || ocrReview.task.status === 'confirmed')" class="xb-primary-button" type="submit">
               <Save :size="17" />
-              Confirm
+              {{ t('pages.receipts.confirm') }}
             </button>
             <button v-if="ocrReview.task && !['pending', 'processing'].includes(ocrReview.task.status)" class="xb-secondary-button" type="button" @click="retryOcr">
               <RotateCcw :size="17" />
-              Re-run OCR
+              {{ t('pages.receipts.rerunOcr') }}
             </button>
-            <button class="xb-secondary-button" type="button" @click="closeOcrReview">Close</button>
+            <button class="xb-secondary-button" type="button" @click="closeOcrReview">{{ t('common.actions.close') }}</button>
           </div>
         </form>
       </section>

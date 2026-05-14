@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { BrainCircuit, FileText, Image, ReceiptText, Search, ShieldCheck } from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
 import PageHeader from '../../components/common/PageHeader.vue'
 import { searchApi } from '../../api/searchApi'
 
@@ -10,15 +11,16 @@ const loading = ref(false)
 const error = ref('')
 const results = ref([])
 const q = computed(() => String(route.query.q || '').trim())
+const { t } = useI18n()
 
 const resultGroups = computed(() => {
   const labels = {
-    file: 'Files',
-    photo: 'Photos',
-    receipt: 'Receipts',
-    document: 'Important docs',
-    intelligence: 'Document intelligence',
-    ocr: 'OCR text'
+    file: t('pages.search.typeLabels.file'),
+    photo: t('pages.search.typeLabels.photo'),
+    receipt: t('pages.search.typeLabels.receipt'),
+    document: t('pages.search.typeLabels.document'),
+    intelligence: t('pages.search.typeLabels.intelligence'),
+    ocr: t('pages.search.typeLabels.ocr')
   }
   const icons = {
     file: FileText,
@@ -46,14 +48,14 @@ const resultGroups = computed(() => {
 
 function sourceLabel(source) {
   const labels = {
-    filename: 'Filename',
-    photo: 'Photo',
-    'receipt-fields': 'Receipt fields',
-    'document-fields': 'Document fields',
-    profile: 'AI profile',
-    'ocr-text': 'Extracted text'
+    filename: t('pages.search.labelFile'),
+    photo: t('pages.search.labelPhoto'),
+    'receipt-fields': t('pages.search.labelReceipFields'),
+    'document-fields': t('pages.search.labelDocumentFields'),
+    profile: t('pages.search.labelAIProfile'),
+    'ocr-text': t('pages.search.labelOcrText')
   }
-  return labels[source] || source || 'Match'
+  return labels[source] || source || t('pages.search.labelMatch')
 }
 
 function resultKey(item) {
@@ -72,7 +74,7 @@ async function load() {
     const response = await searchApi.query(q.value, { limit: 60 })
     results.value = response.data.data.results || []
   } catch (err) {
-    error.value = err.response?.data?.message || 'Search failed.'
+    error.value = err.response?.data?.message || t('pages.search.unavailable')
     results.value = []
   } finally {
     loading.value = false
@@ -85,36 +87,36 @@ watch(() => route.query.q, load)
 
 <template>
   <PageHeader
-    title="Search"
-    :subtitle="q ? `Results for ${route.query.q}` : 'Search filenames, receipts, document fields, and OCR text.'"
+    :title="t('pages.search.title')"
+    :subtitle="q ? `${route.query.q} ${t('common.status.loadingDots')}` : t('pages.search.subtitle')"
   />
 
   <section class="xb-search-page">
     <div v-if="loading" class="xb-empty-state">
       <div>
-        <strong>Searching...</strong>
-        <p>Checking filenames, structured fields, and extracted document text.</p>
+        <strong>{{ t('pages.search.searching') }}</strong>
+        <p>{{ t('pages.search.searchingText') }}</p>
       </div>
     </div>
 
     <div v-else-if="error" class="xb-empty-state">
       <div>
-        <strong>Search unavailable</strong>
+        <strong>{{ t('pages.search.unavailable') }}</strong>
         <p>{{ error }}</p>
       </div>
     </div>
 
     <div v-else-if="!q" class="xb-empty-state">
       <div>
-        <strong>Start with the search box above</strong>
-        <p>Results can include OCR matches from uploaded files and photos.</p>
+        <strong>{{ t('pages.search.startHintTitle') }}</strong>
+        <p>{{ t('pages.search.startHint') }}</p>
       </div>
     </div>
 
     <div v-else-if="!results.length" class="xb-empty-state">
       <div>
-        <strong>No results found</strong>
-        <p>No filename, receipt, document field, or OCR text matched this search.</p>
+        <strong>{{ t('pages.search.noResult') }}</strong>
+        <p>{{ t('pages.search.noResultText') }}</p>
       </div>
     </div>
 

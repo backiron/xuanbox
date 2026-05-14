@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { Download, FileLock2, Filter, Save, Search, ShieldAlert, Upload } from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
 
 import PageHeader from '../../components/common/PageHeader.vue'
 import EmptyState from '../../components/common/EmptyState.vue'
@@ -15,6 +16,7 @@ const filters = ref({ q: '', document_type: '', security_level: '' })
 const editing = ref(null)
 const error = ref('')
 const dialog = useDialogStore()
+const { t } = useI18n()
 const draft = ref({
   document_type: 'contract',
   title: '',
@@ -151,7 +153,7 @@ async function saveEdit() {
 async function downloadDocument(item) {
   let password = ''
   if (item.security_level === 'high_sensitive' || item.security_level === 'vault_locked') {
-    password = await dialog.prompt({ title: 'Password required', label: 'Account password', inputType: 'password' }) || ''
+    password = await dialog.prompt({ title: t('pages.documents.passwordRequired'), label: t('pages.documents.accountPassword'), inputType: 'password' }) || ''
     if (!password) return
   }
   const response = await documentApi.download(item.id, password)
@@ -176,10 +178,10 @@ onMounted(loadDocuments)
     @dragleave="onDragLeave"
     @drop.prevent="onDocumentDrop"
   >
-  <PageHeader title="Documents" subtitle="Save IDs, contracts, licenses, and other important documents with expiry reminders and security levels.">
+  <PageHeader :title="t('pages.documents.title')" :subtitle="t('pages.documents.subtitle')">
     <label class="xb-upload-button">
       <Upload :size="18" />
-      Upload Document
+      {{ t('pages.documents.uploadDocument') }}
       <input type="file" accept="image/*,.pdf,.doc,.docx,.txt" multiple @change="onDocumentFile" />
     </label>
   </PageHeader>
@@ -190,51 +192,51 @@ onMounted(loadDocuments)
 
   <section class="xb-upload-drop-hint" :class="{ 'is-visible': draggingDocuments }">
     <Upload :size="18" />
-    <strong>Drop documents to upload</strong>
-    <span>{{ draft.title ? 'Current details will be applied.' : 'File names will be used as titles.' }}</span>
+    <strong>{{ t('pages.documents.dropLabel') }}</strong>
+    <span>{{ draft.title ? t('pages.documents.dropWithDetails') : t('pages.documents.dropWithoutDetails') }}</span>
   </section>
 
   <section class="xb-document-layout">
     <aside class="xb-panel xb-document-form">
-      <h3>Document details</h3>
-      <label>Title <input v-model.trim="draft.title" placeholder="Passport, lease, insurance policy" /></label>
+      <h3>{{ t('pages.documents.detailsTitle') }}</h3>
+      <label>{{ t('pages.documents.titleLabel') }} <input v-model.trim="draft.title" :placeholder="t('pages.documents.titlePlaceholder')" /></label>
       <label>
-        Type
+        {{ t('pages.documents.type') }}
         <select v-model="draft.document_type">
           <option v-for="[value, label] in documentTypes" :key="value" :value="value">{{ label }}</option>
         </select>
       </label>
-      <label>Issuer <input v-model.trim="draft.issuer" placeholder="Government, bank, school" /></label>
-      <label>Issued date <input v-model="draft.issued_date" type="date" /></label>
-      <label>Expires at <input v-model="draft.expires_at" type="date" /></label>
+      <label>{{ t('pages.documents.issuer') }} <input v-model.trim="draft.issuer" :placeholder="t('pages.documents.issuerPlaceholder')" /></label>
+      <label>{{ t('pages.documents.issuedDate') }} <input v-model="draft.issued_date" type="date" /></label>
+      <label>{{ t('pages.documents.expiresAt') }} <input v-model="draft.expires_at" type="date" /></label>
       <label>
-        Security
+        {{ t('pages.documents.security') }}
         <select v-model="draft.security_level">
           <option v-for="[value, label] in securityLevels" :key="value" :value="value">{{ label }}</option>
         </select>
       </label>
-      <label>Note <textarea v-model="draft.note" rows="4"></textarea></label>
+      <label>{{ t('pages.documents.note') }} <textarea v-model="draft.note" rows="4"></textarea></label>
     </aside>
 
     <section>
       <div class="xb-filter-bar xb-document-filter-bar">
         <div class="xb-filter-field">
           <Search :size="16" />
-          <input v-model="filters.q" placeholder="Search documents" @keyup.enter="loadDocuments" />
+          <input v-model="filters.q" :placeholder="t('pages.documents.placeholderSearch')" @keyup.enter="loadDocuments" />
         </div>
         <div class="xb-filter-field">
           <Filter :size="16" />
-          <input v-model="filters.document_type" placeholder="Type" @keyup.enter="loadDocuments" />
+          <input v-model="filters.document_type" :placeholder="t('pages.documents.type')" @keyup.enter="loadDocuments" />
         </div>
         <div class="xb-filter-field">
           <ShieldAlert :size="16" />
-          <input v-model="filters.security_level" placeholder="Security" @keyup.enter="loadDocuments" />
+          <input v-model="filters.security_level" :placeholder="t('pages.documents.security')" @keyup.enter="loadDocuments" />
         </div>
-        <button class="xb-secondary-button" type="button" @click="loadDocuments">Apply</button>
+        <button class="xb-secondary-button" type="button" @click="loadDocuments">{{ t('pages.documents.apply') }}</button>
       </div>
 
       <p v-if="error" class="xb-form-error">{{ error }}</p>
-      <EmptyState v-if="!loading && documents.length === 0" title="No documents yet" description="Fill the details, then upload an encrypted ID, contract, or license." />
+      <EmptyState v-if="!loading && documents.length === 0" :title="t('pages.documents.noData')" :description="t('pages.documents.noDataHint')" />
 
       <div v-else class="xb-document-grid">
         <article v-for="item in documents" :key="item.id" class="xb-document-card" :class="`level-${item.security_level}`">
@@ -243,19 +245,19 @@ onMounted(loadDocuments)
             <span>{{ levelLabel(item.security_level) }}</span>
           </div>
           <h3>{{ item.title }}</h3>
-          <p>{{ item.issuer || 'No issuer' }}</p>
+          <p>{{ item.issuer || t('pages.documents.noIssuer') }}</p>
           <div class="xb-document-meta">
             <span>{{ item.document_type }}</span>
             <strong v-if="item.expires_at">{{ daysUntil(item.expires_at) }} days</strong>
-            <span v-else>No expiry</span>
+            <span v-else>{{ t('common.file.noExpiry') }}</span>
           </div>
-          <small>{{ item.expires_at ? `Expires ${item.expires_at}` : 'No reminder date' }}</small>
+          <small>{{ item.expires_at ? t('pages.documents.expiresValue', { date: item.expires_at }) : t('pages.documents.noReminderDate') }}</small>
           <div class="xb-row-actions">
             <button class="xb-text-button" type="button" @click="downloadDocument(item)">
               <Download :size="16" />
-              Download
+              {{ t('common.actions.download') }}
             </button>
-            <button class="xb-text-button" type="button" @click="startEdit(item)">Edit</button>
+            <button class="xb-text-button" type="button" @click="startEdit(item)">{{ t('common.actions.edit') }}</button>
           </div>
         </article>
       </div>
@@ -264,30 +266,30 @@ onMounted(loadDocuments)
 
   <section v-if="editing" class="xb-modal-backdrop" @click.self="editing = null">
     <form class="xb-modal" @submit.prevent="saveEdit">
-      <h3>Edit document</h3>
-      <label>Title <input v-model="editing.title" /></label>
+      <h3>{{ t('pages.documents.editTitle') }}</h3>
+      <label>{{ t('pages.documents.titleLabel') }} <input v-model="editing.title" /></label>
       <label>
-        Type
+        {{ t('pages.documents.type') }}
         <select v-model="editing.document_type">
           <option v-for="[value, label] in documentTypes" :key="value" :value="value">{{ label }}</option>
         </select>
       </label>
-      <label>Issuer <input v-model="editing.issuer" /></label>
-      <label>Issued date <input v-model="editing.issued_date" type="date" /></label>
-      <label>Expires at <input v-model="editing.expires_at" type="date" /></label>
+      <label>{{ t('pages.documents.issuer') }} <input v-model="editing.issuer" /></label>
+      <label>{{ t('pages.documents.issuedDate') }} <input v-model="editing.issued_date" type="date" /></label>
+      <label>{{ t('pages.documents.expiresAt') }} <input v-model="editing.expires_at" type="date" /></label>
       <label>
-        Security
+        {{ t('pages.documents.security') }}
         <select v-model="editing.security_level">
           <option v-for="[value, label] in securityLevels" :key="value" :value="value">{{ label }}</option>
         </select>
       </label>
-      <label>Note <textarea v-model="editing.note" rows="4"></textarea></label>
+      <label>{{ t('pages.documents.note') }} <textarea v-model="editing.note" rows="4"></textarea></label>
       <div class="xb-row-actions">
         <button class="xb-primary-button" type="submit">
           <Save :size="17" />
-          Save
+          {{ t('common.actions.save') }}
         </button>
-        <button class="xb-secondary-button" type="button" @click="editing = null">Cancel</button>
+        <button class="xb-secondary-button" type="button" @click="editing = null">{{ t('common.actions.cancel') }}</button>
       </div>
     </form>
   </section>

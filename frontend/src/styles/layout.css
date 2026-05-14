@@ -180,6 +180,30 @@
   gap: 12px;
 }
 
+.xb-language-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--xb-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--xb-text-soft);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition: 140ms ease;
+}
+
+.xb-language-toggle:hover {
+  border-color: rgba(126, 163, 255, 0.82);
+  color: var(--xb-text-main);
+  background: rgba(78, 131, 255, 0.16);
+}
+
 .xb-search {
   display: flex;
   align-items: center;
