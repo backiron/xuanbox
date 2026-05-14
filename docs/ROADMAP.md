@@ -1,34 +1,43 @@
-# XuanBox Roadmap
+# Roadmap
 
-## Completed Foundation
+This roadmap is directional. It is not a release commitment.
 
-- Admin and user app separation.
-- User settings: profile, avatar, password, devices, storage, notes.
-- Admin console: users, plans, messages, audit, backups, worker health.
-- XuanDrop cleanup and mobile improvements.
-- Sharing defaults, archive flow, password gate, mobile layout.
-- Document Intelligence tables, worker extraction, file detail panel.
-- Unified backend search across filenames, metadata, profiles, fields, and OCR text.
+## Current Foundation
 
-## Current Intelligence Layer
+- User authentication, registration modes, invites, and account settings.
+- Separate user app and admin console.
+- Files, photos, receipts, documents, inbox review, and XuanDrop.
+- Public shares with password, expiry, and download limits.
+- Admin users, plans, quotas, messages, audit logs, backups, and worker status.
+- OCR, document intelligence tasks, document profiles, and search integration.
+- Optional local AI enhancement.
+- English and Simplified Chinese interface.
 
-Upload flow:
+## Near-Term Priorities
+
+- Add focused tests for auth boundaries, quota enforcement, upload flows, public shares, and document intelligence.
+- Improve upload review and document classification flows.
+- Add direct result links from search into file detail or receipt review panels.
+- Add guided backup restore documentation and, later, restore UI.
+- Improve audit filtering, pagination, and retention controls.
+- Continue mobile layout hardening for narrow screens.
+
+## Document Intelligence
+
+The intended long-term flow is:
 
 ```text
-Upload original -> encrypted file -> worker task -> text extraction -> rule classification -> profile + fields -> searchable index -> user confirmation
+Upload original
+-> encrypted storage
+-> worker extraction
+-> document classification
+-> structured profile
+-> searchable index
+-> user review
 ```
 
-Optional AI flow:
+Rules and OCR should remain the baseline. Local AI should remain optional, bounded, and safe to disable.
 
-```text
-Extracted text -> local Ollama enhancement -> merged profile -> fallback to rules if AI fails
-```
+## Commercial Direction
 
-## Next Product Hardening
-
-- Add targeted tests for route isolation, share downloads, quota enforcement, and intelligence profile edits.
-- Add result deep links so search opens a file detail drawer directly.
-- Improve OCR for scanned PDFs with page-level chunks.
-- Add audit entries for profile confirmation, share archive, and admin policy changes.
-- Add backup restore UI or guided admin workflow.
-- Decide final Community/Commercial license.
+The community edition should remain useful for self-hosted personal and small-team deployments. Commercial work may focus on managed deployment support, enterprise policy templates, advanced audit exports, backup/retention workflows, and licensing for closed-source or hosted use.

@@ -83,7 +83,7 @@
 - `docker compose up -d --build xuanbox-api xuanbox-web`
 - `docker compose exec -T xuanbox-api alembic current`
 - `docker compose run --rm xuanbox-web npm run build`
-- End-to-end API smoke check: login as `111`, upload high-sensitive document, confirm Dashboard reminder, reject download without password, download with password.
+- End-to-end API smoke check: sign in with a local test account, upload a high-sensitive document, confirm Dashboard reminder, reject download without password, download with password.
 
 ### Step 9: Sharing System
 
@@ -101,7 +101,7 @@
 - `docker compose up -d --build xuanbox-api xuanbox-web`
 - `docker compose exec -T xuanbox-api alembic current`
 - `docker compose run --rm xuanbox-web npm run build`
-- End-to-end API smoke check: login as `111`, create password-protected file share, reject missing password, verify password, download, cancel, confirm public link returns `403`.
+- End-to-end API smoke check: sign in with a local test account, create a password-protected file share, reject missing password, verify password, download, cancel, confirm public link returns `403`.
 
 ### Auth Session Stability Fix
 

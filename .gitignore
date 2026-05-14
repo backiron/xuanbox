@@ -1,5 +1,9 @@
 .DS_Store
 .env
+.env.*
+!.env.example
+!.env.prod.example
+*.local
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -8,13 +12,35 @@ __pycache__/
 .coverage
 htmlcov/
 
-data/storage/*
-data/backups/*
-data/logs/*
+data/storage/**
+data/backups/**
+data/logs/**
 !data/storage/.gitkeep
 !data/backups/.gitkeep
 !data/logs/.gitkeep
+uploads/
+backups/
+logs/
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.bak
+*.log
+*.tmp
+
+*.pem
+*.key
+*.p12
+*.crt
+*.csr
+*.env
+
+ChatGPT Image*
+xuanbox_exact_preserved_svg_pack/
 
 node_modules/
 dist/
 .vite/
+frontend/dist/
+frontend/node_modules/
