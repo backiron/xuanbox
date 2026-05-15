@@ -24,6 +24,14 @@ const activePreview = ref({ url: '', type: '', loading: false, error: '' })
 const dialog = useDialogStore()
 const { t } = useI18n()
 const hasOpenOverlay = computed(() => Boolean(receiptSheet.value || ocrReview.value || editing.value || manualEntryOpen.value))
+let receiptSheetFrame = 0
+
+function cancelReceiptSheetFrame() {
+  if (receiptSheetFrame) {
+    cancelAnimationFrame(receiptSheetFrame)
+    receiptSheetFrame = 0
+  }
+}
 
 function cleanPayload(source) {
   return {
@@ -66,10 +74,18 @@ function closeOcrReview() {
 }
 
 function openReceiptSheet(receipt) {
-  receiptSheet.value = receipt
+  cancelReceiptSheetFrame()
+  document.activeElement?.blur?.()
+  receiptSheetFrame = requestAnimationFrame(() => {
+    receiptSheetFrame = requestAnimationFrame(() => {
+      receiptSheet.value = receipt
+      receiptSheetFrame = 0
+    })
+  })
 }
 
 function closeReceiptSheet() {
+  cancelReceiptSheetFrame()
   receiptSheet.value = null
 }
 
@@ -246,6 +262,7 @@ watch(hasOpenOverlay, (isOpen) => {
 
 onMounted(loadReceipts)
 onBeforeUnmount(() => {
+  cancelReceiptSheetFrame()
   cleanupPreview()
   document.body.classList.remove('xb-lightbox-open')
 })

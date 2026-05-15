@@ -695,6 +695,12 @@
     gap: 7px;
   }
 
+  .xb-receipts-page,
+  .xb-receipts-page button,
+  .xb-receipts-page .xb-receipt-row {
+    -webkit-tap-highlight-color: transparent;
+  }
+
   .xb-receipt-row {
     position: relative;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -706,6 +712,7 @@
     min-height: 0;
     padding: 10px 12px;
     border-radius: 10px;
+    touch-action: manipulation;
   }
 
   .xb-receipt-row-main {
