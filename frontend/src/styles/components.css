@@ -2505,9 +2505,10 @@ body.xb-lightbox-open {
 }
 
 .xb-user-auth-page {
-  grid-template-columns: minmax(620px, 0.95fr) minmax(360px, 420px);
+  grid-template-columns: minmax(560px, 640px) minmax(420px, 460px);
+  justify-content: center;
   align-items: center;
-  gap: clamp(48px, 8vw, 160px);
+  gap: clamp(40px, 5vw, 76px);
   padding: clamp(48px, 7vw, 96px);
   background:
     radial-gradient(circle at 82% 28%, rgba(78, 131, 255, 0.22), transparent 28rem),
@@ -2580,6 +2581,7 @@ body.xb-lightbox-open {
 
 .xb-user-auth-page .xb-login-panel {
   width: 100%;
+  max-width: 460px;
   padding: 30px;
   border-radius: 14px;
   background: rgba(16, 24, 36, 0.82);
