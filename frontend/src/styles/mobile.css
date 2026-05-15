@@ -1248,7 +1248,8 @@
     justify-content: center;
     min-width: 0;
     min-height: 24px;
-    padding: 0 5px;
+    overflow: hidden;
+    padding: 0 4px;
     border: 1px solid rgba(148, 163, 184, 0.2);
     border-radius: 999px;
     background: rgba(15, 23, 42, 0.46);
@@ -1257,6 +1258,7 @@
     font-weight: 700;
     line-height: 1;
     text-align: center;
+    text-overflow: ellipsis;
     white-space: nowrap;
   }
 
@@ -1360,8 +1362,14 @@
   }
 
   .xb-public-about-card {
+    position: relative;
     padding: 18px;
     border-radius: 14px;
+  }
+
+  .xb-public-about-card .xb-about-language-toggle {
+    top: 14px;
+    right: 14px;
   }
 
   .xb-public-about-card h1 {

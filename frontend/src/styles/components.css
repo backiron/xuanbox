@@ -2637,12 +2637,18 @@ body.xb-lightbox-open {
 }
 
 .xb-public-about-card {
+  position: relative;
   width: min(980px, 100%);
   padding: clamp(24px, 4vw, 42px);
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 18px;
   background: rgba(16, 24, 36, 0.82);
   box-shadow: 0 30px 90px rgba(0, 0, 0, 0.26);
+}
+
+.xb-about-language-toggle {
+  top: 18px;
+  right: 18px;
 }
 
 .xb-about-back {

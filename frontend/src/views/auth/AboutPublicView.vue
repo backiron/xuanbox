@@ -17,11 +17,11 @@ function toggleLocale() {
 
 <template>
   <main class="xb-public-about-page">
-    <button class="xb-language-toggle xb-auth-language-toggle" type="button" :title="localeTitle" @click="toggleLocale">
-      {{ currentLocaleLabel }}
-    </button>
-
     <section class="xb-public-about-card">
+      <button class="xb-language-toggle xb-auth-language-toggle xb-about-language-toggle" type="button" :title="localeTitle" @click="toggleLocale">
+        {{ currentLocaleLabel }}
+      </button>
+
       <router-link class="xb-about-back" to="/login">
         <ArrowLeft :size="16" />
         {{ t('pages.aboutPublic.back') }}

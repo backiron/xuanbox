@@ -151,7 +151,7 @@
       heroDesc: '照片、文件、收据和文档集中保存，支持搜索、OCR、分享和 AI 辅助整理。',
       mobileDesc: '照片、文件、收据和便签的私有工作空间。',
       openSourceBadge: '开源项目',
-      keywordVault: '私有空间',
+      keywordVault: '私有',
       keywordAi: 'AI',
       keywordOcr: 'OCR',
       keywordSearch: '搜索',
