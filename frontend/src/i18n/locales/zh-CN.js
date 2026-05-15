@@ -152,6 +152,7 @@
       mobileDesc: '照片、文件、收据和便签的私有工作空间。',
       openSourceBadge: '开源项目',
       keywordVault: '私有空间',
+      keywordAi: 'AI',
       keywordOcr: 'OCR',
       keywordSearch: '搜索',
       keywordShare: '分享',

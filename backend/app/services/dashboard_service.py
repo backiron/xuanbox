@@ -41,6 +41,7 @@ async def dashboard_summary(db: AsyncSession, owner: User) -> DashboardSummary:
     return DashboardSummary(
         metrics=DashboardMetrics(
             storage_bytes=int(storage_bytes or 0),
+            storage_limit_bytes=owner.storage_limit_bytes,
             photos_count=int(photos_count or 0),
             files_count=int(files_count or 0),
             receipts_count=int(receipts_count or 0),

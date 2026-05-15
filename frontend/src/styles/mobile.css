@@ -204,6 +204,44 @@
     color: #72a1ff;
   }
 
+  @media (max-width: 430px) {
+    .xb-mobile-tabbar {
+      right: 8px;
+      left: 8px;
+      min-height: 60px;
+      padding: 4px;
+      border-radius: 16px;
+    }
+
+    .xb-mobile-tab {
+      min-height: 50px;
+      font-size: 9px;
+    }
+
+    .xb-mobile-tab svg,
+    .xb-mobile-tab img {
+      width: 18px;
+      height: 18px;
+    }
+  }
+
+  @media (max-width: 360px) {
+    .xb-mobile-tabbar {
+      right: 6px;
+      left: 6px;
+      min-height: 54px;
+    }
+
+    .xb-mobile-tab {
+      min-height: 46px;
+      gap: 0;
+    }
+
+    .xb-mobile-tab span {
+      display: none;
+    }
+  }
+
   [data-theme='light'] .xb-mobile-topbar,
   [data-theme='light'] .xb-mobile-tabbar,
   [data-theme='light'] .xb-mobile-menu nav {

@@ -152,6 +152,7 @@
       mobileDesc: 'A private workspace for photos, files, receipts and notes.',
       openSourceBadge: 'Open source',
       keywordVault: 'Private vault',
+      keywordAi: 'AI',
       keywordOcr: 'OCR',
       keywordSearch: 'Search',
       keywordShare: 'Sharing',

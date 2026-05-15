@@ -37,12 +37,16 @@ const draggingFiles = ref(false)
 const uploadMessage = ref('')
 const uploadError = ref('')
 
-const storageLimitBytes = 2 * 1024 * 1024 * 1024 * 1024
 const photoUrls = new Set()
 
 const metrics = computed(() => summary.value?.metrics || {})
 const storageUsed = computed(() => metrics.value.storage_bytes || 0)
-const storagePercent = computed(() => Math.min(100, Math.round((storageUsed.value / storageLimitBytes) * 100)))
+const storageLimit = computed(() => metrics.value.storage_limit_bytes)
+const storageLimitLabel = computed(() => storageLimit.value == null ? t('common.states.unlimited') : formatBytes(storageLimit.value))
+const storagePercent = computed(() => {
+  if (!storageLimit.value) return 0
+  return Math.min(100, Math.round((storageUsed.value / storageLimit.value) * 100))
+})
 const activeDrop = computed(() => dropSessions.value[0] || null)
 
 const statCards = computed(() => [
@@ -247,7 +251,7 @@ onBeforeUnmount(() => {
         </div>
         <div class="xb-storage-value">
           <strong>{{ formatBytes(storageUsed) }}</strong>
-          <span>/ 2.00 TB</span>
+          <span>/ {{ storageLimitLabel }}</span>
         </div>
         <div class="xb-storage-meta">
           <span>{{ t('pages.dashboard.usedPercent', { count: storagePercent }) }}</span>

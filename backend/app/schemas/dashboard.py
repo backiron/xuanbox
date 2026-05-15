@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 class DashboardMetrics(BaseModel):
     storage_bytes: int
+    storage_limit_bytes: int | None
     photos_count: int
     files_count: int
     receipts_count: int

@@ -38,6 +38,7 @@ const authFeatures = computed(() => ([
 ]))
 const authKeywords = computed(() => [
   t('pages.auth.keywordVault'),
+  t('pages.auth.keywordAi'),
   t('pages.auth.keywordOcr'),
   t('pages.auth.keywordSearch'),
   t('pages.auth.keywordShare')
