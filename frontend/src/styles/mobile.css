@@ -463,10 +463,17 @@
   }
 
   .xb-folder-strip-mobile {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
     gap: 8px;
     margin-bottom: 12px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+  }
+
+  .xb-folder-strip-mobile::-webkit-scrollbar {
+    display: none;
   }
 
   .xb-file-scope-tabs {
@@ -510,9 +517,12 @@
 
   .xb-folder-strip-mobile .xb-album-pill {
     min-height: 36px;
+    flex: 0 0 auto;
+    max-width: 148px;
     gap: 5px;
     padding: 0 7px;
     font-size: 13px;
+    scroll-snap-align: start;
   }
 
   .xb-folder-strip-mobile .xb-album-pill svg {

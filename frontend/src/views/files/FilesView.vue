@@ -133,7 +133,7 @@ function uniqueFolders(items) {
 async function loadFiles() {
   loading.value = true
   try {
-    const params = currentFolderId.value ? { folder_id: currentFolderId.value } : { root_only: true }
+    const params = currentFolderId.value ? { folder_id: currentFolderId.value } : {}
     const folderParams = currentFolderId.value ? { parent_id: currentFolderId.value } : {}
     const [fileResponse, folderResponse, trashResponse, tagResponse, linkResponse, rootFolderResponse] = await Promise.all([
       fileApi.list(params),
@@ -347,7 +347,11 @@ async function openImportantDocs() {
 
 function openAllFiles() {
   activeFileScope.value = 'all'
+  currentFolderId.value = null
+  folderStack.value = []
   activeFile.value = null
+  showTrash.value = false
+  loadFiles()
 }
 
 function toggleTrashPanel() {
@@ -812,11 +816,7 @@ onMounted(loadFiles)
   <div class="xb-workspace-grid">
     <section>
       <template v-if="activeFileScope === 'all'">
-      <section class="xb-folder-strip-mobile">
-        <button class="xb-album-pill" :class="{ 'is-active': currentFolderId === null }" type="button" @click="openRootFolder">
-          <Folder :size="16" />
-          {{ t('pages.files.allFiles') }}
-        </button>
+      <section v-if="mobileFolderPills.length" class="xb-folder-strip-mobile">
         <button
           v-for="folder in visibleMobileFolders"
           :key="folder.id"
