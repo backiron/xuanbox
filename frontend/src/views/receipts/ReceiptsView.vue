@@ -359,8 +359,8 @@ onBeforeUnmount(() => {
       </section>
     </section>
 
-    <section v-if="editing" class="xb-modal-backdrop" @click.self="editing = null">
-      <form class="xb-modal" @submit.prevent="saveEdit">
+    <section v-if="editing" class="xb-modal-backdrop xb-receipt-edit-backdrop" @click.self="editing = null">
+      <form class="xb-modal xb-receipt-edit-modal" @submit.prevent="saveEdit">
         <h3>{{ t('pages.receipts.editReceiptTitle') }}</h3>
         <label>{{ t('pages.receipts.merchant') }} <input v-model="editing.merchant" /></label>
         <label>{{ t('pages.receipts.category') }} <input v-model="editing.category" /></label>
@@ -418,17 +418,13 @@ onBeforeUnmount(() => {
             <span>{{ receiptSheet.warranty_until ? t('pages.receipts.rowWarranty', { date: receiptSheet.warranty_until }) : t('pages.receipts.noWarranty') }}</span>
           </div>
           <div class="xb-receipt-sheet-actions">
-            <button class="xb-secondary-button" type="button" @click="loadOcrReview(receiptSheet)">
-              <FileImage :size="17" />
-              {{ t('pages.receipts.reviewButton') }}
-            </button>
             <button v-if="receiptSheet.ocr_status === 'not_started'" class="xb-secondary-button" type="button" @click="startOcr(receiptSheet)">
               <FileSearch :size="17" />
               {{ t('pages.receipts.runOcr') }}
             </button>
             <button v-else class="xb-secondary-button" type="button" @click="loadOcrReview(receiptSheet)">
               <FileSearch :size="17" />
-              {{ t('pages.receipts.ocrResult') }}
+              {{ t('pages.receipts.reviewButton') }}
             </button>
             <button class="xb-secondary-button" type="button" @click="startEdit(receiptSheet)">
               <ReceiptText :size="17" />

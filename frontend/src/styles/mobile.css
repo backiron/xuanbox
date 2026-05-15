@@ -633,6 +633,52 @@
     background: rgba(2, 6, 23, 0.82);
   }
 
+  .xb-receipt-edit-backdrop {
+    z-index: 245;
+    display: block;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+    overflow: auto;
+    background: rgba(2, 6, 23, 0.84);
+  }
+
+  .xb-receipt-edit-modal {
+    width: min(100%, 430px);
+    max-height: none;
+    min-height: 0;
+    margin: 0 auto;
+    padding: 18px 14px 0;
+    overflow: visible;
+    background: #0b1220;
+  }
+
+  .xb-receipt-edit-modal label {
+    gap: 5px;
+    font-size: 12px;
+  }
+
+  .xb-receipt-edit-modal input,
+  .xb-receipt-edit-modal textarea {
+    min-height: 40px;
+  }
+
+  .xb-receipt-edit-modal .xb-row-actions {
+    position: sticky;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 10px -14px 0;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--xb-border);
+    background: #0b1220;
+  }
+
+  .xb-receipt-edit-modal .xb-primary-button,
+  .xb-receipt-edit-modal .xb-secondary-button {
+    width: 100%;
+    justify-content: center;
+  }
+
   .xb-receipt-list {
     gap: 7px;
   }
@@ -783,6 +829,10 @@
     width: 100%;
     min-height: 38px;
     justify-content: center;
+  }
+
+  .xb-receipt-review-modal > .xb-row-actions .xb-secondary-button:last-child {
+    grid-column: 1 / -1;
   }
 
   .xb-settings-nav {

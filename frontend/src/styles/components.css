@@ -1831,6 +1831,17 @@ body.xb-lightbox-open {
   background: rgba(2, 6, 23, 0.76);
 }
 
+.xb-receipt-edit-backdrop {
+  z-index: 142;
+  overflow: auto;
+  background: rgba(2, 6, 23, 0.78);
+}
+
+.xb-receipt-edit-modal {
+  max-height: min(820px, calc(100dvh - 40px));
+  overflow: auto;
+}
+
 .xb-receipt-sheet-backdrop {
   z-index: 135;
   align-items: end;
