@@ -1,11 +1,12 @@
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import Text, cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document_asset import DocumentAsset
 from app.models.document_intelligence import DocumentFieldValue, DocumentProfile, DocumentTextChunk
 from app.models.file_asset import FileAsset
+from app.models.ocr_task import OcrTask
 from app.models.photo_asset import PhotoAsset
 from app.models.receipt import Receipt
 from app.models.user import User
@@ -126,6 +127,35 @@ async def search_all(db: AsyncSession, owner: User, query: str, *, limit: int = 
                 route="/receipts",
                 source="receipt-fields",
                 score=85,
+            ),
+        )
+
+    receipt_ocr_rows = await db.execute(
+        select(Receipt, OcrTask)
+        .join(OcrTask, OcrTask.receipt_id == Receipt.id)
+        .where(
+            Receipt.owner_id == owner.id,
+            or_(
+                OcrTask.raw_text.ilike(like),
+                cast(OcrTask.parsed_json, Text).ilike(like),
+            ),
+        )
+        .order_by(OcrTask.created_at.desc())
+        .limit(limit)
+    )
+    for receipt, task in receipt_ocr_rows.all():
+        _add_result(
+            results,
+            SearchResult(
+                type="receipt",
+                id=receipt.id,
+                file_id=receipt.file_id,
+                title=receipt.merchant or "Receipt",
+                subtitle=receipt.category or receipt.currency,
+                snippet=_snippet(task.raw_text, q) or _snippet(str(task.parsed_json or ""), q),
+                route="/receipts",
+                source="receipt-ocr",
+                score=82,
             ),
         )
 

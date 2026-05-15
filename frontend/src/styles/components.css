@@ -1930,6 +1930,10 @@ body.xb-lightbox-open {
   margin: 0;
 }
 
+.xb-receipt-review-scroll {
+  min-height: 0;
+}
+
 .xb-receipt-review-grid {
   display: grid;
   grid-template-columns: minmax(280px, 0.86fr) minmax(320px, 1fr);

@@ -448,35 +448,37 @@ onBeforeUnmount(() => {
               </button>
             </div>
           </div>
-          <div class="xb-receipt-review-grid">
-            <aside class="xb-receipt-preview">
-              <span v-if="activePreview.loading">{{ t('pages.receipts.previewLoading') }}</span>
-              <span v-else-if="activePreview.error">{{ activePreview.error }}</span>
-              <img v-else-if="activePreview.type.startsWith('image/')" :src="activePreview.url" :alt="t('pages.receipts.reviewTitle')" />
-              <iframe v-else-if="activePreview.type === 'application/pdf'" :src="activePreview.url" :title="t('pages.receipts.reviewTitle')"></iframe>
-              <span v-else>{{ t('pages.receipts.previewDownloadHint') }}</span>
-            </aside>
-            <section class="xb-receipt-review-fields">
-              <p v-if="ocrReview.error_message" class="xb-form-error">{{ ocrReview.error_message }}</p>
-              <label>{{ t('pages.receipts.merchant') }} <input v-model="ocrReview.merchant" /></label>
-              <label>{{ t('pages.receipts.category') }} <input v-model="ocrReview.category" /></label>
-              <div class="xb-two-column-fields">
-                <label>{{ t('pages.receipts.amount') }} <input v-model="ocrReview.amount" type="number" step="0.01" /></label>
-                <label>{{ t('pages.receipts.currency') }} <input v-model="ocrReview.currency" maxlength="8" /></label>
-              </div>
-              <div class="xb-two-column-fields">
-                <label>{{ t('pages.receipts.purchaseDate') }} <input v-model="ocrReview.purchase_date" type="date" /></label>
-                <label>{{ t('pages.receipts.warrantyUntil') }} <input v-model="ocrReview.warranty_until" type="date" /></label>
-              </div>
-              <label>{{ t('pages.receipts.notes') }} <textarea v-model="ocrReview.notes" rows="3"></textarea></label>
-              <section class="xb-ocr-raw-panel">
-                <button class="xb-secondary-button" type="button" @click="rawTextOpen = !rawTextOpen">
-                  <FileSearch :size="16" />
-                  {{ rawTextOpen ? t('pages.receipts.hideOcrText') : t('pages.receipts.showOcrText') }}
-                </button>
-                <label v-if="rawTextOpen">{{ t('pages.receipts.rawOcrText') }} <textarea v-model="ocrReview.raw_text" rows="5" readonly></textarea></label>
+          <div class="xb-receipt-review-scroll">
+            <div class="xb-receipt-review-grid">
+              <aside class="xb-receipt-preview">
+                <span v-if="activePreview.loading">{{ t('pages.receipts.previewLoading') }}</span>
+                <span v-else-if="activePreview.error">{{ activePreview.error }}</span>
+                <img v-else-if="activePreview.type.startsWith('image/')" :src="activePreview.url" :alt="t('pages.receipts.reviewTitle')" />
+                <iframe v-else-if="activePreview.type === 'application/pdf'" :src="activePreview.url" :title="t('pages.receipts.reviewTitle')"></iframe>
+                <span v-else>{{ t('pages.receipts.previewDownloadHint') }}</span>
+              </aside>
+              <section class="xb-receipt-review-fields">
+                <p v-if="ocrReview.error_message" class="xb-form-error">{{ ocrReview.error_message }}</p>
+                <label>{{ t('pages.receipts.merchant') }} <input v-model="ocrReview.merchant" /></label>
+                <label>{{ t('pages.receipts.category') }} <input v-model="ocrReview.category" /></label>
+                <div class="xb-two-column-fields">
+                  <label>{{ t('pages.receipts.amount') }} <input v-model="ocrReview.amount" type="number" step="0.01" /></label>
+                  <label>{{ t('pages.receipts.currency') }} <input v-model="ocrReview.currency" maxlength="8" /></label>
+                </div>
+                <div class="xb-two-column-fields">
+                  <label>{{ t('pages.receipts.purchaseDate') }} <input v-model="ocrReview.purchase_date" type="date" /></label>
+                  <label>{{ t('pages.receipts.warrantyUntil') }} <input v-model="ocrReview.warranty_until" type="date" /></label>
+                </div>
+                <label>{{ t('pages.receipts.notes') }} <textarea v-model="ocrReview.notes" rows="3"></textarea></label>
+                <section class="xb-ocr-raw-panel">
+                  <button class="xb-secondary-button" type="button" @click="rawTextOpen = !rawTextOpen">
+                    <FileSearch :size="16" />
+                    {{ rawTextOpen ? t('pages.receipts.hideOcrText') : t('pages.receipts.showOcrText') }}
+                  </button>
+                  <label v-if="rawTextOpen">{{ t('pages.receipts.rawOcrText') }} <textarea v-model="ocrReview.raw_text" rows="5" readonly></textarea></label>
+                </section>
               </section>
-            </section>
+            </div>
           </div>
           <div class="xb-row-actions">
             <button v-if="ocrReview.task && (ocrReview.task.status === 'completed' || ocrReview.task.status === 'confirmed')" class="xb-primary-button" type="submit">
