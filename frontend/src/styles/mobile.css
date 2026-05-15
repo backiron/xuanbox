@@ -59,6 +59,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-size: 16px;
   }
 
   .xb-mobile-actions {
@@ -114,6 +115,65 @@
     min-height: 36px;
     padding: 0;
     font-size: 12px;
+  }
+
+  @media (max-width: 430px) {
+    .xb-mobile-topbar {
+      padding-inline: 12px;
+    }
+
+    .xb-mobile-topbar-main {
+      gap: 8px;
+    }
+
+    .xb-mobile-brand {
+      gap: 7px;
+    }
+
+    .xb-mobile-brand strong {
+      font-size: 15px;
+    }
+
+    .xb-mobile-actions {
+      grid-template-columns: repeat(4, 32px);
+      gap: 4px;
+    }
+
+    .xb-mobile-actions .xb-icon-button,
+    .xb-mobile-actions .xb-mobile-language-toggle {
+      width: 32px;
+      min-width: 32px;
+      min-height: 32px;
+    }
+
+    .xb-mobile-actions .xb-icon-button img,
+    .xb-mobile-actions .xb-icon-button svg {
+      width: 17px;
+      height: 17px;
+    }
+  }
+
+  @media (max-width: 360px) {
+    .xb-mobile-topbar {
+      padding-inline: 10px;
+    }
+
+    .xb-mobile-brand .xb-asset-icon {
+      width: 26px;
+      height: 26px;
+    }
+
+    .xb-mobile-actions {
+      grid-template-columns: repeat(4, 30px);
+      gap: 3px;
+    }
+
+    .xb-mobile-actions .xb-icon-button,
+    .xb-mobile-actions .xb-mobile-language-toggle {
+      width: 30px;
+      min-width: 30px;
+      min-height: 30px;
+    }
   }
 
   .xb-mobile-menu {

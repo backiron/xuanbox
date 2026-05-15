@@ -15,7 +15,7 @@ defineProps({
 
 const { t, locale } = useI18n()
 const currentLocaleLabel = computed(() => locale.value === 'zh-CN' ? '中' : 'EN')
-const localeTitle = computed(() => locale.value === 'zh-CN' ? '切换到英文' : 'Switch to Chinese')
+const localeTitle = computed(() => locale.value === 'zh-CN' ? t('common.language.switchToEnglish') : t('common.language.switchToChinese'))
 
 const links = [
   { to: '/inbox', label: () => t('routes.inbox'), icon: 'inbox' },
