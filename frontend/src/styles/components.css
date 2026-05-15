@@ -1844,20 +1844,26 @@ body.xb-lightbox-open {
 
 .xb-receipt-sheet-backdrop {
   z-index: 135;
-  align-items: end;
-  justify-items: center;
+  display: block;
+  overflow: hidden;
   background: rgba(2, 6, 23, 0.76);
 }
 
 .xb-receipt-action-sheet {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  left: 20px;
   display: grid;
   gap: 14px;
-  width: min(420px, 100%);
+  width: min(420px, calc(100vw - 40px));
+  margin: 0 auto;
   padding: 10px 14px 16px;
   border: 1px solid var(--xb-border);
   border-radius: 20px 20px 14px 14px;
   background: #0b1220;
   box-shadow: var(--xb-shadow-card);
+  transform: translate3d(0, 0, 0);
 }
 
 .xb-receipt-sheet-handle {

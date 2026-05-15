@@ -755,19 +755,26 @@
   }
 
   .xb-receipt-sheet-backdrop {
-    align-items: end;
-    padding: 12px 10px calc(12px + env(safe-area-inset-bottom));
-    place-items: end center;
+    display: block;
+    padding: 0;
+    overflow: hidden;
     z-index: 230;
     background: rgba(2, 6, 23, 0.82);
   }
 
   .xb-receipt-action-sheet {
-    width: min(100%, 430px);
+    position: fixed;
+    right: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    left: 10px;
+    width: auto;
     max-height: calc(100dvh - 28px);
     overflow: auto;
+    overscroll-behavior: contain;
     border-radius: 18px 18px 14px 14px;
     background: #0b1220;
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
   }
 
   .xb-receipt-sheet-summary {
