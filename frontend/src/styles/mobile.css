@@ -1068,6 +1068,12 @@
     padding: 58px 18px 24px;
   }
 
+  .xb-user-auth-page {
+    min-height: 100dvh;
+    padding: 18px;
+    gap: 14px;
+  }
+
   .xb-auth-language-toggle {
     top: 14px;
     right: 14px;
@@ -1079,6 +1085,12 @@
     max-width: 420px;
     width: 100%;
     margin: 0 auto;
+  }
+
+  .xb-user-auth-page .xb-auth-brand {
+    order: 1;
+    gap: 8px;
+    padding-right: 48px;
   }
 
   .xb-auth-logo {
@@ -1095,10 +1107,22 @@
     line-height: 1.08;
   }
 
+  .xb-user-auth-page .xb-auth-brand h1 {
+    max-width: 310px;
+    font-size: clamp(32px, 9vw, 40px);
+    line-height: 1.03;
+  }
+
   .xb-auth-brand p {
     max-width: none;
     margin: 0;
     font-size: 14px;
+  }
+
+  .xb-user-auth-page .xb-auth-brand p {
+    max-width: 330px;
+    font-size: 14px;
+    line-height: 1.4;
   }
 
   .xb-auth-feature-grid {
@@ -1135,6 +1159,58 @@
     width: 100%;
     max-width: 420px;
     margin: 0 auto;
+  }
+
+  .xb-user-auth-page .xb-login-panel {
+    order: 2;
+    padding: 18px;
+  }
+
+  .xb-auth-proof-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .xb-auth-proof {
+    justify-content: center;
+    min-height: 34px;
+    padding: 0 8px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .xb-auth-proof svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .xb-auth-about-link {
+    margin-top: 4px;
+    font-size: 13px;
+  }
+
+  .xb-public-about-page {
+    align-items: start;
+    padding: 18px;
+  }
+
+  .xb-public-about-card {
+    padding: 18px;
+    border-radius: 14px;
+  }
+
+  .xb-public-about-card h1 {
+    font-size: 34px;
+  }
+
+  .xb-public-about-card > p {
+    font-size: 14px;
+  }
+
+  .xb-about-public-grid {
+    grid-template-columns: 1fr;
   }
 
   .xb-device-row {

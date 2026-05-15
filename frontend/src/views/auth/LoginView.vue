@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { BrainCircuit, ExternalLink, KeyRound, SearchCheck, ShieldCheck, Share2, UserPlus } from 'lucide-vue-next'
+import { BrainCircuit, KeyRound, SearchCheck, ShieldCheck, Share2, UserPlus } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 
 import { authApi } from '../../api/authApi'
@@ -31,10 +31,10 @@ const modeTitle = computed(() => ({
 const currentLocaleLabel = computed(() => locale.value === 'zh-CN' ? '中' : 'EN')
 const localeTitle = computed(() => locale.value === 'zh-CN' ? t('common.language.switchToEnglish') : t('common.language.switchToChinese'))
 const authFeatures = computed(() => ([
-  { icon: ShieldCheck, title: t('pages.auth.featurePrivateTitle'), body: t('pages.auth.featurePrivateBody') },
-  { icon: BrainCircuit, title: t('pages.auth.featureAiTitle'), body: t('pages.auth.featureAiBody') },
-  { icon: SearchCheck, title: t('pages.auth.featureSearchTitle'), body: t('pages.auth.featureSearchBody') },
-  { icon: Share2, title: t('pages.auth.featureShareTitle'), body: t('pages.auth.featureShareBody') }
+  { icon: ShieldCheck, label: t('pages.auth.featurePrivateTitle') },
+  { icon: BrainCircuit, label: t('pages.auth.featureAiTitle') },
+  { icon: SearchCheck, label: t('pages.auth.featureSearchTitle') },
+  { icon: Share2, label: t('pages.auth.featureShareTitle') }
 ]))
 
 function toggleLocale() {
@@ -90,42 +90,27 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="xb-auth-page">
+  <main class="xb-auth-page xb-user-auth-page">
     <button class="xb-language-toggle xb-auth-language-toggle" type="button" :title="localeTitle" @click="toggleLocale">
       {{ currentLocaleLabel }}
     </button>
+
     <section class="xb-auth-brand">
       <div class="xb-auth-logo">
         <XbAssetIcon name="logo" :size="42" />
         <span>XuanBox</span>
       </div>
-      <span class="xb-auth-kicker">{{ t('pages.auth.heroKicker') }}</span>
       <h1>{{ t('pages.auth.heroTitle') }}</h1>
       <p>{{ t('pages.auth.heroDesc') }}</p>
-      <div class="xb-auth-feature-grid">
-        <article v-for="feature in authFeatures" :key="feature.title" class="xb-auth-feature">
+      <div class="xb-auth-proof-grid">
+        <article v-for="feature in authFeatures" :key="feature.label" class="xb-auth-proof">
           <component :is="feature.icon" :size="18" />
-          <div>
-            <strong>{{ feature.title }}</strong>
-            <span>{{ feature.body }}</span>
-          </div>
+          <span>{{ feature.label }}</span>
         </article>
       </div>
-      <div class="xb-auth-about">
-        <strong>{{ t('pages.auth.aboutTitle') }}</strong>
-        <p>{{ t('pages.auth.aboutBody') }}</p>
-        <div class="xb-auth-links">
-          <a href="https://vianbeni.ca" target="_blank" rel="noreferrer">
-            {{ t('pages.auth.vianbeniLink') }}
-            <ExternalLink :size="14" />
-          </a>
-          <a href="https://github.com/backiron/xuanbox" target="_blank" rel="noreferrer">
-            {{ t('pages.auth.sourceLink') }}
-            <ExternalLink :size="14" />
-          </a>
-        </div>
-      </div>
+      <router-link class="xb-auth-about-link" to="/about">{{ t('pages.auth.aboutLink') }}</router-link>
     </section>
+
     <form class="xb-login-panel xb-auth-form" @submit.prevent="submit">
       <div class="xb-tabs">
         <button type="button" :class="{ 'is-active': mode === 'login' }" @click="mode = 'login'">{{ t('pages.auth.signInTab') }}</button>

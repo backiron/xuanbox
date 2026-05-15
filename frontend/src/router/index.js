@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 import AppShell from '../layouts/AppShell.vue'
 import AdminLoginView from '../views/admin/AdminLoginView.vue'
+import AboutPublicView from '../views/auth/AboutPublicView.vue'
 import LoginView from '../views/auth/LoginView.vue'
 import AdminDashboardView from '../views/admin/AdminDashboardView.vue'
 import DashboardView from '../views/dashboard/DashboardView.vue'
@@ -20,6 +21,7 @@ import MessagesView from '../views/messages/MessagesView.vue'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+    { path: '/about', component: AboutPublicView, meta: { public: true } },
     { path: '/login', component: LoginView },
     { path: '/admin/login', component: AdminLoginView, meta: { adminPublic: true, titleKey: 'pages.adminAuth.title' } },
     { path: '/drop/public/:token', component: PublicDropView, meta: { public: true } },
