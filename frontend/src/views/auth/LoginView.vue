@@ -123,7 +123,6 @@ onMounted(async () => {
           <span>{{ feature.label }}</span>
         </article>
       </div>
-      <router-link class="xb-auth-about-link" to="/about">{{ t('pages.auth.aboutLink') }}</router-link>
     </section>
 
     <form class="xb-login-panel xb-auth-form" @submit.prevent="submit">
@@ -175,5 +174,10 @@ onMounted(async () => {
         {{ loading ? t('pages.auth.working') : (mode === 'login' ? t('pages.auth.loginTitle') : t('common.actions.continue')) }}
       </button>
     </form>
+
+    <footer class="xb-auth-footer">
+      <router-link class="xb-auth-about-link" to="/about">{{ t('pages.auth.aboutLink') }}</router-link>
+      <span>{{ t('pages.auth.copyright') }}</span>
+    </footer>
   </main>
 </template>

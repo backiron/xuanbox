@@ -170,6 +170,7 @@
       vianbeniLink: 'VIANBENI',
       sourceLink: 'Source code',
       aboutLink: 'About XuanBox',
+      copyright: '© 2026 VIANBENI. XuanBox is an open-source project.',
       signInTab: 'Sign in',
       registerTab: 'Register',
       inviteTab: 'Invite',

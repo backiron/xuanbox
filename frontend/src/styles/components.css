@@ -2599,9 +2599,20 @@ body.xb-lightbox-open {
 
 .xb-auth-about-link {
   width: fit-content;
-  margin-top: 26px;
   color: #8fb4ff;
   font-weight: 750;
+}
+
+.xb-auth-footer {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: min(1160px, 100%);
+  margin: 4px auto 0;
+  color: #8fa0b8;
+  font-size: 13px;
 }
 
 .xb-user-auth-page .xb-login-panel {
