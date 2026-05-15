@@ -68,6 +68,8 @@ Local development data is stored under `data/`. Do not commit real uploads, back
 
 Use `docker-compose.prod.yml` and `.env.prod.example` as a starting point. Replace every secret, review CORS origins, set durable storage, and configure backups before exposing the service beyond a trusted network.
 
+Uploads are intentionally bounded for small-server deployments: images are limited to 20 MB and other uploaded files are limited to 200 MB. XuanBox is not intended for video libraries or large-file distribution workloads.
+
 See [Deployment](docs/DEPLOYMENT.md) for a deployment checklist.
 
 ## Optional Local AI

@@ -7,6 +7,7 @@ import PageHeader from '../../components/common/PageHeader.vue'
 import EmptyState from '../../components/common/EmptyState.vue'
 import { documentApi } from '../../api/documentApi'
 import { useDialogStore } from '../../stores/dialogStore'
+import { findUploadLimitError } from '../../utils/uploadLimits'
 
 const documents = ref([])
 const loading = ref(false)
@@ -98,6 +99,11 @@ async function loadDocuments() {
 async function uploadDocumentFiles(files) {
   const pickedFiles = Array.from(files || [])
   if (!pickedFiles.length) return
+  const limitError = findUploadLimitError(pickedFiles, t)
+  if (limitError) {
+    error.value = limitError
+    return
+  }
   uploadProgress.value = 1
   for (const file of pickedFiles) {
     const payload = cleanPayload({

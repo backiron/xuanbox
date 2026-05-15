@@ -23,6 +23,7 @@ import { dropApi } from '../../api/dropApi'
 import { fileApi } from '../../api/fileApi'
 import { inboxApi } from '../../api/inboxApi'
 import { photoApi } from '../../api/photoApi'
+import { findUploadLimitError } from '../../utils/uploadLimits'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -139,6 +140,11 @@ async function uploadFiles(files) {
   uploadProgress.value = 1
   uploadMessage.value = ''
   uploadError.value = ''
+  const limitError = findUploadLimitError(pickedFiles, t)
+  if (limitError) {
+    uploadError.value = limitError
+    return
+  }
   let uploadedCount = 0
   try {
     for (const pickedFile of pickedFiles) {

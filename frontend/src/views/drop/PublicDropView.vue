@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { Send, Upload } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { dropApi } from '../../api/dropApi'
+import { findUploadLimitError } from '../../utils/uploadLimits'
 
 const route = useRoute()
 const { t } = useI18n()
@@ -26,6 +27,12 @@ function getErrorMessage(uploadError) {
 async function uploadFiles(fileList) {
   const files = Array.from(fileList || [])
   if (!files.length) return
+  const limitError = findUploadLimitError(files, t)
+  if (limitError) {
+    error.value = limitError
+    status.value = ''
+    return
+  }
   uploading.value = true
   status.value = t('pages.publicDrop.preparingUpload')
   error.value = ''

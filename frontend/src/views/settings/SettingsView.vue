@@ -30,6 +30,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { useDialogStore } from '../../stores/dialogStore'
 import { useThemeStore } from '../../stores/themeStore'
 import { setLocale } from '../../i18n'
+import { MAX_AVATAR_UPLOAD_BYTES, formatUploadLimit } from '../../utils/uploadLimits'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -146,6 +147,10 @@ async function loadAll() {
 async function saveProfile() {
   message.value = ''
   error.value = ''
+  if (file.size > MAX_AVATAR_UPLOAD_BYTES) {
+    error.value = t('common.uploadLimits.tooLarge', { name: file.name, limit: formatUploadLimit(MAX_AVATAR_UPLOAD_BYTES) })
+    return
+  }
   try {
     const response = await settingsApi.updateProfile({ ...profileForm })
     authStore.user = response.data.data

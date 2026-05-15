@@ -13,6 +13,7 @@ from app.models.user import User
 from app.schemas.settings import StorageUsagePublic
 from app.services.audit_service import write_audit_log
 from app.services.file_service import create_encrypted_asset_from_bytes, decrypt_file_asset
+from app.services.upload_limits import MAX_AVATAR_UPLOAD_BYTES, read_upload_bytes
 
 
 async def update_profile(db: AsyncSession, user: User, *, display_name: str | None, email: str | None) -> User:
@@ -30,13 +31,15 @@ async def update_profile(db: AsyncSession, user: User, *, display_name: str | No
 
 
 async def upload_avatar(db: AsyncSession, user: User, upload: UploadFile) -> FileAsset:
-    content = await upload.read()
-    if not content:
-        raise AppError("empty_avatar", "Avatar image is empty", 400)
+    content = await read_upload_bytes(
+        upload,
+        max_bytes=MAX_AVATAR_UPLOAD_BYTES,
+        empty_error_code="empty_avatar",
+        empty_message="Avatar image is empty",
+        too_large_error_code="avatar_too_large",
+    )
     if upload.content_type and not upload.content_type.startswith("image/"):
         raise AppError("invalid_avatar_type", "Avatar must be an image", 400)
-    if len(content) > 2 * 1024 * 1024:
-        raise AppError("avatar_too_large", "Avatar must be smaller than 2 MB", 400)
     avatar = await create_encrypted_asset_from_bytes(
         db,
         owner=user,

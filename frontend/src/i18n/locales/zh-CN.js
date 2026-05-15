@@ -94,6 +94,9 @@
       checked: '已确认',
       ready: '就绪'
     },
+    uploadLimits: {
+      tooLarge: '“{name}”太大，此上传入口最大允许 {limit}。'
+    },
     placeholders: {
       search: '搜索',
       optional: '可选',
@@ -314,6 +317,7 @@
       dropLabel: '拖拽照片上传',
       dropDescInAlbum: '它们也会添加到当前相册。',
       dropDescTimeline: '照片会出现在你的时间线里。',
+      uploadFailed: '上传失败',
       noData: '暂无照片',
       noDataHint: '上传第一张照片，开始构建你的私人时间线。',
       selectLabel: '选择照片',
@@ -394,6 +398,7 @@
       hideOcrText: '隐藏 OCR 文本',
       showOcrText: '显示 OCR 文本',
       uploadHint: '支持图片和 PDF 上传，上传后会加密并进入 OCR 队列。',
+      uploadFailed: '上传失败',
       noAmount: '未填写金额',
       status: {
         not_started: '等待识别',
@@ -461,6 +466,7 @@
       files: '文件',
       photo: '照片',
       document: '文档',
+      uploadFailed: '上传失败',
       uploadError: '未选择任何上传文件。',
       folderExists: '文件已在该目录下。',
       addFolderError: '无法添加到该目录。',

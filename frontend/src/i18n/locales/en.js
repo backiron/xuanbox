@@ -94,6 +94,9 @@
       checked: 'Checked',
       ready: 'Ready'
     },
+    uploadLimits: {
+      tooLarge: '"{name}" is too large. Maximum allowed size for this upload is {limit}.'
+    },
     placeholders: {
       search: 'Search',
       optional: 'Optional',
@@ -314,6 +317,7 @@
       dropLabel: 'Drop photos to upload',
       dropDescInAlbum: 'They will also be added to this album.',
       dropDescTimeline: 'They will appear in your timeline.',
+      uploadFailed: 'Upload failed',
       noData: 'No photos yet',
       noDataHint: 'Upload your first photo to start building your private timeline.',
       selectLabel: 'Select photos',
@@ -394,6 +398,7 @@
       hideOcrText: 'Hide OCR text',
       showOcrText: 'Show OCR text',
       uploadHint: 'Images and PDFs are encrypted, attached, and queued for OCR.',
+      uploadFailed: 'Upload failed',
       noAmount: 'No amount',
       status: {
         not_started: 'Needs OCR',
@@ -461,6 +466,7 @@
       files: 'files',
       photo: 'photo',
       document: 'document',
+      uploadFailed: 'Upload failed',
       uploadError: 'No files chosen for this upload.',
       folderExists: 'These files are already in that folder.',
       addFolderError: 'Unable to add files to this folder.',

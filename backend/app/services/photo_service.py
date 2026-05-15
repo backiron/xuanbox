@@ -16,6 +16,7 @@ from app.models.user import User
 from app.services.audit_service import write_audit_log
 from app.services.file_service import create_encrypted_asset_from_bytes, decrypt_owned_file
 from app.services.file_service import soft_delete_file
+from app.services.upload_limits import MAX_IMAGE_UPLOAD_BYTES, read_upload_bytes
 
 
 def _jpeg_bytes(image: Image.Image, max_size: tuple[int, int]) -> bytes:
@@ -27,9 +28,13 @@ def _jpeg_bytes(image: Image.Image, max_size: tuple[int, int]) -> bytes:
 
 
 async def upload_photo(db: AsyncSession, owner: User, upload: UploadFile) -> PhotoAsset:
-    plain_bytes = await upload.read()
-    if not plain_bytes:
-        raise AppError("empty_file", "Uploaded photo is empty", 400)
+    plain_bytes = await read_upload_bytes(
+        upload,
+        max_bytes=MAX_IMAGE_UPLOAD_BYTES,
+        empty_error_code="empty_file",
+        empty_message="Uploaded photo is empty",
+        too_large_error_code="photo_too_large",
+    )
     try:
         image = Image.open(BytesIO(plain_bytes))
         image.verify()

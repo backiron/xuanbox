@@ -16,6 +16,7 @@ from app.services.audit_service import write_audit_log
 from app.services.file_service import create_encrypted_asset_from_bytes, decrypt_file_asset, get_owned_file
 from app.services.ocr_service import create_receipt_ocr_task
 from app.services.receipt_service import create_receipt_for_file
+from app.services.upload_limits import read_user_upload_bytes
 
 
 def _suggest_type(file_asset: FileAsset) -> tuple[str, str]:
@@ -27,9 +28,7 @@ def _suggest_type(file_asset: FileAsset) -> tuple[str, str]:
 
 
 async def upload_inbox_item(db: AsyncSession, owner: User, upload: UploadFile) -> InboxItem:
-    plain_bytes = await upload.read()
-    if not plain_bytes:
-        raise AppError("empty_file", "Uploaded file is empty", 400)
+    plain_bytes = await read_user_upload_bytes(upload)
 
     file_asset = await create_encrypted_asset_from_bytes(
         db,

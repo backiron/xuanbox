@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 
 import PageHeader from '../../components/common/PageHeader.vue'
 import { inboxApi } from '../../api/inboxApi'
+import { findUploadLimitError } from '../../utils/uploadLimits'
 
 const items = ref([])
 const loading = ref(false)
@@ -59,6 +60,12 @@ async function uploadFiles(files) {
   uploadProgress.value = 1
   message.value = ''
   error.value = ''
+  const limitError = findUploadLimitError(pickedFiles, t)
+  if (limitError) {
+    uploadProgress.value = 0
+    error.value = limitError
+    return
+  }
   try {
     for (const pickedFile of pickedFiles) {
       const formData = new FormData()

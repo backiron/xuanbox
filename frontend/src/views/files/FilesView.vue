@@ -23,6 +23,7 @@ import EmptyState from '../../components/common/EmptyState.vue'
 import { fileApi, folderApi, importantDocApi, intelligenceApi, tagApi } from '../../api/fileApi'
 import { receiptApi } from '../../api/receiptApi'
 import { useDialogStore } from '../../stores/dialogStore'
+import { findUploadLimitError } from '../../utils/uploadLimits'
 
 const files = ref([])
 const { t } = useI18n()
@@ -157,6 +158,11 @@ async function loadFiles() {
 async function uploadFiles(pickedFiles) {
   pickedFiles = Array.from(pickedFiles || [])
   if (!pickedFiles.length) return
+  const limitError = findUploadLimitError(pickedFiles, t)
+  if (limitError) {
+    await dialog.confirm({ title: t('pages.files.uploadFailed'), message: limitError, confirmText: t('common.actions.close') })
+    return
+  }
   const imageFiles = pickedFiles.filter((file) => file.type.startsWith('image/'))
   if (imageFiles.length) {
     await dialog.confirm({

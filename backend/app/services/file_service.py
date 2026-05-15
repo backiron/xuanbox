@@ -29,6 +29,7 @@ from app.services.storage_service import (
     read_encrypted_file,
     save_encrypted_file,
 )
+from app.services.upload_limits import read_user_upload_bytes
 
 UNSET_FOLDER = object()
 
@@ -54,9 +55,7 @@ async def upload_file(
     source: str = "manual_upload",
     folder_id: UUID | None = None,
 ) -> FileAsset:
-    plain_bytes = await upload.read()
-    if not plain_bytes:
-        raise AppError("empty_file", "Uploaded file is empty", 400)
+    plain_bytes = await read_user_upload_bytes(upload)
 
     original_filename = upload.filename or str(uuid4())
     file_asset = await create_encrypted_asset_from_bytes(

@@ -7,6 +7,7 @@ import EmptyState from '../../components/common/EmptyState.vue'
 import { fileApi } from '../../api/fileApi'
 import { receiptApi } from '../../api/receiptApi'
 import { useDialogStore } from '../../stores/dialogStore'
+import { findUploadLimitError } from '../../utils/uploadLimits'
 
 const receipts = ref([])
 const loading = ref(false)
@@ -85,6 +86,11 @@ async function loadReceipts() {
 async function uploadReceiptFiles(files) {
   const pickedFiles = Array.from(files || [])
   if (!pickedFiles.length) return
+  const limitError = findUploadLimitError(pickedFiles, t)
+  if (limitError) {
+    await dialog.confirm({ title: t('pages.receipts.uploadFailed'), message: limitError, confirmText: t('common.actions.close') })
+    return
+  }
   uploadProgress.value = 1
   for (const file of pickedFiles) {
     const formData = new FormData()

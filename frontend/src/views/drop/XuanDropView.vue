@@ -7,6 +7,7 @@ import PageHeader from '../../components/common/PageHeader.vue'
 import EmptyState from '../../components/common/EmptyState.vue'
 import { dropApi } from '../../api/dropApi'
 import { useDialogStore } from '../../stores/dialogStore'
+import { findUploadLimitError } from '../../utils/uploadLimits'
 
 const { t } = useI18n()
 const sessions = ref([])
@@ -190,6 +191,11 @@ function startSessionRefresh() {
 async function uploadLocalFileList(fileList) {
   const files = Array.from(fileList || [])
   if (!files.length) return
+  const limitError = findUploadLimitError(files, t)
+  if (limitError) {
+    notify(t('pages.drop.uploadFailed'), limitError)
+    return
+  }
   const session = await ensureSession()
   const token = session?.public_token || session?.token
   if (!token) {

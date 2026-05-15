@@ -9,6 +9,7 @@ import { importantDocApi } from '../../api/fileApi'
 import { albumApi, photoApi } from '../../api/photoApi'
 import { receiptApi } from '../../api/receiptApi'
 import { useDialogStore } from '../../stores/dialogStore'
+import { findUploadLimitError } from '../../utils/uploadLimits'
 
 const photos = ref([])
 const albums = ref([])
@@ -117,6 +118,11 @@ async function loadPhotos() {
 async function uploadPhotoFiles(files) {
   const pickedFiles = Array.from(files || []).filter((file) => file.type.startsWith('image/'))
   if (!pickedFiles.length) return
+  const limitError = findUploadLimitError(pickedFiles, t)
+  if (limitError) {
+    await dialog.confirm({ title: t('pages.photos.uploadFailed'), message: limitError, confirmText: t('common.actions.close') })
+    return
+  }
   uploadProgress.value = 1
   for (const pickedFile of pickedFiles) {
     const formData = new FormData()
