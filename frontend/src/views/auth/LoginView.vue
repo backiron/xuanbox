@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { BrainCircuit, KeyRound, SearchCheck, ShieldCheck, Share2, UserPlus } from 'lucide-vue-next'
+import { BrainCircuit, Code2, KeyRound, SearchCheck, ShieldCheck, Share2, UserPlus } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 
 import { authApi } from '../../api/authApi'
@@ -36,6 +36,13 @@ const authFeatures = computed(() => ([
   { icon: SearchCheck, label: t('pages.auth.featureSearchTitle') },
   { icon: Share2, label: t('pages.auth.featureShareTitle') }
 ]))
+const authKeywords = computed(() => [
+  t('pages.auth.keywordVault'),
+  t('pages.auth.keywordOcr'),
+  t('pages.auth.keywordSearch'),
+  t('pages.auth.keywordShare'),
+  t('pages.auth.keywordOpenSource')
+])
 
 function toggleLocale() {
   setLocale(locale.value === 'zh-CN' ? 'en' : 'zh-CN')
@@ -100,8 +107,16 @@ onMounted(async () => {
         <XbAssetIcon name="logo" :size="42" />
         <span>XuanBox</span>
       </div>
+      <div class="xb-auth-open-badge">
+        <Code2 :size="15" />
+        <span>{{ t('pages.auth.openSourceBadge') }}</span>
+      </div>
       <h1 :class="{ 'is-cjk': locale === 'zh-CN' }">{{ t('pages.auth.heroTitle') }}</h1>
       <p>{{ t('pages.auth.heroDesc') }}</p>
+      <p class="xb-auth-mobile-desc">{{ t('pages.auth.mobileDesc') }}</p>
+      <div class="xb-auth-keywords">
+        <span v-for="keyword in authKeywords" :key="keyword">{{ keyword }}</span>
+      </div>
       <div class="xb-auth-proof-grid">
         <article v-for="feature in authFeatures" :key="feature.label" class="xb-auth-proof">
           <component :is="feature.icon" :size="18" />

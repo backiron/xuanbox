@@ -1101,6 +1101,13 @@
     margin-bottom: 2px;
   }
 
+  .xb-auth-open-badge {
+    min-height: 28px;
+    padding: 0 10px;
+    margin: 2px 0 0;
+    font-size: 12px;
+  }
+
   .xb-auth-kicker {
     margin-bottom: 0;
     font-size: 12px;
@@ -1112,17 +1119,46 @@
   }
 
   .xb-user-auth-page .xb-auth-brand h1 {
-    max-width: 100%;
-    font-size: clamp(30px, 8.4vw, 36px);
-    line-height: 1.03;
+    display: none;
+  }
+
+  .xb-user-auth-page .xb-auth-brand > p:not(.xb-auth-mobile-desc) {
+    display: none;
+  }
+
+  .xb-auth-mobile-desc {
+    display: block;
+    max-width: 300px;
+    margin: 4px 0 0;
+    color: #dce7f8;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .xb-auth-keywords {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-width: 320px;
+    margin-top: 4px;
+  }
+
+  .xb-auth-keywords span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 9px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.46);
+    color: #cbd8ec;
+    font-size: 11px;
+    font-weight: 700;
     white-space: normal;
   }
 
   .xb-user-auth-page .xb-auth-brand h1.is-cjk {
-    max-width: 100%;
-    font-size: clamp(28px, 7.8vw, 34px);
-    line-height: 1.12;
-    white-space: normal;
+    display: none;
   }
 
   .xb-auth-brand p {
@@ -1177,6 +1213,7 @@
     order: 2;
     width: 100%;
     max-width: 420px;
+    margin-top: 2px;
     padding: 18px;
     box-sizing: border-box;
   }

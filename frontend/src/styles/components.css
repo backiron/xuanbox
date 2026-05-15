@@ -2505,10 +2505,10 @@ body.xb-lightbox-open {
 }
 
 .xb-user-auth-page {
-  grid-template-columns: minmax(560px, 640px) minmax(420px, 460px);
+  grid-template-columns: minmax(540px, 620px) minmax(440px, 500px);
   justify-content: center;
   align-items: center;
-  gap: clamp(40px, 5vw, 76px);
+  gap: clamp(32px, 4vw, 56px);
   padding: clamp(48px, 7vw, 96px);
   background:
     radial-gradient(circle at 82% 28%, rgba(78, 131, 255, 0.22), transparent 28rem),
@@ -2524,6 +2524,26 @@ body.xb-lightbox-open {
 
 .xb-user-auth-page .xb-auth-logo {
   margin-bottom: 32px;
+}
+
+.xb-auth-open-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  min-height: 34px;
+  padding: 0 12px;
+  margin-bottom: 22px;
+  border: 1px solid rgba(110, 145, 255, 0.42);
+  border-radius: 999px;
+  background: rgba(31, 56, 104, 0.46);
+  color: #dce8ff;
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.xb-auth-open-badge svg {
+  color: #91b5ff;
 }
 
 .xb-user-auth-page .xb-auth-brand h1 {
@@ -2545,6 +2565,11 @@ body.xb-lightbox-open {
   color: #d5e1f2;
   font-size: clamp(18px, 1.35vw, 23px);
   line-height: 1.45;
+}
+
+.xb-auth-mobile-desc,
+.xb-auth-keywords {
+  display: none;
 }
 
 .xb-auth-proof-grid {
@@ -2581,7 +2606,7 @@ body.xb-lightbox-open {
 
 .xb-user-auth-page .xb-login-panel {
   width: 100%;
-  max-width: 460px;
+  max-width: 500px;
   padding: 30px;
   border-radius: 14px;
   background: rgba(16, 24, 36, 0.82);
