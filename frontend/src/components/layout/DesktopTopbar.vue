@@ -22,7 +22,7 @@ const avatarObjectUrl = ref('')
 const userInitial = computed(() => (authStore.user?.display_name || authStore.user?.username || 'M').slice(0, 1).toUpperCase())
 const { t, locale } = useI18n()
 const currentLocaleLabel = computed(() => locale.value === 'zh-CN' ? '中' : 'EN')
-const localeTitle = computed(() => locale.value === 'zh-CN' ? '切换到英文' : 'Switch to Chinese')
+const localeTitle = computed(() => locale.value === 'zh-CN' ? t('common.language.switchToEnglish') : t('common.language.switchToChinese'))
 
 function submitSearch() {
   const q = query.value.trim()

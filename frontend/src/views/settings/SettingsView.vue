@@ -60,10 +60,10 @@ const sections = computed(() => ([
   { key: 'about', label: t('pages.settings.sectionLabel.about'), icon: Info }
 ]))
 
-const localeOptions = [
+const localeOptions = computed(() => [
   { value: 'en', label: t('common.language.en') },
   { value: 'zh-CN', label: t('common.language.zhCN') }
-]
+])
 
 const initials = computed(() => {
   const name = authStore.user?.display_name || authStore.user?.username || 'XB'
@@ -268,6 +268,10 @@ onMounted(loadAll)
         <component :is="section.icon" :size="17" />
         <span>{{ section.label }}</span>
       </button>
+      <button class="xb-settings-logout" type="button" @click="logoutCurrent">
+        <LogOut :size="17" />
+        <span>{{ t('pages.settings.logout') }}</span>
+      </button>
     </nav>
 
     <div class="xb-settings-body">
@@ -456,7 +460,7 @@ onMounted(loadAll)
               <ExternalLink :size="15" />
               {{ t('pages.settings.aboutWebsite') }}
             </a>
-            <a href="https://github.com/keikozhang57/xuanbox" target="_blank" rel="noreferrer">
+            <a href="https://github.com/backiron/xuanbox" target="_blank" rel="noreferrer">
               <ExternalLink :size="15" />
               {{ t('pages.settings.aboutSource') }}
             </a>

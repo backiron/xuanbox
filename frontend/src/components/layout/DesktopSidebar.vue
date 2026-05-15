@@ -1,8 +1,14 @@
 <script setup>
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { LogOut } from 'lucide-vue-next'
+import { authApi } from '../../api/authApi'
+import { useAuthStore } from '../../stores/authStore'
 import XbAssetIcon from '../common/XbAssetIcon.vue'
 
 const { t } = useI18n()
+const router = useRouter()
+const authStore = useAuthStore()
 
 const navItems = [
   { to: '/', label: () => t('routes.dashboard'), icon: 'dashboard' },
@@ -15,6 +21,15 @@ const navItems = [
   { to: '/messages', label: () => t('routes.messages'), icon: 'notifications' },
   { to: '/settings', label: () => t('routes.settings'), icon: 'settings' }
 ]
+
+async function logoutCurrent() {
+  try {
+    await authApi.logout(authStore.refreshToken)
+  } finally {
+    authStore.logoutLocal()
+    await router.push('/login')
+  }
+}
 </script>
 
 <template>
@@ -32,12 +47,18 @@ const navItems = [
         <span>{{ item.label() }}</span>
       </router-link>
     </nav>
-    <div class="xb-storage-mini">
-      <XbAssetIcon name="storage" :size="24" />
-      <div>
-        <strong>{{ t('layout.sidebar.privateVaultTitle') }}</strong>
-        <span>{{ t('layout.sidebar.privateVaultDescription') }}</span>
+    <div class="xb-sidebar-footer">
+      <div class="xb-storage-mini">
+        <XbAssetIcon name="storage" :size="24" />
+        <div>
+          <strong>{{ t('layout.sidebar.privateVaultTitle') }}</strong>
+          <span>{{ t('layout.sidebar.privateVaultDescription') }}</span>
+        </div>
       </div>
+      <button class="xb-sidebar-logout" type="button" @click="logoutCurrent">
+        <LogOut :size="16" />
+        <span>{{ t('layout.sidebar.logout') }}</span>
+      </button>
     </div>
   </aside>
 </template>

@@ -6,7 +6,9 @@
     language: {
       label: 'Language',
       en: 'English',
-      zhCN: '中文'
+      zhCN: '中文',
+      switchToEnglish: 'Switch to English',
+      switchToChinese: 'Switch to Chinese'
     },
     actions: {
       add: 'Add',
@@ -108,7 +110,8 @@
   layout: {
     sidebar: {
       privateVaultTitle: 'Private Vault',
-      privateVaultDescription: 'Encrypted personal archive'
+      privateVaultDescription: 'Encrypted personal archive',
+      logout: 'Log out'
     },
     topbar: {
       home: 'Home',
@@ -143,8 +146,21 @@
   pages: {
     auth: {
       brand: 'XuanBox',
+      heroKicker: 'A VIANBENI open-source project',
       heroTitle: 'Your Private Digital Vault',
       heroDesc: 'Photos, files, receipts and documents. Securely stored in your own encrypted workspace.',
+      featurePrivateTitle: 'Private by design',
+      featurePrivateBody: 'Personal files stay in your own self-hosted vault with account isolation and encrypted storage.',
+      featureAiTitle: 'Local intelligence ready',
+      featureAiBody: 'OCR and document intelligence can run on your server, with AI features reserved for enabled plans.',
+      featureSearchTitle: 'Find what matters',
+      featureSearchBody: 'Search filenames, receipts, extracted text, tags, and document metadata from one place.',
+      featureShareTitle: 'Controlled sharing',
+      featureShareBody: 'Create revocable links with passwords, expiry times, and download limits.',
+      aboutTitle: 'Open source, commercially usable',
+      aboutBody: 'XuanBox is published for transparent self-hosting. Commercial licensing is available for closed-source products, hosted services, and managed deployments.',
+      vianbeniLink: 'VIANBENI',
+      sourceLink: 'Source code',
       signInTab: 'Sign in',
       registerTab: 'Register',
       inviteTab: 'Invite',

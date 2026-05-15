@@ -126,7 +126,6 @@
 .xb-storage-mini {
   display: flex;
   gap: 10px;
-  margin-top: auto;
   padding: 14px 12px;
   border: 1px solid var(--xb-border);
   border-radius: var(--xb-radius-md);
@@ -135,6 +134,33 @@
 
 .xb-storage-mini .xb-asset-icon {
   align-self: flex-start;
+}
+
+.xb-sidebar-footer {
+  display: grid;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.xb-sidebar-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  border: 1px solid var(--xb-border);
+  border-radius: var(--xb-radius-sm);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--xb-text-soft);
+  font: inherit;
+  cursor: pointer;
+  transition: 140ms ease;
+}
+
+.xb-sidebar-logout:hover {
+  border-color: rgba(255, 117, 117, 0.45);
+  background: rgba(255, 117, 117, 0.1);
+  color: #fecaca;
 }
 
 .xb-main {

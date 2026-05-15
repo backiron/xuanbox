@@ -6,7 +6,9 @@
     language: {
       label: '语言',
       en: 'English',
-      zhCN: '中文'
+      zhCN: '中文',
+      switchToEnglish: '切换到英文',
+      switchToChinese: '切换到中文'
     },
     actions: {
       add: '添加',
@@ -108,7 +110,8 @@
   layout: {
     sidebar: {
       privateVaultTitle: '私人保险库',
-      privateVaultDescription: '你的加密个人归档'
+      privateVaultDescription: '你的加密个人归档',
+      logout: '退出登录'
     },
     topbar: {
       home: '首页',
@@ -143,8 +146,21 @@
   pages: {
     auth: {
       brand: 'XuanBox',
+      heroKicker: 'VIANBENI 开源项目',
       heroTitle: '你的私有数字保险库',
       heroDesc: '照片、文件、收据和文档。全部存于你的加密工作空间。',
+      featurePrivateTitle: '以私有为核心',
+      featurePrivateBody: '个人文件保存在自托管空间中，账号隔离并采用加密存储。',
+      featureAiTitle: '可接入本地智能',
+      featureAiBody: 'OCR 与文档智能可在你的服务器上运行，AI 能力按套餐启用。',
+      featureSearchTitle: '快速找到内容',
+      featureSearchBody: '统一搜索文件名、收据、识别文本、标签和文档元数据。',
+      featureShareTitle: '可控分享',
+      featureShareBody: '生成可撤销链接，并设置密码、有效期和下载次数。',
+      aboutTitle: '开源发布，保留商业授权',
+      aboutBody: 'XuanBox 面向透明自托管开源发布。闭源产品集成、商业托管和托管部署可申请商业授权。',
+      vianbeniLink: 'VIANBENI',
+      sourceLink: '源代码',
       signInTab: '登录',
       registerTab: '注册',
       inviteTab: '邀请码',

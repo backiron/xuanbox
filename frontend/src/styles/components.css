@@ -2394,6 +2394,18 @@ body.xb-lightbox-open {
   max-width: 660px;
 }
 
+.xb-auth-kicker {
+  width: fit-content;
+  margin-bottom: 14px;
+  padding: 7px 11px;
+  border: 1px solid rgba(145, 177, 255, 0.36);
+  border-radius: 999px;
+  background: rgba(78, 131, 255, 0.12);
+  color: #cfe0ff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .xb-auth-logo {
   display: flex;
   align-items: center;
@@ -2412,6 +2424,84 @@ body.xb-lightbox-open {
   max-width: 520px;
   color: #cbd5e1;
   font-size: 18px;
+}
+
+.xb-auth-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 660px;
+  margin-top: 22px;
+}
+
+.xb-auth-feature {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: var(--xb-radius-md);
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.xb-auth-feature svg {
+  width: 34px;
+  height: 34px;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(78, 131, 255, 0.14);
+  color: #8fb4ff;
+}
+
+.xb-auth-feature strong,
+.xb-auth-feature span {
+  display: block;
+}
+
+.xb-auth-feature strong {
+  margin-bottom: 3px;
+  color: #f8fafc;
+}
+
+.xb-auth-feature span {
+  color: #aab8cc;
+  font-size: 13px;
+  line-height: 1.42;
+}
+
+.xb-auth-about {
+  max-width: 660px;
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: var(--xb-radius-md);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.xb-auth-about strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.xb-auth-about p {
+  margin: 0;
+  color: #aab8cc;
+  font-size: 14px;
+}
+
+.xb-auth-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.xb-auth-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #8db2ff;
+  font-weight: 700;
 }
 
 .xb-login-panel {
@@ -2481,6 +2571,17 @@ body.xb-lightbox-open {
   border-color: rgba(93, 143, 255, 0.56);
   background: rgba(78, 131, 255, 0.18);
   color: var(--xb-text-main);
+}
+
+.xb-settings-nav button.xb-settings-logout {
+  margin-top: 6px;
+  border-color: rgba(255, 117, 117, 0.22);
+  color: #fecaca;
+}
+
+.xb-settings-nav button.xb-settings-logout:hover {
+  border-color: rgba(255, 117, 117, 0.46);
+  background: rgba(255, 117, 117, 0.1);
 }
 
 .xb-settings-body,
