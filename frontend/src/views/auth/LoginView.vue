@@ -100,7 +100,7 @@ onMounted(async () => {
         <XbAssetIcon name="logo" :size="42" />
         <span>XuanBox</span>
       </div>
-      <h1>{{ t('pages.auth.heroTitle') }}</h1>
+      <h1 :class="{ 'is-cjk': locale === 'zh-CN' }">{{ t('pages.auth.heroTitle') }}</h1>
       <p>{{ t('pages.auth.heroDesc') }}</p>
       <div class="xb-auth-proof-grid">
         <article v-for="feature in authFeatures" :key="feature.label" class="xb-auth-proof">

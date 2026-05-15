@@ -1111,6 +1111,13 @@
     max-width: 310px;
     font-size: clamp(32px, 9vw, 40px);
     line-height: 1.03;
+    white-space: normal;
+  }
+
+  .xb-user-auth-page .xb-auth-brand h1.is-cjk {
+    max-width: 340px;
+    font-size: clamp(30px, 8.2vw, 36px);
+    white-space: normal;
   }
 
   .xb-auth-brand p {
