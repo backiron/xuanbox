@@ -40,8 +40,7 @@ const authKeywords = computed(() => [
   t('pages.auth.keywordVault'),
   t('pages.auth.keywordOcr'),
   t('pages.auth.keywordSearch'),
-  t('pages.auth.keywordShare'),
-  t('pages.auth.keywordOpenSource')
+  t('pages.auth.keywordShare')
 ])
 
 function toggleLocale() {
