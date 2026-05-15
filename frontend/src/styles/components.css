@@ -482,12 +482,18 @@
 .xb-folder-card > button:first-child {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
   border: 0;
   background: transparent;
   color: inherit;
   cursor: pointer;
+}
+
+.xb-folder-card > button:first-child svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
 }
 
 .xb-detail-drawer {
@@ -1822,12 +1828,14 @@ body.xb-lightbox-open {
 .xb-receipt-review-backdrop {
   z-index: 140;
   overflow: auto;
+  background: rgba(2, 6, 23, 0.76);
 }
 
 .xb-receipt-sheet-backdrop {
   z-index: 135;
   align-items: end;
   justify-items: center;
+  background: rgba(2, 6, 23, 0.76);
 }
 
 .xb-receipt-action-sheet {
@@ -1837,7 +1845,7 @@ body.xb-lightbox-open {
   padding: 10px 14px 16px;
   border: 1px solid var(--xb-border);
   border-radius: 20px 20px 14px 14px;
-  background: var(--xb-bg-card);
+  background: #0b1220;
   box-shadow: var(--xb-shadow-card);
 }
 

@@ -259,7 +259,7 @@
     height: 20px;
   }
 
-  .xb-mobile-tab.router-link-active {
+  .xb-mobile-tab.router-link-exact-active {
     background: rgba(78, 131, 255, 0.12);
     color: #72a1ff;
   }
@@ -508,6 +508,19 @@
     padding: 0 8px;
   }
 
+  .xb-folder-strip-mobile .xb-album-pill {
+    min-height: 36px;
+    gap: 5px;
+    padding: 0 7px;
+    font-size: 13px;
+  }
+
+  .xb-folder-strip-mobile .xb-album-pill svg {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 14px;
+  }
+
   .xb-album-pill span,
   .xb-album-strip-mobile > .xb-album-pill,
   .xb-folder-strip-mobile > .xb-album-pill {
@@ -610,12 +623,14 @@
     overflow: auto;
     align-self: center;
     padding: 14px;
+    background: #0b1220;
   }
 
   .xb-receipt-review-backdrop {
     padding: 12px;
     place-items: center;
-    z-index: 140;
+    z-index: 240;
+    background: rgba(2, 6, 23, 0.82);
   }
 
   .xb-receipt-list {
@@ -685,6 +700,8 @@
     align-items: end;
     padding: 12px 10px calc(12px + env(safe-area-inset-bottom));
     place-items: end center;
+    z-index: 230;
+    background: rgba(2, 6, 23, 0.82);
   }
 
   .xb-receipt-action-sheet {
@@ -692,6 +709,7 @@
     max-height: calc(100dvh - 28px);
     overflow: auto;
     border-radius: 18px 18px 14px 14px;
+    background: #0b1220;
   }
 
   .xb-receipt-sheet-summary {
@@ -727,6 +745,44 @@
     padding: 0 10px;
     border-radius: 10px;
     font-size: 13px;
+  }
+
+  .xb-receipt-preview {
+    min-height: 118px;
+    max-height: 138px;
+  }
+
+  .xb-receipt-review-fields {
+    gap: 8px;
+  }
+
+  .xb-receipt-review-fields label {
+    gap: 5px;
+    font-size: 12px;
+  }
+
+  .xb-receipt-review-fields input,
+  .xb-receipt-review-fields textarea {
+    min-height: 38px;
+  }
+
+  .xb-receipt-review-modal > .xb-row-actions {
+    position: sticky;
+    bottom: -14px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 8px -14px -14px;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--xb-border);
+    background: #0b1220;
+  }
+
+  .xb-receipt-review-modal > .xb-row-actions .xb-secondary-button,
+  .xb-receipt-review-modal > .xb-row-actions .xb-primary-button {
+    width: 100%;
+    min-height: 38px;
+    justify-content: center;
   }
 
   .xb-settings-nav {

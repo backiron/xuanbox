@@ -78,8 +78,9 @@ const pageSubtitle = computed(() => activeFileScope.value === 'important'
   : t('pages.files.pageSubtitleAll'))
 const currentFolderName = computed(() => folderStack.value.at(-1)?.name || t('pages.files.allFiles'))
 const selectedFiles = computed(() => files.value.filter((file) => selectedIds.value.has(file.id)))
-const visibleMobileFolders = computed(() => folders.value.slice(0, 2))
-const hiddenMobileFolders = computed(() => folders.value.slice(2))
+const mobileFolderPills = computed(() => uniqueFolders([...folderStack.value, ...folders.value]))
+const visibleMobileFolders = computed(() => mobileFolderPills.value.slice(0, 2))
+const hiddenMobileFolders = computed(() => mobileFolderPills.value.slice(2))
 const filteredMoveFolders = computed(() => {
   const query = moveFolderQuery.value.trim().toLowerCase()
   return allFolders.value.filter((folder) => {
@@ -697,7 +698,12 @@ function toggleSelected(file) {
 }
 
 function openFolder(folder) {
-  folderStack.value.push(folder)
+  const existingIndex = folderStack.value.findIndex((item) => item.id === folder.id)
+  if (existingIndex !== -1) {
+    folderStack.value = folderStack.value.slice(0, existingIndex + 1)
+  } else {
+    folderStack.value.push(folder)
+  }
   currentFolderId.value = folder.id
   activeFile.value = null
   loadFiles()

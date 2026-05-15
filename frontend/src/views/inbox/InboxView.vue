@@ -5,6 +5,8 @@ import { useI18n } from 'vue-i18n'
 
 import PageHeader from '../../components/common/PageHeader.vue'
 import { inboxApi } from '../../api/inboxApi'
+import { useDialogStore } from '../../stores/dialogStore'
+import { useAuthStore } from '../../stores/authStore'
 import { findUploadLimitError } from '../../utils/uploadLimits'
 
 const items = ref([])
@@ -15,8 +17,11 @@ const draggingFiles = ref(false)
 const message = ref('')
 const error = ref('')
 const { t } = useI18n()
+const dialog = useDialogStore()
+const authStore = useAuthStore()
 
 const pendingCount = computed(() => items.value.length)
+const isProUser = computed(() => authStore.user?.plan === 'pro')
 
 function formatBytes(value) {
   if (!value) return t('common.file.noSize')
@@ -129,6 +134,13 @@ async function resolveItem(item, action) {
       ? t('pages.inbox.dismissed')
       : t('pages.inbox.saved', { name: label })
     await loadInbox()
+    if (isProUser.value && ['file', 'receipt'].includes(action)) {
+      await dialog.confirm({
+        title: t('pages.inbox.aiQueuedTitle'),
+        message: action === 'receipt' ? t('pages.inbox.aiQueuedReceipt') : t('pages.inbox.aiQueuedFile'),
+        confirmText: t('common.actions.close')
+      })
+    }
   } catch (err) {
     error.value = err.response?.data?.message || t('pages.inbox.resolveFailed')
   } finally {
@@ -136,7 +148,10 @@ async function resolveItem(item, action) {
   }
 }
 
-onMounted(loadInbox)
+onMounted(async () => {
+  if (!authStore.user) await authStore.loadMe()
+  await loadInbox()
+})
 </script>
 
 <template>

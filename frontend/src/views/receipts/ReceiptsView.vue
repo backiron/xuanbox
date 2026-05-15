@@ -1,5 +1,5 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Camera, Download, FileImage, FileSearch, MoreHorizontal, ReceiptText, RotateCcw, Save, Search, Trash2, Upload, X } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import PageHeader from '../../components/common/PageHeader.vue'
@@ -23,6 +23,7 @@ const rawTextOpen = ref(false)
 const activePreview = ref({ url: '', type: '', loading: false, error: '' })
 const dialog = useDialogStore()
 const { t } = useI18n()
+const hasOpenOverlay = computed(() => Boolean(receiptSheet.value || ocrReview.value || editing.value || manualEntryOpen.value))
 
 function cleanPayload(source) {
   return {
@@ -247,8 +248,15 @@ async function downloadOriginal(receipt) {
   URL.revokeObjectURL(url)
 }
 
+watch(hasOpenOverlay, (isOpen) => {
+  document.body.classList.toggle('xb-lightbox-open', isOpen)
+})
+
 onMounted(loadReceipts)
-onBeforeUnmount(cleanupPreview)
+onBeforeUnmount(() => {
+  cleanupPreview()
+  document.body.classList.remove('xb-lightbox-open')
+})
 </script>
 
 <template>
