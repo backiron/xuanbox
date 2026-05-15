@@ -1,30 +1,31 @@
 # XuanBox
 
-A VIANBENI open-source project.
+XuanBox is a VIANBENI open-source project for self-hosted private storage.
 
-XuanBox is a self-hosted private file vault for personal and small-team use. It provides encrypted file storage, photo management, receipt capture, local document intelligence, controlled sharing, and nearby-device transfer through XuanDrop.
+XuanBox brings files, photos, receipts, documents, sharing, nearby transfer, OCR, and optional local AI into one private workspace. It is designed for people and small teams who want to run their own storage service on local hardware or a trusted server, without depending on a hosted cloud account.
 
-The project is designed for operators who want to run their own private storage service on local hardware or a trusted server. XuanBox is not a hosted cloud service and does not require a third-party account.
+## Project Status
 
-## Status
+XuanBox is actively developed and ready for self-hosted evaluation and controlled private deployments. The main product flows are implemented, including user accounts, encrypted-at-rest storage, file and photo management, receipt capture, inbox review, sharing, XuanDrop, user settings, admin controls, audit logs, backups, OCR, document intelligence, and deployment tooling.
 
-XuanBox is in early preview. Core storage, sharing, user settings, admin controls, OCR, and deployment tooling are available, but operators should review the security model and backup process before using it for important data.
+Before using XuanBox for irreplaceable data, review the security model, configure durable backups, and test recovery in your own environment.
 
 ## Features
 
-- Private file storage with encrypted-at-rest blobs.
-- Photos, files, receipts, documents, and inbox review flows.
+- Private workspace for files, photos, receipts, and documents.
+- Encrypted-at-rest file blobs and account-isolated product APIs.
+- Inbox review flow for camera uploads, mobile uploads, and files that need classification.
 - XuanDrop sessions for nearby-device upload and transfer.
-- Public shares with optional password, expiry, and download limits.
-- User settings for profile, devices, password, storage, and privacy notes.
+- Controlled public shares with optional password, expiry time, and download limits.
+- Receipt capture, OCR review, searchable text, and document profiles.
+- Optional local AI enhancement through an operator-managed Ollama-compatible endpoint.
+- User settings for profile, password, devices, storage, appearance, and privacy notes.
 - Admin console for users, quotas, registration mode, invites, backups, audit logs, messages, and worker health.
-- OCR and document intelligence pipeline for searchable text and document profiles.
-- Optional local AI enhancement through an operator-managed Ollama endpoint.
 - English and Simplified Chinese interface.
 
 ## Security Scope
 
-XuanBox encrypts stored file blobs and isolates user content through product APIs. The current release is not zero-knowledge: the server holds the encryption material required to process files, OCR, previews, and downloads.
+XuanBox encrypts stored file blobs and isolates user content through product APIs. It is not a zero-knowledge system: the server holds the encryption material required to process files, OCR, previews, and downloads.
 
 Administrators can manage accounts, quotas, registration settings, backups, and system health. Product admin APIs are not intended to browse or download another user's private file contents. Server operators with direct access to the database, storage, secrets, or runtime can still access sensitive data.
 
@@ -71,9 +72,9 @@ See [Deployment](docs/DEPLOYMENT.md) for a deployment checklist.
 
 ## Optional Local AI
 
-XuanBox can call a local Ollama-compatible endpoint for document and receipt enhancement. AI is optional. Uploads and core storage should work without AI enabled.
+XuanBox can call a local Ollama-compatible endpoint for document and receipt enhancement. AI is optional; uploads, storage, sharing, OCR, and search work without AI enabled.
 
-When enabled, the worker sends extracted text to the configured endpoint. Do not enable remote AI services for private files unless the deployment owner has reviewed that data flow.
+When enabled, the worker sends extracted text to the configured endpoint. For private deployments, prefer a local model running on infrastructure controlled by the deployment owner. Do not enable remote AI services for private files unless the owner has reviewed and accepted that data flow.
 
 ## Licensing
 
@@ -85,7 +86,9 @@ The XuanBox and VIANBENI names, logos, and brand assets are not licensed under t
 
 ## Contributing
 
-Contributions are welcome after the project stabilizes. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening issues or pull requests.
+Issues, fixes, documentation improvements, and small product refinements are welcome. For larger changes, please open a discussion or issue first so the direction can be agreed before implementation.
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening issues or pull requests.
 
 ## Project
 
