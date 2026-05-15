@@ -93,4 +93,4 @@ XuanBox is developed and maintained by VIANBENI.
 
 - Website: [vianbeni.ca](https://vianbeni.ca)
 - Contact: [xuanbox@vianbeni.ca](mailto:xuanbox@vianbeni.ca)
-- Repository: [github.com/keikozhang57/xuanbox](https://github.com/keikozhang57/xuanbox)
+- Repository: [github.com/backiron/xuanbox](https://github.com/backiron/xuanbox)
