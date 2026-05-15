@@ -73,6 +73,23 @@ function closeReceiptSheet() {
   receiptSheet.value = null
 }
 
+function reviewStateFromReceipt(receipt, task = null) {
+  const parsed = task?.parsed_json || {}
+  return {
+    receipt,
+    task,
+    merchant: parsed.merchant || receipt.merchant || '',
+    category: parsed.category || receipt.category || '',
+    amount: parsed.amount || receipt.amount || '',
+    currency: parsed.currency || receipt.currency || 'USD',
+    purchase_date: parsed.purchase_date || receipt.purchase_date || '',
+    warranty_until: parsed.warranty_until || receipt.warranty_until || '',
+    notes: parsed.notes || receipt.notes || '',
+    raw_text: task?.raw_text || '',
+    error_message: task?.error_message || ''
+  }
+}
+
 async function loadReceipts() {
   loading.value = true
   try {
@@ -189,39 +206,14 @@ async function loadReceiptPreview(receipt) {
 async function loadOcrReview(receipt) {
   closeReceiptSheet()
   rawTextOpen.value = false
-  await loadReceiptPreview(receipt)
-  const response = await receiptApi.ocrTasks(receipt.id)
+  ocrReview.value = reviewStateFromReceipt(receipt)
+  const [response] = await Promise.all([
+    receiptApi.ocrTasks(receipt.id),
+    loadReceiptPreview(receipt)
+  ])
+  if (ocrReview.value?.receipt?.id !== receipt.id) return
   const task = response.data.data[0]
-  if (!task) {
-    ocrReview.value = {
-      receipt,
-      task: null,
-      merchant: receipt.merchant || '',
-      category: receipt.category || '',
-      amount: receipt.amount || '',
-      currency: receipt.currency || 'USD',
-      purchase_date: receipt.purchase_date || '',
-      warranty_until: receipt.warranty_until || '',
-      notes: receipt.notes || '',
-      raw_text: '',
-      error_message: ''
-    }
-    return
-  }
-  const parsed = task.parsed_json || {}
-  ocrReview.value = {
-    receipt,
-    task,
-    merchant: parsed.merchant || receipt.merchant || '',
-    category: parsed.category || receipt.category || '',
-    amount: parsed.amount || receipt.amount || '',
-    currency: parsed.currency || receipt.currency || 'USD',
-    purchase_date: parsed.purchase_date || receipt.purchase_date || '',
-    warranty_until: parsed.warranty_until || receipt.warranty_until || '',
-    notes: parsed.notes || receipt.notes || '',
-    raw_text: task.raw_text || '',
-    error_message: task.error_message || ''
-  }
+  ocrReview.value = reviewStateFromReceipt(receipt, task)
 }
 
 async function confirmOcr() {

@@ -69,6 +69,7 @@ const vaultPin = ref('')
 const vaultPinConfirm = ref('')
 const vaultPinError = ref('')
 const pendingImportantFile = ref(null)
+const pendingImportantFiles = ref([])
 const dialog = useDialogStore()
 const tagPalette = ['#4e83ff', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#f97316', '#e879f9']
 
@@ -372,6 +373,7 @@ function closeVaultModal() {
   vaultPinConfirm.value = ''
   vaultPinError.value = ''
   pendingImportantFile.value = null
+  pendingImportantFiles.value = []
 }
 
 async function submitVaultPin() {
@@ -391,6 +393,12 @@ async function submitVaultPin() {
     importantUnlockToken.value = response.data.data.unlock_token
     vaultModalMode.value = ''
     await refreshImportantStatus()
+    if (pendingImportantFiles.value.length) {
+      const files = [...pendingImportantFiles.value]
+      pendingImportantFiles.value = []
+      await addImportantDocs(files)
+      return
+    }
     if (pendingImportantFile.value) {
       const file = pendingImportantFile.value
       pendingImportantFile.value = null
@@ -403,6 +411,19 @@ async function submitVaultPin() {
   }
 }
 
+async function requestAddImportantDocs(targetFiles) {
+  if (!targetFiles.length) return
+  pendingImportantFiles.value = targetFiles
+  await refreshImportantStatus()
+  if (!importantStatus.value.pin_set || !importantUnlockToken.value) {
+    openVaultModal(importantStatus.value.pin_set ? 'unlock' : 'setup')
+    return
+  }
+  const files = [...pendingImportantFiles.value]
+  pendingImportantFiles.value = []
+  await addImportantDocs(files)
+}
+
 async function requestAddImportantDoc(file) {
   pendingImportantFile.value = file
   await refreshImportantStatus()
@@ -411,6 +432,36 @@ async function requestAddImportantDoc(file) {
     return
   }
   await addImportantDoc(file)
+}
+
+async function addImportantDocs(targetFiles) {
+  const files = targetFiles.filter((file) => file?.id)
+  if (!files.length) return
+  try {
+    await Promise.all(files.map((file) => importantDocApi.createFromFile(file.id, {
+      title: file.display_name,
+      document_type: 'other',
+      note: `Original file: ${file.original_filename || file.display_name}`
+    }, importantUnlockToken.value)))
+    selectedIds.value = new Set()
+    moveModalOpen.value = false
+    activeFileScope.value = 'important'
+    activeFile.value = null
+    await loadFiles()
+    await loadImportantDocs()
+  } catch (err) {
+    if (err.response?.status === 401) {
+      importantUnlockToken.value = ''
+      pendingImportantFiles.value = files
+      openVaultModal('unlock')
+      return
+    }
+    await dialog.confirm({
+      title: 'Unable to add files',
+      message: err.response?.data?.error?.message || 'Some files could not be added to Important docs.',
+      confirmText: 'OK'
+    })
+  }
 }
 
 async function addImportantDoc(file) {
@@ -588,6 +639,10 @@ async function moveFilesToFolder(targetFolderId) {
 
 async function applyMoveFolder() {
   await moveFilesToFolder(moveFolderId.value)
+}
+
+async function moveToImportantDocs() {
+  await requestAddImportantDocs(moveTargetFiles.value)
 }
 
 async function createFolderAndMove() {
@@ -1311,6 +1366,10 @@ onMounted(loadFiles)
 
         <div class="xb-row-actions">
           <button class="xb-primary-button" type="submit">Move here</button>
+          <button class="xb-secondary-button" type="button" @click="moveToImportantDocs">
+            <ShieldCheck :size="17" />
+            Important docs
+          </button>
           <button class="xb-secondary-button" type="button" @click="createFolderAndMove">Create folder and move</button>
           <button class="xb-secondary-button" type="button" @click="closeMoveModal">Cancel</button>
         </div>
