@@ -94,6 +94,7 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening issues or pull req
 
 XuanBox is developed and maintained by VIANBENI.
 
+- Project site: [xuanbox.vianbeni.ca](https://xuanbox.vianbeni.ca)
 - Website: [vianbeni.ca](https://vianbeni.ca)
 - Contact: [xuanbox@vianbeni.ca](mailto:xuanbox@vianbeni.ca)
 - Repository: [github.com/backiron/xuanbox](https://github.com/backiron/xuanbox)
