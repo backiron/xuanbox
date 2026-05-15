@@ -18,12 +18,15 @@ import SettingsView from '../views/settings/SettingsView.vue'
 import SearchView from '../views/search/SearchView.vue'
 import MessagesView from '../views/messages/MessagesView.vue'
 
+const adminLoginMeta = { adminPublic: true, titleKey: 'pages.adminAuth.title' }
+
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/about', component: AboutPublicView, meta: { public: true } },
     { path: '/login', component: LoginView },
-    { path: '/admin/login', component: AdminLoginView, meta: { adminPublic: true, titleKey: 'pages.adminAuth.title' } },
+    { path: '/admin', component: AdminLoginView, meta: adminLoginMeta },
+    { path: '/admin/login', redirect: '/admin' },
     { path: '/drop/public/:token', component: PublicDropView, meta: { public: true } },
     { path: '/public-share/:token', component: PublicShareView, meta: { public: true } },
     { path: '/admin-console', name: 'admin-console', component: AdminDashboardView, meta: { titleKey: 'routes.adminConsole', admin: true } },
@@ -49,8 +52,8 @@ const router = createRouter({
 router.beforeEach((to) => {
   const token = localStorage.getItem('xb_access_token')
   const clientType = localStorage.getItem('xb_client_type')
-  if (!token && to.path !== '/login' && !to.meta.public && !to.meta.adminPublic) return to.meta.admin ? '/admin/login' : '/login'
-  if (to.meta.admin && clientType !== 'admin_console') return '/admin/login'
+  if (!token && to.path !== '/login' && !to.meta.public && !to.meta.adminPublic) return to.meta.admin ? '/admin' : '/login'
+  if (to.meta.admin && clientType !== 'admin_console') return '/admin'
   if (token && !to.meta.admin && !to.meta.adminPublic && !to.meta.public && clientType === 'admin_console') return '/admin-console'
 })
 

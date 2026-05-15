@@ -231,7 +231,7 @@ async function changeAdminPassword() {
     passwordDraft.confirm_password = ''
     window.alert(t('pages.admin.passwordChangedRelogin'))
     authStore.logoutLocal()
-    await router.push('/admin/login')
+    await router.push('/admin')
   } catch (err) {
     error.value = err.response?.data?.error?.message || t('pages.admin.passwordChangeFailed')
   }
@@ -306,7 +306,7 @@ async function logoutAdmin() {
     await authApi.logout(authStore.refreshToken)
   } finally {
     authStore.logoutLocal()
-    await router.push('/admin/login')
+    await router.push('/admin')
   }
 }
 

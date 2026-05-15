@@ -50,9 +50,12 @@ function clearAuthAndRedirect() {
   localStorage.removeItem('xb_access_token')
   localStorage.removeItem('xb_refresh_token')
   localStorage.removeItem('xb_client_type')
+  const isAdminArea = window.location.pathname.startsWith('/admin')
   const isPublic = window.location.pathname.startsWith('/drop/public/') || window.location.pathname.startsWith('/public-share/')
-  if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/admin/login') && !isPublic) {
-    window.location.href = window.location.pathname.startsWith('/admin-console') ? '/admin/login' : '/login'
+  if (!window.location.pathname.startsWith('/login') && !isAdminArea && !isPublic) {
+    window.location.href = '/login'
+  } else if (isAdminArea && window.location.pathname !== '/admin') {
+    window.location.href = '/admin'
   }
 }
 
