@@ -18,6 +18,7 @@ const draft = ref({ merchant: '', category: '', amount: '', currency: 'USD', pur
 const manualEntryOpen = ref(false)
 const editing = ref(null)
 const ocrReview = ref(null)
+const confirmingOcr = ref(false)
 const receiptSheet = ref(null)
 const rawTextOpen = ref(false)
 const activePreview = ref({ url: '', type: '', loading: false, error: '' })
@@ -39,10 +40,20 @@ function cleanPayload(source) {
     category: source.category || null,
     amount: source.amount === '' || source.amount === null ? null : source.amount,
     currency: source.currency || 'USD',
-    purchase_date: source.purchase_date || null,
-    warranty_until: source.warranty_until || null,
+    purchase_date: normalizeDateField(source.purchase_date),
+    warranty_until: normalizeDateField(source.warranty_until),
     notes: source.notes || null
   }
+}
+
+function normalizeDateField(value) {
+  if (!value) return null
+  if (typeof value !== 'string') return value
+  const normalized = value.trim().replaceAll('/', '-')
+  const match = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+  if (!match) return null
+  const [, year, month, day] = match
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
 }
 
 function formatMoney(receipt) {
@@ -98,8 +109,8 @@ function reviewStateFromReceipt(receipt, task = null) {
     category: parsed.category || receipt.category || '',
     amount: parsed.amount || receipt.amount || '',
     currency: parsed.currency || receipt.currency || 'USD',
-    purchase_date: parsed.purchase_date || receipt.purchase_date || '',
-    warranty_until: parsed.warranty_until || receipt.warranty_until || '',
+    purchase_date: normalizeDateField(parsed.purchase_date || receipt.purchase_date) || '',
+    warranty_until: normalizeDateField(parsed.warranty_until || receipt.warranty_until) || '',
     notes: parsed.notes || receipt.notes || '',
     raw_text: task?.raw_text || '',
     error_message: task?.error_message || ''
@@ -233,9 +244,22 @@ async function loadOcrReview(receipt) {
 }
 
 async function confirmOcr() {
-  await receiptApi.confirmOcr(ocrReview.value.receipt.id, ocrReview.value.task.id, cleanPayload(ocrReview.value))
-  closeOcrReview()
-  await loadReceipts()
+  if (!ocrReview.value?.task || confirmingOcr.value) return
+  document.activeElement?.blur?.()
+  confirmingOcr.value = true
+  try {
+    await receiptApi.confirmOcr(ocrReview.value.receipt.id, ocrReview.value.task.id, cleanPayload(ocrReview.value))
+    closeOcrReview()
+    await loadReceipts()
+  } catch (error) {
+    await dialog.confirm({
+      title: t('pages.receipts.uploadFailed'),
+      message: error?.response?.data?.detail || error?.message || 'Unable to confirm this receipt.',
+      confirmText: t('common.actions.close')
+    })
+  } finally {
+    confirmingOcr.value = false
+  }
 }
 
 async function retryOcr() {
@@ -291,6 +315,10 @@ onBeforeUnmount(() => {
       <button class="xb-secondary-button xb-receipt-manual-pill" type="button" @click="manualEntryOpen = true">
         <ReceiptText :size="18" />
         {{ t('pages.receipts.manualAdd') }}
+      </button>
+      <button class="xb-secondary-button" type="button" :disabled="loading" @click="loadReceipts">
+        <RotateCcw :size="18" />
+        {{ t('common.actions.refresh') }}
       </button>
     </PageHeader>
 
@@ -452,7 +480,7 @@ onBeforeUnmount(() => {
       </section>
 
       <section v-if="ocrReview" class="xb-modal-backdrop xb-receipt-review-backdrop" @click.self="closeOcrReview">
-        <form class="xb-modal xb-receipt-review-modal" @submit.prevent="confirmOcr">
+        <form class="xb-modal xb-receipt-review-modal" @submit.prevent>
           <div class="xb-receipt-review-head">
             <h3>{{ t('pages.receipts.reviewTitle') }}</h3>
             <div class="xb-row-actions">
@@ -498,7 +526,7 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <div class="xb-row-actions">
-            <button v-if="ocrReview.task && (ocrReview.task.status === 'completed' || ocrReview.task.status === 'confirmed')" class="xb-primary-button" type="submit">
+            <button v-if="ocrReview.task && (ocrReview.task.status === 'completed' || ocrReview.task.status === 'confirmed')" class="xb-primary-button" type="button" :disabled="confirmingOcr" @click="confirmOcr">
               <Save :size="17" />
               {{ t('pages.receipts.confirm') }}
             </button>
