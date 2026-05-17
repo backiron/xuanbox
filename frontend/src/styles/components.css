@@ -378,7 +378,22 @@
 
 .xb-file-main {
   flex: 1;
-  min-width: 180px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.xb-file-main strong,
+.xb-file-main > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xb-file-row > .xb-file-date {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  color: var(--xb-text-muted);
 }
 
 .xb-check {
@@ -396,6 +411,11 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.xb-file-row > .xb-row-actions {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
 }
 
 .xb-file-more-button {

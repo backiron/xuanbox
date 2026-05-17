@@ -920,7 +920,7 @@ onMounted(loadFiles)
               <span v-for="tag in tagsFor(file.id)" :key="tag.id" :style="{ borderColor: tag.color, color: tag.color }">{{ tag.name }}</span>
             </div>
           </div>
-          <span>{{ formatDate(file.updated_at) }}</span>
+          <span class="xb-file-date">{{ formatDate(file.updated_at) }}</span>
           <div class="xb-row-actions">
             <button class="xb-icon-button" type="button" title="Download" @click="downloadFile(file)">
               <Download :size="17" />
@@ -977,7 +977,7 @@ onMounted(loadFiles)
                 <span v-if="document.expires_at">Expires {{ document.expires_at }}</span>
               </div>
             </div>
-            <span>{{ formatDate(document.updated_at) }}</span>
+            <span class="xb-file-date">{{ formatDate(document.updated_at) }}</span>
             <div class="xb-row-actions">
               <button class="xb-icon-button" type="button" title="Download" @click="downloadImportantDoc(document)">
                 <Download :size="17" />
