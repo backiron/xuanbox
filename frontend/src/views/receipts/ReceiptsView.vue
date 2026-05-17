@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { Camera, Download, FileImage, FileSearch, MoreHorizontal, ReceiptText, RotateCcw, Save, Search, Trash2, Upload, X } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import PageHeader from '../../components/common/PageHeader.vue'
@@ -24,6 +25,7 @@ const rawTextOpen = ref(false)
 const activePreview = ref({ url: '', type: '', loading: false, error: '' })
 const dialog = useDialogStore()
 const { t } = useI18n()
+const route = useRoute()
 const hasOpenOverlay = computed(() => Boolean(receiptSheet.value || ocrReview.value || editing.value || manualEntryOpen.value))
 let receiptSheetFrame = 0
 
@@ -136,9 +138,24 @@ async function loadReceipts() {
     const params = Object.fromEntries(Object.entries(filters.value).filter(([, value]) => value))
     const response = await receiptApi.list(params)
     receipts.value = response.data.data
+    openRoutedReceipt()
   } finally {
     loading.value = false
   }
+}
+
+function applyRouteSearch() {
+  const routeQuery = String(route.query.q || '').trim()
+  if (routeQuery && routeQuery !== filters.value.q) {
+    filters.value.q = routeQuery
+  }
+}
+
+function openRoutedReceipt() {
+  const receiptId = String(route.query.receipt || '')
+  if (!receiptId || receiptSheet.value?.id === receiptId) return
+  const receipt = receipts.value.find((item) => item.id === receiptId)
+  if (receipt) openReceiptSheet(receipt)
 }
 
 async function uploadReceiptFiles(files) {
@@ -297,7 +314,15 @@ watch(hasOpenOverlay, (isOpen) => {
   document.body.classList.toggle('xb-lightbox-open', isOpen)
 })
 
-onMounted(loadReceipts)
+watch(() => [route.query.q, route.query.receipt], async () => {
+  applyRouteSearch()
+  await loadReceipts()
+})
+
+onMounted(() => {
+  applyRouteSearch()
+  loadReceipts()
+})
 onBeforeUnmount(() => {
   cancelReceiptSheetFrame()
   cleanupPreview()

@@ -62,6 +62,19 @@ function resultKey(item) {
   return `${item.type}-${item.id}-${item.source}`
 }
 
+function resultRoute(item) {
+  if (item.type === 'receipt') {
+    return {
+      path: '/receipts',
+      query: {
+        q: q.value,
+        receipt: item.id
+      }
+    }
+  }
+  return item.route
+}
+
 async function load() {
   if (!q.value) {
     results.value = []
@@ -127,7 +140,7 @@ watch(() => route.query.q, load)
           {{ group.label }}
           <span>{{ group.items.length }}</span>
         </h3>
-        <router-link v-for="item in group.items" :key="resultKey(item)" :to="item.route" class="xb-search-result-row">
+        <router-link v-for="item in group.items" :key="resultKey(item)" :to="resultRoute(item)" class="xb-search-result-row">
           <div class="xb-search-result-main">
             <strong>{{ item.title }}</strong>
             <span>{{ item.subtitle || sourceLabel(item.source) }}</span>
