@@ -374,7 +374,7 @@ async def process_receipt_ocr_task(db: AsyncSession, task: WorkerTask) -> None:
         owner = await db.get(User, ocr_task.owner_id)
         ai_fields = await enhance_receipt_parse(raw_text, parsed) if owner and owner.plan == "pro" else {}
         ocr_task.raw_text = raw_text
-        ocr_task.parsed_json = _merge_ai_fields(parsed, ai_fields)
+        ocr_task.parsed_json = _refine_receipt_fields(raw_text, _merge_ai_fields(parsed, ai_fields))
         ocr_task.status = "completed"
         ocr_task.finished_at = datetime.now(UTC)
         ocr_task.error_message = None
@@ -401,6 +401,17 @@ def _guess_merchant(lines: list[str]) -> str | None:
         "pst",
         "tax",
         "address",
+        "welcome to",
+        "you'",
+        "you're",
+        "you are",
+        "home here",
+        "table",
+        "server",
+        "total",
+        "subtotal",
+        "item",
+        "price",
         "www.",
         "http",
     )
@@ -489,9 +500,10 @@ def _guess_category(raw_text: str) -> str | None:
     lower = raw_text.lower()
     categories = (
         ("restaurant", ("restaurant", "cafe", "coffee", "mcdonald", "tim hortons", "starbucks")),
-        ("restaurant", ("ramen", "curry", "salad", "crab", "food", "dining")),
+        ("restaurant", ("ramen", "curry", "salad", "crab", "food", "dining", "lunch", "dinner", "server", "table", "suggested tips")),
         ("fuel", ("gas", "fuel", "esso", "petro", "chevron", "mobil")),
-        ("groceries", ("grocery", "superstore", "walmart", "costco", "sobeys", "save-on-foods")),
+        ("groceries", ("grocery", "groceries", "superstore", "walmart", "costco", "sobeys", "save-on-foods", "co-op")),
+        ("groceries", ("syrup", "chicken wings", "beef", "liver", "havarti", "milk", "bread", "produce")),
         ("pharmacy", ("pharmacy", "drug", "shoppers", "rexall")),
         ("electronics", ("electronics", "best buy", "memory express", "apple")),
         ("office", ("office", "staples", "stationery")),
@@ -500,6 +512,92 @@ def _guess_category(raw_text: str) -> str | None:
         if any(keyword in lower for keyword in keywords):
             return category
     return None
+
+
+def _refine_receipt_fields(raw_text: str, parsed: dict) -> dict:
+    refined = dict(parsed)
+    lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+    merchant = str(refined.get("merchant") or "").strip()
+    better_merchant = _known_merchant(raw_text) or _best_merchant_candidate(lines)
+    if _is_bad_merchant(merchant):
+        refined["merchant"] = better_merchant
+    elif better_merchant and not merchant:
+        refined["merchant"] = better_merchant
+
+    if not refined.get("category"):
+        refined["category"] = _guess_category(raw_text)
+    return refined
+
+
+def _known_merchant(raw_text: str) -> str | None:
+    upper = raw_text.upper()
+    if "CO·OP" in upper or "CO-OP" in upper or " COOP" in upper:
+        if "SASKATOON" in upper and "ATTRIDGE" in upper:
+            return "Saskatoon Co-op Attridge"
+        if "SASKATOON" in upper:
+            return "Saskatoon Co-op"
+        return "Co-op"
+    return None
+
+
+def _best_merchant_candidate(lines: list[str]) -> str | None:
+    skip_patterns = (
+        "welcome to",
+        "you'",
+        "you're",
+        "you are",
+        "home here",
+        "table",
+        "server",
+        "total",
+        "subtotal",
+        "item",
+        "price",
+        "suggested tips",
+        "gst",
+        "pst",
+        "tax",
+        "visa",
+        "card",
+        "date",
+        "phone",
+        "transaction",
+    )
+    for line in lines[:14]:
+        compact = re.sub(r"\s+", " ", line).strip(" -*#")
+        lower = compact.lower()
+        if _is_address_like(compact) or re.search(r"\(\d{3}\)\s*\d{3}", compact):
+            continue
+        if len(compact) < 2 or any(pattern in lower for pattern in skip_patterns):
+            continue
+        if re.fullmatch(r"[\d$.,:/#\s-]+", compact):
+            continue
+        return compact[:160]
+    return None
+
+
+def _is_bad_merchant(value: str) -> bool:
+    if not value:
+        return True
+    lower = value.lower()
+    bad_patterns = (
+        "you'",
+        "you're",
+        "you are",
+        "home here",
+        "welcome to",
+        "table",
+        "server",
+        "total",
+        "subtotal",
+        "item",
+        "price",
+    )
+    return _is_address_like(value) or any(pattern in lower for pattern in bad_patterns)
+
+
+def _is_address_like(value: str) -> bool:
+    return bool(re.search(r"\d{1,6}[A-Za-z]?(?:-|\\s+).*(?:st\\.?|street|ave\\.?|avenue|rd\\.?|road|blvd\\.?|drive|dr\\.)", value, re.IGNORECASE))
 
 
 def _merge_ai_fields(parsed: dict, ai_fields: dict) -> dict:

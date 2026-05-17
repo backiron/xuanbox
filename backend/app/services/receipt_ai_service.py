@@ -32,7 +32,10 @@ def _ollama_chat(raw_text: str, parsed: dict) -> dict:
                 "role": "system",
                 "content": (
                     "You extract receipt metadata from OCR text. Return compact JSON only. "
-                    "Use null when unsure. Never invent amounts, dates, or merchants."
+                    "Prefer the store or restaurant brand as merchant. Do not use slogans, addresses, phone numbers, "
+                    "table numbers, payment sections, or item names as merchant. Return null when the merchant is not visible. "
+                    "Infer category from receipt context and items when possible, such as groceries, restaurant, fuel, "
+                    "pharmacy, electronics, office, travel, home, or other. Never invent amounts or dates."
                 ),
             },
             {
