@@ -38,12 +38,25 @@ function cleanPayload(source) {
   return {
     merchant: source.merchant || null,
     category: source.category || null,
-    amount: source.amount === '' || source.amount === null ? null : source.amount,
+    amount: normalizeAmountField(source.amount),
     currency: source.currency || 'USD',
     purchase_date: normalizeDateField(source.purchase_date),
     warranty_until: normalizeDateField(source.warranty_until),
     notes: source.notes || null
   }
+}
+
+function normalizeAmountField(value) {
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+  const normalized = String(value)
+    .trim()
+    .replace(/[,，](?=\d{3}\b)/g, '')
+    .replace(/[,，]/g, '.')
+    .replace(/[^\d.-]/g, '')
+  if (!normalized || normalized === '-' || normalized === '.' || normalized === '-.') return null
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed) ? parsed.toFixed(2) : null
 }
 
 function normalizeDateField(value) {
@@ -107,7 +120,7 @@ function reviewStateFromReceipt(receipt, task = null) {
     task,
     merchant: parsed.merchant || receipt.merchant || '',
     category: parsed.category || receipt.category || '',
-    amount: parsed.amount || receipt.amount || '',
+    amount: normalizeAmountField(parsed.amount || receipt.amount) || '',
     currency: parsed.currency || receipt.currency || 'USD',
     purchase_date: normalizeDateField(parsed.purchase_date || receipt.purchase_date) || '',
     warranty_until: normalizeDateField(parsed.warranty_until || receipt.warranty_until) || '',
