@@ -73,7 +73,7 @@ Recommended starting values:
 ```env
 DOCUMENT_AI_ENABLED=false
 DOCUMENT_AI_BASE_URL=http://host.docker.internal:11434
-DOCUMENT_AI_MODEL=qwen2.5:1.5b
+DOCUMENT_AI_MODEL=qwen2.5:3b
 DOCUMENT_AI_CONCURRENCY=1
 ```
 
