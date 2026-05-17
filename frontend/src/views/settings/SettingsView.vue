@@ -50,6 +50,8 @@ const error = ref('')
 const profileForm = reactive({ display_name: '', email: '' })
 const passwordForm = reactive({ old_password: '', new_password: '' })
 const vaultForm = reactive({ pin: '' })
+const DEVICE_PAGE_SIZE = 6
+const devicesPage = ref(1)
 
 const sections = computed(() => ([
   { key: 'profile', label: t('pages.settings.sectionLabel.profile'), icon: UserRound },
@@ -78,6 +80,12 @@ const privacyNotes = computed(() => [
   t('pages.settings.privacyText.3')
 ])
 
+const devicePageCount = computed(() => Math.max(1, Math.ceil(devices.value.length / DEVICE_PAGE_SIZE)))
+const visibleDevices = computed(() => {
+  const start = (devicesPage.value - 1) * DEVICE_PAGE_SIZE
+  return devices.value.slice(start, start + DEVICE_PAGE_SIZE)
+})
+
 function formatBytes(value) {
   if (value == null) return t('pages.settings.unlimited')
   if (!value) return t('common.file.noSize')
@@ -104,6 +112,7 @@ function syncProfileForm() {
 async function loadDevices() {
   const response = await deviceApi.list()
   devices.value = response.data.data
+  devicesPage.value = Math.min(devicesPage.value, devicePageCount.value)
 }
 
 async function loadStorage() {
@@ -147,10 +156,6 @@ async function loadAll() {
 async function saveProfile() {
   message.value = ''
   error.value = ''
-  if (file.size > MAX_AVATAR_UPLOAD_BYTES) {
-    error.value = t('common.uploadLimits.tooLarge', { name: file.name, limit: formatUploadLimit(MAX_AVATAR_UPLOAD_BYTES) })
-    return
-  }
   try {
     const response = await settingsApi.updateProfile({ ...profileForm })
     authStore.user = response.data.data
@@ -161,14 +166,58 @@ async function saveProfile() {
   }
 }
 
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve) => {
+    canvas.toBlob(resolve, type, quality)
+  })
+}
+
+async function compressAvatar(file) {
+  if (!file.type.startsWith('image/')) return file
+  if (file.size <= MAX_AVATAR_UPLOAD_BYTES) return file
+  const imageUrl = URL.createObjectURL(file)
+  try {
+    const image = new Image()
+    image.decoding = 'async'
+    image.src = imageUrl
+    await image.decode()
+    const maxSide = 768
+    const scale = Math.min(1, maxSide / Math.max(image.width, image.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(image.width * scale))
+    canvas.height = Math.max(1, Math.round(image.height * scale))
+    const context = canvas.getContext('2d')
+    context.drawImage(image, 0, 0, canvas.width, canvas.height)
+    const qualities = [0.86, 0.74, 0.62, 0.5]
+    for (const quality of qualities) {
+      const blob = await canvasToBlob(canvas, 'image/jpeg', quality)
+      if (blob && blob.size <= MAX_AVATAR_UPLOAD_BYTES) {
+        return new File([blob], `${file.name.replace(/\.[^.]+$/, '') || 'avatar'}.jpg`, { type: 'image/jpeg' })
+      }
+    }
+  } finally {
+    URL.revokeObjectURL(imageUrl)
+  }
+  return file
+}
+
 async function uploadAvatar(event) {
   const file = event.target.files?.[0]
   event.target.value = ''
   if (!file) return
   message.value = ''
   error.value = ''
+  if (!file.type.startsWith('image/')) {
+    error.value = t('pages.settings.avatarTypeError')
+    return
+  }
   try {
-    const response = await settingsApi.uploadAvatar(file)
+    const avatarFile = await compressAvatar(file)
+    if (avatarFile.size > MAX_AVATAR_UPLOAD_BYTES) {
+      error.value = t('common.uploadLimits.tooLarge', { name: file.name, limit: formatUploadLimit(MAX_AVATAR_UPLOAD_BYTES) })
+      return
+    }
+    const response = await settingsApi.uploadAvatar(avatarFile)
     authStore.user = response.data.data
     await loadAvatar()
     await loadStorage()
@@ -176,6 +225,10 @@ async function uploadAvatar(event) {
   } catch (err) {
     error.value = err.response?.data?.error?.message || t('pages.settings.avatarError')
   }
+}
+
+function setDevicesPage(nextPage) {
+  devicesPage.value = Math.min(devicePageCount.value, Math.max(1, nextPage))
 }
 
 async function changePassword() {
@@ -378,7 +431,7 @@ onMounted(loadAll)
           </div>
           <Laptop :size="22" />
         </div>
-        <article v-for="device in devices" :key="device.id" class="xb-device-row">
+        <article v-for="device in visibleDevices" :key="device.id" class="xb-device-row">
           <component :is="device.device_type?.toLowerCase().includes('phone') ? Smartphone : Laptop" :size="22" />
           <div>
             <strong>{{ device.device_name }}</strong>
@@ -389,6 +442,15 @@ onMounted(loadAll)
             <XCircle :size="17" />
           </button>
         </article>
+        <div v-if="devices.length > DEVICE_PAGE_SIZE" class="xb-pagination">
+          <button class="xb-secondary-button" type="button" :disabled="devicesPage <= 1" @click="setDevicesPage(devicesPage - 1)">
+            {{ t('pages.settings.devicePagePrev') }}
+          </button>
+          <span>{{ t('pages.settings.devicePageSummary', { page: devicesPage, pages: devicePageCount, count: devices.length }) }}</span>
+          <button class="xb-secondary-button" type="button" :disabled="devicesPage >= devicePageCount" @click="setDevicesPage(devicesPage + 1)">
+            {{ t('pages.settings.devicePageNext') }}
+          </button>
+        </div>
         <p v-if="devices.length === 0" class="xb-muted">{{ t('pages.settings.noDevices') }}</p>
       </section>
 

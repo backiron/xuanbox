@@ -78,6 +78,7 @@ onBeforeUnmount(clearAvatarObjectUrl)
           <span v-else>{{ userInitial }}</span>
         </span>
         {{ authStore.user?.display_name || authStore.user?.username || 'Morning' }}
+        <span v-if="authStore.user?.plan === 'pro'" class="xb-plan-badge">Pro</span>
       </router-link>
     </div>
   </header>
