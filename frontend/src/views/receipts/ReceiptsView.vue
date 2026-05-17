@@ -36,6 +36,10 @@ function cancelReceiptSheetFrame() {
   }
 }
 
+function shouldUseReceiptSheet() {
+  return window.matchMedia('(max-width: 760px)').matches
+}
+
 function cleanPayload(source) {
   return {
     merchant: source.merchant || null,
@@ -100,6 +104,7 @@ function closeOcrReview() {
 }
 
 function openReceiptSheet(receipt) {
+  if (!shouldUseReceiptSheet()) return
   cancelReceiptSheetFrame()
   document.activeElement?.blur?.()
   receiptSheetFrame = requestAnimationFrame(() => {
