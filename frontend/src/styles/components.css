@@ -357,6 +357,7 @@
 .xb-file-list {
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .xb-file-row {
@@ -369,6 +370,13 @@
   border: 1px solid var(--xb-border);
   border-radius: var(--xb-radius-md);
   background: var(--xb-bg-card);
+}
+
+.xb-file-list .xb-file-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) max-content max-content;
+  align-items: center;
+  min-width: 0;
 }
 
 .xb-file-row.is-active {
@@ -427,6 +435,10 @@
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: 16px;
   align-items: start;
+}
+
+.xb-workspace-grid > section {
+  min-width: 0;
 }
 
 .xb-folder-grid {
