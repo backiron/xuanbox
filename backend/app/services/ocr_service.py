@@ -1,5 +1,5 @@
 import re
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from io import BytesIO
 from uuid import UUID
@@ -344,11 +344,13 @@ def _ocr_text_score(text: str) -> int:
 def parse_receipt_text(raw_text: str) -> dict:
     lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
     amount, currency = _guess_amount_and_currency(raw_text)
+    purchase_date = _guess_purchase_date(raw_text)
     return {
         "merchant": _guess_merchant(lines),
         "amount": amount,
         "currency": currency,
-        "purchase_date": _guess_purchase_date(raw_text),
+        "purchase_date": purchase_date,
+        "warranty_until": _guess_warranty_until(raw_text, purchase_date),
         "category": _guess_category(raw_text),
         "raw_text_preview": raw_text[:500],
     }
@@ -526,7 +528,31 @@ def _refine_receipt_fields(raw_text: str, parsed: dict) -> dict:
 
     if not refined.get("category"):
         refined["category"] = _guess_category(raw_text)
+    if not refined.get("warranty_until"):
+        refined["warranty_until"] = _guess_warranty_until(raw_text, refined.get("purchase_date"))
     return refined
+
+
+def _guess_warranty_until(raw_text: str, purchase_date: object) -> str | None:
+    if not purchase_date:
+        return None
+    try:
+        purchased_on = date.fromisoformat(str(purchase_date))
+    except ValueError:
+        return None
+    compact = re.sub(r"\s+", " ", raw_text.lower())
+    patterns = (
+        r"(?:return\w*|refund\w*|exchange\w*|store credit|retour\w*|remboursement\w*|echange\w*).{0,120}?(\d{1,3})\s*(?:days|jours)",
+        r"(\d{1,3})\s*(?:days|jours).{0,120}?(?:return\w*|refund\w*|exchange\w*|store credit|retour\w*|remboursement\w*|echange\w*)",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, compact, re.IGNORECASE)
+        if not match:
+            continue
+        days = int(match.group(1))
+        if 0 < days <= 365:
+            return (purchased_on + timedelta(days=days)).isoformat()
+    return None
 
 
 def _known_merchant(raw_text: str) -> str | None:

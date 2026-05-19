@@ -35,7 +35,8 @@ def _ollama_chat(raw_text: str, parsed: dict) -> dict:
                     "Prefer the store or restaurant brand as merchant. Do not use slogans, addresses, phone numbers, "
                     "table numbers, payment sections, or item names as merchant. Return null when the merchant is not visible. "
                     "Infer category from receipt context and items when possible, such as groceries, restaurant, fuel, "
-                    "pharmacy, electronics, office, travel, home, or other. Never invent amounts or dates."
+                    "pharmacy, electronics, clothing, office, travel, home, or other. Treat clear return, refund, exchange, "
+                    "or warranty periods as warranty_until by adding the period to purchase_date. Never invent amounts or dates."
                 ),
             },
             {
