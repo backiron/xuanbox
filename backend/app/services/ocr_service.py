@@ -501,6 +501,7 @@ def _guess_purchase_date(raw_text: str) -> str | None:
 def _guess_category(raw_text: str) -> str | None:
     lower = raw_text.lower()
     categories = (
+        ("clothing", ("jd sports", "nike", "adidas", "footwear", "apparel", "accessories", "shoe", "shoes", "sneaker", "underwear")),
         ("restaurant", ("restaurant", "cafe", "coffee", "mcdonald", "tim hortons", "starbucks")),
         ("restaurant", ("ramen", "curry", "salad", "crab", "food", "dining", "lunch", "dinner", "server", "table", "suggested tips")),
         ("fuel", ("gas", "fuel", "esso", "petro", "chevron", "mobil")),
@@ -519,6 +520,9 @@ def _guess_category(raw_text: str) -> str | None:
 def _refine_receipt_fields(raw_text: str, parsed: dict) -> dict:
     refined = dict(parsed)
     lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+    currency = _guess_currency(raw_text)
+    if currency:
+        refined["currency"] = currency
     merchant = str(refined.get("merchant") or "").strip()
     better_merchant = _known_merchant(raw_text) or _best_merchant_candidate(lines)
     if _is_bad_merchant(merchant):
@@ -526,11 +530,27 @@ def _refine_receipt_fields(raw_text: str, parsed: dict) -> dict:
     elif better_merchant and not merchant:
         refined["merchant"] = better_merchant
 
-    if not refined.get("category"):
-        refined["category"] = _guess_category(raw_text)
+    category = _guess_category(raw_text)
+    if category:
+        refined["category"] = category
     if not refined.get("warranty_until"):
         refined["warranty_until"] = _guess_warranty_until(raw_text, refined.get("purchase_date"))
     return refined
+
+
+def _guess_currency(raw_text: str) -> str | None:
+    upper = raw_text.upper()
+    if re.search(r"\bCAD\b|TOTAL\s*:\s*CAD|\bGST#?:|\bGST\b|\bPST\b|SASKATOON|CANADA", upper):
+        return "CAD"
+    if re.search(r"\bUSD\b", upper):
+        return "USD"
+    if re.search(r"\bCNY\b|\bRMB\b", upper):
+        return "CNY"
+    if re.search(r"\bEUR\b", upper):
+        return "EUR"
+    if re.search(r"\bGBP\b", upper):
+        return "GBP"
+    return None
 
 
 def _guess_warranty_until(raw_text: str, purchase_date: object) -> str | None:
