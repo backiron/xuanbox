@@ -7,7 +7,7 @@ from app.core.errors import AppError
 from app.models.album import Album, AlbumPhoto
 from app.models.photo_asset import PhotoAsset
 from app.models.user import User
-from app.schemas.photo import AlbumCreateRequest
+from app.schemas.photo import AlbumCreateRequest, AlbumUpdateRequest
 from app.services.audit_service import write_audit_log
 from app.services.photo_service import delete_photo
 
@@ -35,6 +35,23 @@ async def create_album(db: AsyncSession, owner: User, payload: AlbumCreateReques
     db.add(album)
     await db.flush()
     await write_audit_log(db, action="album.create", actor_user_id=owner.id, target_type="album", target_id=str(album.id))
+    await db.commit()
+    await db.refresh(album)
+    return album
+
+
+async def update_album(db: AsyncSession, owner: User, album_id: UUID, payload: AlbumUpdateRequest) -> Album:
+    album = await db.scalar(select(Album).where(Album.id == album_id, Album.owner_id == owner.id))
+    if album is None:
+        raise AppError("album_not_found", "Album not found", 404)
+    if payload.title is not None:
+        title = payload.title.strip()
+        if not title:
+            raise AppError("album_title_required", "Album title is required", 422)
+        album.title = title
+    if payload.description is not None:
+        album.description = payload.description
+    await write_audit_log(db, action="album.update", actor_user_id=owner.id, target_type="album", target_id=str(album.id))
     await db.commit()
     await db.refresh(album)
     return album

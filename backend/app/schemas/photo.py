@@ -27,6 +27,11 @@ class AlbumCreateRequest(BaseModel):
     description: str | None = None
 
 
+class AlbumUpdateRequest(BaseModel):
+    title: str | None = None
+    description: str | None = None
+
+
 class AlbumPublic(BaseModel):
     id: UUID
     owner_id: UUID

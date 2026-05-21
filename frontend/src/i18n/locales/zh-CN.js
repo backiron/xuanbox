@@ -335,6 +335,8 @@
       moveToAlbumTitle: '移动到相册',
       moveToAlbumHint: '{count} 张照片将保留在时间线，同时出现在目标相册。',
       createAlbum: '创建相册',
+      renameAlbum: '重命名',
+      renameAlbumTitle: '重命名相册',
       deleteAlbum: '删除相册',
       deleteAlbumTitle: '删除相册',
       deleteAlbumMessage: '确定删除“{name}”吗？',

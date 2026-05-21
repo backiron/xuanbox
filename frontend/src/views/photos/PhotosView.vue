@@ -250,6 +250,21 @@ async function deletePhotos(targetPhotos = selectedPhotos.value) {
   await loadPhotos()
 }
 
+async function renameActiveAlbum() {
+  const album = activeAlbum.value
+  if (!album) return
+  const title = await dialog.prompt({
+    title: t('pages.photos.renameAlbumTitle'),
+    label: t('pages.photos.albumName'),
+    defaultValue: album.title,
+    placeholder: t('pages.photos.albumPlaceholder')
+  })
+  if (!title) return
+  const response = await albumApi.update(album.id, { title })
+  const updated = response.data.data
+  albums.value = albums.value.map((item) => (item.id === updated.id ? updated : item))
+}
+
 async function deleteActiveAlbum() {
   const album = activeAlbum.value
   if (!album) return
@@ -490,6 +505,10 @@ onBeforeUnmount(() => {
 
     <section v-if="activeAlbum" class="xb-album-actions">
       <strong :title="activeAlbum.title">{{ albumTitle(activeAlbum.title) }}</strong>
+      <button class="xb-text-button" type="button" @click="renameActiveAlbum">
+        <Edit3 :size="16" />
+        {{ t('pages.photos.renameAlbum') }}
+      </button>
       <button class="xb-text-button xb-danger-button" type="button" @click="deleteActiveAlbum">
         <Trash2 :size="16" />
         {{ t('pages.photos.deleteAlbum') }}

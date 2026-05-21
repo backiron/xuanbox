@@ -37,6 +37,9 @@ export const albumApi = {
   create(payload) {
     return http.post('/albums', payload)
   },
+  update(albumId, payload) {
+    return http.patch(`/albums/${albumId}`, payload)
+  },
   addPhoto(albumId, photoId) {
     return http.post(`/albums/${albumId}/photos/${photoId}`)
   },

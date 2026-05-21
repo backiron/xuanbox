@@ -335,6 +335,8 @@
       moveToAlbumTitle: 'Move to album',
       moveToAlbumHint: '{count} selected photo{plural} will stay in Timeline and appear in the chosen album.',
       createAlbum: 'Create album',
+      renameAlbum: 'Rename',
+      renameAlbumTitle: 'Rename album',
       deleteAlbum: 'Delete album',
       deleteAlbumTitle: 'Delete album',
       deleteAlbumMessage: 'Delete "{name}"?',
