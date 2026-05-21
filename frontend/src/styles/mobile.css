@@ -457,9 +457,17 @@
   }
 
   .xb-album-strip-mobile {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
     gap: 8px;
+    margin: 0 -8px 14px;
+    overflow-x: auto;
+    padding: 0 8px 4px;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+  }
+
+  .xb-album-strip-mobile::-webkit-scrollbar {
+    display: none;
   }
 
   .xb-folder-strip-mobile {
@@ -510,10 +518,12 @@
   }
 
   .xb-album-pill {
+    flex: 0 0 auto;
     justify-content: center;
-    max-width: 100%;
+    max-width: 136px;
     min-width: 0;
     padding: 0 8px;
+    scroll-snap-align: start;
   }
 
   .xb-folder-strip-mobile .xb-album-pill {
@@ -538,19 +548,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .xb-album-more {
-    min-width: 0;
-  }
-
-  .xb-album-more summary {
-    width: 100%;
-  }
-
-  .xb-album-more nav {
-    right: 0;
-    left: auto;
   }
 
   .xb-album-actions {
