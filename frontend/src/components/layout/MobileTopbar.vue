@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Menu, RefreshCw } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
@@ -29,6 +29,7 @@ const route = useRoute()
 const router = useRouter()
 const query = ref(String(route.query.q || ''))
 const searchOpen = ref(route.path === '/search')
+const menuRef = ref(null)
 const shouldShowSearch = computed(() => searchOpen.value || route.path === '/search')
 
 watch(() => route.query.q, (value) => {
@@ -37,6 +38,7 @@ watch(() => route.query.q, (value) => {
 
 watch(() => route.path, (path) => {
   searchOpen.value = path === '/search'
+  closeMenu()
 })
 
 function toggleSearch() {
@@ -59,6 +61,24 @@ function toggleLocale() {
 function reloadPage() {
   window.location.reload()
 }
+
+function closeMenu() {
+  if (menuRef.value) menuRef.value.open = false
+}
+
+function handleDocumentPointerDown(event) {
+  if (!menuRef.value?.open) return
+  if (menuRef.value.contains(event.target)) return
+  closeMenu()
+}
+
+onMounted(() => {
+  document.addEventListener('pointerdown', handleDocumentPointerDown)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', handleDocumentPointerDown)
+})
 </script>
 
 <template>
@@ -78,7 +98,7 @@ function reloadPage() {
         <button class="xb-language-toggle xb-mobile-language-toggle" type="button" :title="localeTitle" @click="toggleLocale">
           {{ currentLocaleLabel }}
         </button>
-        <details class="xb-mobile-menu">
+        <details ref="menuRef" class="xb-mobile-menu">
           <summary class="xb-icon-button" :title="t('common.actions.more')">
             <Menu :size="18" />
           </summary>
@@ -87,7 +107,7 @@ function reloadPage() {
               <RefreshCw :size="16" />
               <span>{{ t('layout.topbar.refreshPage') }}</span>
             </button>
-            <router-link v-for="link in links" :key="link.to" :to="link.to">{{ link.label() }}</router-link>
+            <router-link v-for="link in links" :key="link.to" :to="link.to" @click="closeMenu">{{ link.label() }}</router-link>
           </nav>
         </details>
       </div>
