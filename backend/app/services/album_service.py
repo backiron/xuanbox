@@ -64,12 +64,33 @@ async def add_photo_to_album(db: AsyncSession, owner: User, album_id: UUID, phot
         raise AppError("album_not_found", "Album not found", 404)
     if photo is None:
         raise AppError("photo_not_found", "Photo not found", 404)
-    existing = await db.scalar(select(AlbumPhoto).where(AlbumPhoto.album_id == album_id, AlbumPhoto.photo_id == photo_id))
-    if existing is None:
-        db.add(AlbumPhoto(album_id=album_id, photo_id=photo_id))
+    previous_albums = list(
+        await db.scalars(
+            select(Album)
+            .join(AlbumPhoto, AlbumPhoto.album_id == Album.id)
+            .where(Album.owner_id == owner.id, AlbumPhoto.photo_id == photo_id)
+        )
+    )
+    await db.execute(
+        delete(AlbumPhoto).where(
+            AlbumPhoto.photo_id == photo_id,
+            AlbumPhoto.album_id.in_(select(Album.id).where(Album.owner_id == owner.id)),
+        )
+    )
+    for previous_album in previous_albums:
+        if previous_album.id != album_id and previous_album.cover_file_id == photo.file_id:
+            previous_album.cover_file_id = None
+    db.add(AlbumPhoto(album_id=album_id, photo_id=photo_id))
     if album.cover_file_id is None:
         album.cover_file_id = photo.file_id
-    await write_audit_log(db, action="album.add_photo", actor_user_id=owner.id, target_type="album", target_id=str(album_id))
+    await write_audit_log(
+        db,
+        action="album.move_photo",
+        actor_user_id=owner.id,
+        target_type="album",
+        target_id=str(album_id),
+        metadata_json={"photo_id": str(photo_id), "from_album_ids": [str(item.id) for item in previous_albums if item.id != album_id]},
+    )
     await db.commit()
 
 
