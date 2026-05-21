@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Album, CheckSquare, ChevronLeft, ChevronRight, Download, Edit3, FileCheck2, FolderInput, ImagePlus, ReceiptText, Share2, ShieldCheck, Square, Trash2, Upload, X } from 'lucide-vue-next'
+import { Album, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, Download, Edit3, FileCheck2, FolderInput, ImagePlus, ReceiptText, Share2, ShieldCheck, Square, Trash2, Upload, X } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import PageHeader from '../../components/common/PageHeader.vue'
 import EmptyState from '../../components/common/EmptyState.vue'
@@ -23,6 +23,7 @@ const selectedIds = ref(new Set())
 const editMode = ref(false)
 const moveModalOpen = ref(false)
 const moveAlbumId = ref('')
+const mobileAlbumDrawerOpen = ref(false)
 const vaultStatus = ref({ pin_set: false, locked_until: null })
 const importantUnlockToken = ref('')
 const currentPage = ref(1)
@@ -41,6 +42,8 @@ const pageStart = computed(() => (currentPage.value - 1) * pageSize.value)
 const pageEnd = computed(() => Math.min(photos.value.length, pageStart.value + pageSize.value))
 const activePhotos = computed(() => photos.value.slice(pageStart.value, pageEnd.value))
 const selectedPhotos = computed(() => photos.value.filter((photo) => selectedIds.value.has(photo.id)))
+const visibleMobileAlbums = computed(() => albums.value.slice(0, 2))
+const showMobileAlbumMore = computed(() => albums.value.length > visibleMobileAlbums.value.length)
 const activeAlbum = computed(() => albums.value.find((album) => album.id === activeAlbumId.value) || null)
 const groupedPhotos = computed(() => {
   const groups = new Map()
@@ -284,6 +287,7 @@ async function deleteActiveAlbum() {
   })
   await albumApi.remove(album.id, Boolean(deletePhotosInAlbum))
   activeAlbumId.value = null
+  mobileAlbumDrawerOpen.value = false
   clearSelection()
   editMode.value = false
   closePreview()
@@ -398,6 +402,7 @@ async function onTouchEnd(event) {
 
 async function selectAlbum(albumId) {
   activeAlbumId.value = albumId
+  mobileAlbumDrawerOpen.value = false
   currentPage.value = 1
   clearSelection()
   editMode.value = false
@@ -486,9 +491,13 @@ onBeforeUnmount(() => {
         <Album :size="16" />
         <span>{{ t('pages.photos.timeline') }}</span>
       </button>
-      <button v-for="album in albums" :key="album.id" class="xb-album-pill" :class="{ 'is-active': activeAlbumId === album.id }" type="button" @click="selectAlbum(album.id)">
+      <button v-for="album in visibleMobileAlbums" :key="album.id" class="xb-album-pill" :class="{ 'is-active': activeAlbumId === album.id }" type="button" @click="selectAlbum(album.id)">
         <Album :size="16" />
         <span>{{ albumTitle(album.title) }}</span>
+      </button>
+      <button v-if="showMobileAlbumMore" class="xb-album-pill" :class="{ 'is-active': activeAlbum && !visibleMobileAlbums.some((album) => album.id === activeAlbumId) }" type="button" @click="mobileAlbumDrawerOpen = true">
+        <span>{{ t('pages.photos.more') }}</span>
+        <ChevronDown :size="15" />
       </button>
     </section>
 
@@ -572,6 +581,36 @@ onBeforeUnmount(() => {
         </div>
       </form>
     </section>
+
+    <Teleport to="body">
+      <section v-if="mobileAlbumDrawerOpen" class="xb-modal-backdrop xb-mobile-album-backdrop" @click.self="mobileAlbumDrawerOpen = false">
+        <div class="xb-mobile-album-sheet">
+          <header>
+            <strong>{{ t('pages.photos.album') }}</strong>
+            <button class="xb-icon-button" type="button" @click="mobileAlbumDrawerOpen = false">
+              <X :size="18" />
+            </button>
+          </header>
+          <nav>
+            <button type="button" :class="{ 'is-active': activeAlbumId === null }" @click="selectAlbum(null)">
+              <Album :size="16" />
+              <span>{{ t('pages.photos.timeline') }}</span>
+            </button>
+            <button
+              v-for="album in albums"
+              :key="album.id"
+              type="button"
+              :class="{ 'is-active': activeAlbumId === album.id }"
+              :title="album.title"
+              @click="selectAlbum(album.id)"
+            >
+              <Album :size="16" />
+              <span>{{ albumTitle(album.title) }}</span>
+            </button>
+          </nav>
+        </div>
+      </section>
+    </Teleport>
 
     <Teleport to="body">
       <section v-if="activePreview" class="xb-lightbox" @click.self="closePreview" @touchstart="onTouchStart" @touchend="onTouchEnd">
