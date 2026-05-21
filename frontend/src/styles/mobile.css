@@ -543,7 +543,9 @@
 
   .xb-album-actions {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) 42px 42px;
+    align-items: center;
+    gap: 8px;
     width: 100%;
     margin-top: -4px;
     padding: 8px;
@@ -551,6 +553,11 @@
 
   .xb-album-actions strong {
     max-width: 100%;
+  }
+
+  .xb-album-actions .xb-icon-button {
+    width: 40px;
+    height: 40px;
   }
 
   .xb-mobile-album-backdrop {

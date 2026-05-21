@@ -42,7 +42,7 @@ const pageStart = computed(() => (currentPage.value - 1) * pageSize.value)
 const pageEnd = computed(() => Math.min(photos.value.length, pageStart.value + pageSize.value))
 const activePhotos = computed(() => photos.value.slice(pageStart.value, pageEnd.value))
 const selectedPhotos = computed(() => photos.value.filter((photo) => selectedIds.value.has(photo.id)))
-const visibleMobileAlbums = computed(() => albums.value.slice(0, 2))
+const visibleMobileAlbums = computed(() => albums.value.slice(0, 1))
 const showMobileAlbumMore = computed(() => albums.value.length > visibleMobileAlbums.value.length)
 const activeAlbum = computed(() => albums.value.find((album) => album.id === activeAlbumId.value) || null)
 const groupedPhotos = computed(() => {
@@ -514,13 +514,11 @@ onBeforeUnmount(() => {
 
     <section v-if="activeAlbum" class="xb-album-actions">
       <strong :title="activeAlbum.title">{{ albumTitle(activeAlbum.title) }}</strong>
-      <button class="xb-text-button" type="button" @click="renameActiveAlbum">
+      <button class="xb-icon-button" type="button" :title="t('pages.photos.renameAlbum')" @click="renameActiveAlbum">
         <Edit3 :size="16" />
-        {{ t('pages.photos.renameAlbum') }}
       </button>
-      <button class="xb-text-button xb-danger-button" type="button" @click="deleteActiveAlbum">
+      <button class="xb-icon-button xb-danger-button" type="button" :title="t('pages.photos.deleteAlbum')" @click="deleteActiveAlbum">
         <Trash2 :size="16" />
-        {{ t('pages.photos.deleteAlbum') }}
       </button>
     </section>
 
