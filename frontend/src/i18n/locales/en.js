@@ -120,7 +120,8 @@
       home: 'Home',
       searchLabel: 'Search files, photos, receipts',
       searchButton: 'Search',
-      notifications: 'Notifications'
+      notifications: 'Notifications',
+      refreshPage: 'Refresh page'
     },
     mobileSearchPlaceholder: 'Search files, OCR text...',
     mobileSearchButton: 'Search'

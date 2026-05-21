@@ -202,15 +202,24 @@
     box-shadow: var(--xb-shadow-card);
   }
 
-  .xb-mobile-menu a {
+  .xb-mobile-menu a,
+  .xb-mobile-menu button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     min-height: 34px;
     padding: 8px 10px;
+    border: 0;
     border-radius: var(--xb-radius-sm);
+    background: transparent;
     color: var(--xb-text-soft);
+    font: inherit;
+    text-align: left;
   }
 
   .xb-mobile-menu a.router-link-active,
-  .xb-mobile-menu a:hover {
+  .xb-mobile-menu a:hover,
+  .xb-mobile-menu button:hover {
     background: var(--xb-color-primary-soft);
     color: #ffffff;
   }

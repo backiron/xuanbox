@@ -120,7 +120,8 @@
       home: '首页',
       searchLabel: '搜索文件、照片和收据',
       searchButton: '搜索',
-      notifications: '消息中心'
+      notifications: '消息中心',
+      refreshPage: '刷新页面'
     },
     mobileSearchPlaceholder: '搜索文件、OCR 文本…',
     mobileSearchButton: '搜索'

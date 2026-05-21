@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Menu } from 'lucide-vue-next'
+import { Menu, RefreshCw } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import XbAssetIcon from '../common/XbAssetIcon.vue'
 import { setLocale } from '../../i18n'
@@ -55,6 +55,10 @@ function submitSearch() {
 function toggleLocale() {
   setLocale(locale.value === 'zh-CN' ? 'en' : 'zh-CN')
 }
+
+function reloadPage() {
+  window.location.reload()
+}
 </script>
 
 <template>
@@ -79,6 +83,10 @@ function toggleLocale() {
             <Menu :size="18" />
           </summary>
           <nav>
+            <button type="button" @click="reloadPage">
+              <RefreshCw :size="16" />
+              <span>{{ t('layout.topbar.refreshPage') }}</span>
+            </button>
             <router-link v-for="link in links" :key="link.to" :to="link.to">{{ link.label() }}</router-link>
           </nav>
         </details>
