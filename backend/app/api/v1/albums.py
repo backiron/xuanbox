@@ -1,13 +1,13 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_session, require_user_app
 from app.core.responses import success_response
 from app.models.user import User
 from app.schemas.photo import AlbumCreateRequest, AlbumPublic, PhotoPublic
-from app.services.album_service import add_photo_to_album, create_album, list_album_photos, list_albums
+from app.services.album_service import add_photo_to_album, create_album, delete_album, list_album_photos, list_albums
 
 router = APIRouter()
 
@@ -40,6 +40,17 @@ async def add_photo_endpoint(
 ) -> dict:
     await add_photo_to_album(session, current_user, album_id, photo_id)
     return success_response(message="added")
+
+
+@router.delete("/{album_id}")
+async def delete_album_endpoint(
+    album_id: UUID,
+    delete_photos: bool = Query(False),
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_user_app),
+) -> dict:
+    await delete_album(session, current_user, album_id, delete_photos=delete_photos)
+    return success_response(None)
 
 
 @router.get("/{album_id}/photos")

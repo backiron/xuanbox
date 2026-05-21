@@ -846,6 +846,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  max-width: 168px;
   min-height: 36px;
   padding: 0 12px;
   border: 1px solid var(--xb-border);
@@ -855,10 +856,40 @@
   cursor: pointer;
 }
 
+.xb-album-pill svg {
+  flex: 0 0 auto;
+}
+
+.xb-album-pill span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .xb-album-pill.is-active {
   border-color: rgba(78, 131, 255, 0.5);
   background: var(--xb-color-primary-soft);
   color: #ffffff;
+}
+
+.xb-album-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 100%;
+  margin: -6px 0 16px;
+  padding: 8px 10px;
+  border: 1px solid var(--xb-border);
+  border-radius: var(--xb-radius-md);
+  background: var(--xb-bg-card);
+}
+
+.xb-album-actions strong {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .xb-album-more {
@@ -902,6 +933,65 @@
 .xb-album-more nav button:hover {
   background: var(--xb-color-primary-soft);
   color: #ffffff;
+}
+
+.xb-mobile-album-backdrop {
+  align-items: flex-end;
+  padding: 16px;
+}
+
+.xb-mobile-album-sheet {
+  width: min(420px, 100%);
+  max-height: min(70vh, 520px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--xb-border);
+  border-radius: var(--xb-radius-lg);
+  background: rgba(12, 18, 26, 0.98);
+  box-shadow: var(--xb-shadow-card);
+}
+
+.xb-mobile-album-sheet header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.xb-mobile-album-sheet nav {
+  display: grid;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.xb-mobile-album-sheet nav button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  min-width: 0;
+  padding: 0 12px;
+  border: 1px solid var(--xb-border);
+  border-radius: var(--xb-radius-md);
+  background: var(--xb-bg-card);
+  color: var(--xb-text-main);
+  text-align: left;
+}
+
+.xb-mobile-album-sheet nav button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xb-mobile-album-sheet nav button.is-active {
+  border-color: rgba(78, 131, 255, 0.5);
+  background: var(--xb-color-primary-soft);
 }
 
 .xb-photo-page,

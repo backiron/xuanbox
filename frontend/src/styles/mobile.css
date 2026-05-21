@@ -511,6 +511,7 @@
 
   .xb-album-pill {
     justify-content: center;
+    max-width: 100%;
     min-width: 0;
     padding: 0 8px;
   }
@@ -550,6 +551,22 @@
   .xb-album-more nav {
     right: 0;
     left: auto;
+  }
+
+  .xb-album-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: 100%;
+    margin-top: -4px;
+    padding: 8px;
+  }
+
+  .xb-album-actions strong {
+    max-width: 100%;
+  }
+
+  .xb-mobile-album-backdrop {
+    z-index: 140;
   }
 
   .xb-pagination {

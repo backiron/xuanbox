@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
@@ -9,6 +9,7 @@ from app.models.photo_asset import PhotoAsset
 from app.models.user import User
 from app.schemas.photo import AlbumCreateRequest
 from app.services.audit_service import write_audit_log
+from app.services.photo_service import delete_photo
 
 
 async def list_albums(db: AsyncSession, owner: User) -> list[Album]:
@@ -52,4 +53,38 @@ async def add_photo_to_album(db: AsyncSession, owner: User, album_id: UUID, phot
     if album.cover_file_id is None:
         album.cover_file_id = photo.file_id
     await write_audit_log(db, action="album.add_photo", actor_user_id=owner.id, target_type="album", target_id=str(album_id))
+    await db.commit()
+
+
+async def delete_album(db: AsyncSession, owner: User, album_id: UUID, delete_photos: bool = False) -> None:
+    album = await db.scalar(select(Album).where(Album.id == album_id, Album.owner_id == owner.id))
+    if album is None:
+        raise AppError("album_not_found", "Album not found", 404)
+
+    photo_ids = list(
+        await db.scalars(
+            select(AlbumPhoto.photo_id)
+            .join(PhotoAsset, PhotoAsset.id == AlbumPhoto.photo_id)
+            .where(AlbumPhoto.album_id == album_id, PhotoAsset.owner_id == owner.id)
+        )
+    )
+
+    if delete_photos:
+        for photo_id in photo_ids:
+            await delete_photo(db, owner, photo_id)
+        album = await db.scalar(select(Album).where(Album.id == album_id, Album.owner_id == owner.id))
+        if album is None:
+            return
+    else:
+        await db.execute(delete(AlbumPhoto).where(AlbumPhoto.album_id == album_id))
+
+    await db.delete(album)
+    await write_audit_log(
+        db,
+        action="album.delete",
+        actor_user_id=owner.id,
+        target_type="album",
+        target_id=str(album_id),
+        metadata_json={"delete_photos": delete_photos, "photo_count": len(photo_ids)},
+    )
     await db.commit()

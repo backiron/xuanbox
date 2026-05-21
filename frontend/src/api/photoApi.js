@@ -42,5 +42,8 @@ export const albumApi = {
   },
   photos(albumId) {
     return http.get(`/albums/${albumId}/photos`)
+  },
+  remove(albumId, deletePhotos = false) {
+    return http.delete(`/albums/${albumId}`, { params: { delete_photos: deletePhotos } })
   }
 }
