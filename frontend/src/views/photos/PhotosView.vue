@@ -491,13 +491,9 @@ onBeforeUnmount(() => {
         <Album :size="16" />
         <span>{{ t('pages.photos.timeline') }}</span>
       </button>
-      <button v-for="album in visibleMobileAlbums" :key="album.id" class="xb-album-pill" :class="{ 'is-active': activeAlbumId === album.id }" type="button" @click="selectAlbum(album.id)">
+      <button v-for="album in albums" :key="album.id" class="xb-album-pill" :class="{ 'is-active': activeAlbumId === album.id }" type="button" @click="selectAlbum(album.id)">
         <Album :size="16" />
         <span>{{ albumTitle(album.title) }}</span>
-      </button>
-      <button v-if="showMobileAlbumMore" class="xb-album-pill" :class="{ 'is-active': activeAlbum && !visibleMobileAlbums.some((album) => album.id === activeAlbumId) }" type="button" @click="mobileAlbumDrawerOpen = true">
-        <span>{{ t('pages.photos.more') }}</span>
-        <ChevronDown :size="15" />
       </button>
     </section>
 
@@ -506,9 +502,13 @@ onBeforeUnmount(() => {
         <Album :size="16" />
         <span>{{ t('pages.photos.timeline') }}</span>
       </button>
-      <button v-for="album in albums" :key="album.id" class="xb-album-pill" :class="{ 'is-active': activeAlbumId === album.id }" type="button" @click="selectAlbum(album.id)">
+      <button v-for="album in visibleMobileAlbums" :key="album.id" class="xb-album-pill" :class="{ 'is-active': activeAlbumId === album.id }" type="button" @click="selectAlbum(album.id)">
         <Album :size="16" />
         <span>{{ albumTitle(album.title) }}</span>
+      </button>
+      <button v-if="showMobileAlbumMore" class="xb-album-pill" :class="{ 'is-active': activeAlbum && !visibleMobileAlbums.some((album) => album.id === activeAlbumId) }" type="button" @click="mobileAlbumDrawerOpen = true">
+        <span>{{ t('pages.photos.more') }}</span>
+        <ChevronDown :size="15" />
       </button>
     </section>
 
