@@ -439,27 +439,29 @@ onBeforeUnmount(() => {
       </section>
     </section>
 
-    <section v-if="editing" class="xb-modal-backdrop xb-receipt-edit-backdrop" @click.self="editing = null">
-      <form class="xb-modal xb-receipt-edit-modal" @submit.prevent="saveEdit">
-        <h3>{{ t('pages.receipts.editReceiptTitle') }}</h3>
-        <div class="xb-receipt-edit-scroll">
-          <label>{{ t('pages.receipts.merchant') }} <input v-model="editing.merchant" /></label>
-          <label>{{ t('pages.receipts.category') }} <input v-model="editing.category" /></label>
-          <label>{{ t('pages.receipts.amount') }} <input v-model="editing.amount" type="number" step="0.01" /></label>
-          <label>{{ t('pages.receipts.currency') }} <input v-model="editing.currency" maxlength="8" /></label>
-          <label>{{ t('pages.receipts.purchaseDate') }} <input v-model="editing.purchase_date" type="date" /></label>
-          <label>{{ t('pages.receipts.warrantyUntil') }} <input v-model="editing.warranty_until" type="date" /></label>
-          <label>{{ t('pages.receipts.notes') }} <textarea v-model="editing.notes" rows="4"></textarea></label>
-        </div>
-        <div class="xb-row-actions">
-          <button class="xb-primary-button" type="submit">
-            <Save :size="17" />
-            {{ t('common.actions.save') }}
-          </button>
-          <button class="xb-secondary-button" type="button" @click="editing = null">{{ t('common.actions.cancel') }}</button>
-        </div>
-      </form>
-    </section>
+    <Teleport to="body">
+      <section v-if="editing" class="xb-modal-backdrop xb-receipt-edit-backdrop" @click.self="editing = null">
+        <form class="xb-modal xb-receipt-edit-modal" @submit.prevent="saveEdit">
+          <h3>{{ t('pages.receipts.editReceiptTitle') }}</h3>
+          <div class="xb-receipt-edit-scroll">
+            <label>{{ t('pages.receipts.merchant') }} <input v-model="editing.merchant" /></label>
+            <label>{{ t('pages.receipts.category') }} <input v-model="editing.category" /></label>
+            <label>{{ t('pages.receipts.amount') }} <input v-model="editing.amount" type="number" step="0.01" /></label>
+            <label>{{ t('pages.receipts.currency') }} <input v-model="editing.currency" maxlength="8" /></label>
+            <label>{{ t('pages.receipts.purchaseDate') }} <input v-model="editing.purchase_date" type="date" /></label>
+            <label>{{ t('pages.receipts.warrantyUntil') }} <input v-model="editing.warranty_until" type="date" /></label>
+            <label>{{ t('pages.receipts.notes') }} <textarea v-model="editing.notes" rows="4"></textarea></label>
+          </div>
+          <div class="xb-row-actions">
+            <button class="xb-primary-button" type="submit">
+              <Save :size="17" />
+              {{ t('common.actions.save') }}
+            </button>
+            <button class="xb-secondary-button" type="button" @click="editing = null">{{ t('common.actions.cancel') }}</button>
+          </div>
+        </form>
+      </section>
+    </Teleport>
 
     <section v-if="manualEntryOpen" class="xb-modal-backdrop" @click.self="manualEntryOpen = false">
       <form class="xb-modal" @submit.prevent="manualEntryOpen = false">
