@@ -1960,8 +1960,18 @@ body.xb-lightbox-open {
 }
 
 .xb-receipt-edit-modal {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   max-height: min(820px, calc(100dvh - 40px));
-  overflow: auto;
+  overflow: hidden;
+}
+
+.xb-receipt-edit-scroll {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .xb-receipt-sheet-backdrop {

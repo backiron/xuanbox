@@ -668,20 +668,33 @@
 
   .xb-receipt-edit-backdrop {
     z-index: 245;
-    display: block;
+    display: grid;
+    place-items: center;
     padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
-    overflow: auto;
+    overflow: hidden;
     background: rgba(2, 6, 23, 0.84);
   }
 
   .xb-receipt-edit-modal {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
     width: min(100%, 430px);
-    max-height: none;
+    max-height: calc(100dvh - 24px - env(safe-area-inset-bottom));
     min-height: 0;
     margin: 0 auto;
     padding: 18px 14px 0;
-    overflow: visible;
+    overflow: hidden;
     background: #0b1220;
+  }
+
+  .xb-receipt-edit-scroll {
+    display: grid;
+    gap: 10px;
+    min-height: 0;
+    padding-right: 2px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .xb-receipt-edit-modal label {
@@ -695,8 +708,6 @@
   }
 
   .xb-receipt-edit-modal .xb-row-actions {
-    position: sticky;
-    bottom: 0;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
