@@ -463,25 +463,29 @@ onBeforeUnmount(() => {
       </section>
     </Teleport>
 
-    <section v-if="manualEntryOpen" class="xb-modal-backdrop" @click.self="manualEntryOpen = false">
-      <form class="xb-modal" @submit.prevent="manualEntryOpen = false">
-        <h3>{{ t('pages.receipts.manualReceiptTitle') }}</h3>
-        <label>{{ t('pages.receipts.merchant') }} <input v-model="draft.merchant" /></label>
-        <label>{{ t('pages.receipts.category') }} <input v-model="draft.category" :placeholder="t('pages.receipts.categoryPlaceholder')" /></label>
-        <label>{{ t('pages.receipts.amount') }} <input v-model="draft.amount" type="number" step="0.01" /></label>
-        <label>{{ t('pages.receipts.currency') }} <input v-model="draft.currency" maxlength="8" /></label>
-        <label>{{ t('pages.receipts.purchaseDate') }} <input v-model="draft.purchase_date" type="date" /></label>
-        <label>{{ t('pages.receipts.warrantyUntil') }} <input v-model="draft.warranty_until" type="date" /></label>
-        <label>{{ t('pages.receipts.notes') }} <textarea v-model="draft.notes" rows="4"></textarea></label>
-        <div class="xb-row-actions">
-          <button class="xb-primary-button" type="submit">
-            <Save :size="17" />
-            {{ t('common.actions.done') }}
-          </button>
-          <button class="xb-secondary-button" type="button" @click="manualEntryOpen = false">{{ t('common.actions.close') }}</button>
-        </div>
-      </form>
-    </section>
+    <Teleport to="body">
+      <section v-if="manualEntryOpen" class="xb-modal-backdrop xb-receipt-edit-backdrop" @click.self="manualEntryOpen = false">
+        <form class="xb-modal xb-receipt-edit-modal" @submit.prevent="manualEntryOpen = false">
+          <h3>{{ t('pages.receipts.manualReceiptTitle') }}</h3>
+          <div class="xb-receipt-edit-scroll">
+            <label>{{ t('pages.receipts.merchant') }} <input v-model="draft.merchant" /></label>
+            <label>{{ t('pages.receipts.category') }} <input v-model="draft.category" :placeholder="t('pages.receipts.categoryPlaceholder')" /></label>
+            <label>{{ t('pages.receipts.amount') }} <input v-model="draft.amount" type="number" step="0.01" /></label>
+            <label>{{ t('pages.receipts.currency') }} <input v-model="draft.currency" maxlength="8" /></label>
+            <label>{{ t('pages.receipts.purchaseDate') }} <input v-model="draft.purchase_date" type="date" /></label>
+            <label>{{ t('pages.receipts.warrantyUntil') }} <input v-model="draft.warranty_until" type="date" /></label>
+            <label>{{ t('pages.receipts.notes') }} <textarea v-model="draft.notes" rows="4"></textarea></label>
+          </div>
+          <div class="xb-row-actions">
+            <button class="xb-primary-button" type="submit">
+              <Save :size="17" />
+              {{ t('common.actions.done') }}
+            </button>
+            <button class="xb-secondary-button" type="button" @click="manualEntryOpen = false">{{ t('common.actions.close') }}</button>
+          </div>
+        </form>
+      </section>
+    </Teleport>
 
     <Teleport to="body">
       <section v-if="receiptSheet" class="xb-modal-backdrop xb-receipt-sheet-backdrop" @click.self="closeReceiptSheet">
