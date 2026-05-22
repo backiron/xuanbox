@@ -668,33 +668,43 @@
 
   .xb-receipt-edit-backdrop {
     z-index: 245;
-    display: grid;
-    place-items: center;
-    padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+    display: block;
+    padding: 0;
     overflow: hidden;
     background: rgba(2, 6, 23, 0.84);
   }
 
   .xb-receipt-edit-modal {
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    width: min(100%, 430px);
-    max-height: calc(100dvh - 24px - env(safe-area-inset-bottom));
+    position: fixed;
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    left: 12px;
+    display: flex;
+    flex-direction: column;
+    width: auto;
+    max-width: 430px;
+    height: calc(100dvh - 24px - env(safe-area-inset-bottom));
+    max-height: 640px;
     min-height: 0;
     margin: 0 auto;
     padding: 18px 14px 0;
     overflow: hidden;
     background: #0b1220;
+    touch-action: pan-y;
   }
 
   .xb-receipt-edit-scroll {
-    display: grid;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
     gap: 10px;
     min-height: 0;
     padding-right: 2px;
+    padding-bottom: 8px;
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
   }
 
   .xb-receipt-edit-modal label {
@@ -704,10 +714,12 @@
 
   .xb-receipt-edit-modal input,
   .xb-receipt-edit-modal textarea {
+    flex: 0 0 auto;
     min-height: 40px;
   }
 
   .xb-receipt-edit-modal .xb-row-actions {
+    flex: 0 0 auto;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
