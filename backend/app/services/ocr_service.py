@@ -700,7 +700,7 @@ def _is_address_like(value: str) -> bool:
 def _merge_ai_fields(parsed: dict, ai_fields: dict) -> dict:
     if not ai_fields:
         return parsed
-    allowed_fields = {"merchant", "category", "amount", "currency", "purchase_date", "warranty_until", "notes", "items_summary"}
+    allowed_fields = {"merchant", "category", "amount", "currency", "purchase_date", "warranty_until", "notes", "items_summary", "items"}
     merged = dict(parsed)
     for field in allowed_fields:
         value = ai_fields.get(field)

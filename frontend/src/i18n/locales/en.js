@@ -275,6 +275,10 @@
       inputRequired: 'Input required'
     },
     inbox: {
+      receiptSavedTitle: "Saved as a receipt",
+      openReceipt: "Open receipts",
+      keepSorting: "Keep sorting",
+      ocrQueuedReceipt: "Receipt saved. Text recognition is running in the background; confirm the result on the receipts page.",
       title: 'Inbox',
       subtitleBusy: '{count} uploads waiting for your decision.',
       subtitleClear: 'Review new uploads before they become photos, files, or receipts.',
@@ -369,6 +373,7 @@
       photoSavedTo: 'Photo saved to {name}.'
     },
     receipts: {
+      recognisedItems: "Recognised items ({count})",
       recognising: "Recognising · {seconds}s (usually 30–60s)",
       ocrFinished: "A receipt has been recognised",
       ocrFinishedFailed: "A receipt could not be recognised; you can retry it from the list",

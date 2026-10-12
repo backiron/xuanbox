@@ -133,6 +133,7 @@ function reviewStateFromReceipt(receipt, task = null) {
     warranty_until: normalizeDateField(parsed.warranty_until || receipt.warranty_until) || '',
     notes: parsed.notes || receipt.notes || '',
     raw_text: task?.raw_text || '',
+    items: Array.isArray(parsed.items) ? parsed.items : [],
     error_message: task?.error_message || ''
   }
 }
@@ -618,6 +619,15 @@ onBeforeUnmount(() => {
                   <label>{{ t('pages.receipts.warrantyUntil') }} <input v-model="ocrReview.warranty_until" type="date" /></label>
                 </div>
                 <label>{{ t('pages.receipts.notes') }} <textarea v-model="ocrReview.notes" rows="3"></textarea></label>
+                <section v-if="ocrReview.items.length" class="xb-receipt-items">
+                  <strong>{{ t('pages.receipts.recognisedItems', { count: ocrReview.items.length }) }}</strong>
+                  <ul>
+                    <li v-for="(item, index) in ocrReview.items" :key="index">
+                      <span>{{ item.name }}<small v-if="item.kind"> · {{ item.kind }}</small></span>
+                      <span>{{ item.quantity && item.quantity !== 1 ? `×${item.quantity} ` : '' }}{{ item.price || '' }}</span>
+                    </li>
+                  </ul>
+                </section>
                 <section class="xb-ocr-raw-panel">
                   <button class="xb-secondary-button" type="button" @click="rawTextOpen = !rawTextOpen">
                     <FileSearch :size="16" />

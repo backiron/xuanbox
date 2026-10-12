@@ -3736,6 +3736,33 @@ body.xb-lightbox-open {
   overflow-wrap: anywhere;
 }
 
+.xb-receipt-items {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.xb-receipt-items ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.xb-receipt-items li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px;
+  border: 1px solid var(--xb-border);
+  border-radius: var(--xb-radius-md);
+}
+
+.xb-receipt-items small {
+  color: var(--xb-color-cyan);
+}
+
 .xb-ocr-finished {
   display: grid;
   gap: 8px;

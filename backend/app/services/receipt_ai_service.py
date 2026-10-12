@@ -38,7 +38,11 @@ def _ollama_chat(raw_text: str, parsed: dict) -> dict:
                     "table numbers, payment sections, or item names as merchant. Return null when the merchant is not visible. "
                     "Infer category from receipt context and items when possible, such as groceries, restaurant, fuel, "
                     "pharmacy, electronics, clothing, office, travel, home, or other. Treat clear return, refund, exchange, "
-                    "or warranty periods as warranty_until by adding the period to purchase_date. Never invent amounts or dates."
+                    "or warranty periods as warranty_until by adding the period to purchase_date. Never invent amounts or dates. "
+                    "List every purchased line in items: name exactly as printed; kind = what the product or service is in "
+                    "a few plain English words (for example leather boots, paper towels, rotisserie chicken, oil change), "
+                    "only when the name or store makes it reasonably clear, otherwise null; quantity as a number; price as printed. "
+                    "Skip subtotal, tax, discount, payment and change lines."
                 ),
             },
             {
@@ -55,7 +59,7 @@ def _ollama_chat(raw_text: str, parsed: dict) -> dict:
                             "purchase_date",
                             "warranty_until",
                             "notes",
-                            "items_summary",
+                            "items",
                         ],
                     },
                     ensure_ascii=False,
@@ -65,6 +69,7 @@ def _ollama_chat(raw_text: str, parsed: dict) -> dict:
         "options": {
             "temperature": 0.1,
             "num_ctx": 4096,
+            "num_predict": 1200,
         },
     }
     body = json.dumps(payload).encode("utf-8")
@@ -90,4 +95,52 @@ async def enhance_receipt_parse(raw_text: str, parsed: dict) -> dict:
         await record_ai_result("receipt", False, time.monotonic() - started, f"{type(exc).__name__}: {exc}")
         return {}
     await record_ai_result("receipt", True, time.monotonic() - started)
-    return {key: value for key, value in result.items() if not is_blank_ai_value(value)}
+    cleaned = {key: value for key, value in result.items() if not is_blank_ai_value(value) and key not in {"items", "items_summary"}}
+    items = normalize_items(result.get("items"))
+    if items:
+        cleaned["items"] = items
+        cleaned["items_summary"] = items_summary(items)
+    return cleaned
+
+
+MAX_ITEMS = 40
+
+
+def normalize_items(value) -> list[dict]:
+    """Keep well-formed item lines only; the model sometimes returns strings, nulls or totals."""
+    if not isinstance(value, list):
+        return []
+    items = []
+    for raw in value[:MAX_ITEMS]:
+        if not isinstance(raw, dict):
+            continue
+        name = str(raw.get("name") or raw.get("item_name") or "").strip()
+        if is_blank_ai_value(name):
+            continue
+        kind = raw.get("kind")
+        quantity = raw.get("quantity")
+        price = raw.get("price") if raw.get("price") is not None else raw.get("total_price")
+        items.append(
+            {
+                "name": name[:120],
+                "kind": None if is_blank_ai_value(kind) else str(kind).strip()[:60],
+                "quantity": quantity if isinstance(quantity, (int, float)) and not isinstance(quantity, bool) else None,
+                "price": None if is_blank_ai_value(price) else str(price).strip()[:20],
+            }
+        )
+    return items
+
+
+def items_summary(items: list[dict]) -> str:
+    """Readable one-liner used in the review screen and in meaning-based search."""
+    parts = []
+    for item in items:
+        text = item["name"]
+        if item.get("kind") and item["kind"].lower() not in text.lower():
+            text += f" ({item['kind']})"
+        if item.get("quantity") and item["quantity"] != 1:
+            text += f" ×{item['quantity']:g}"
+        if item.get("price"):
+            text += f" {item['price']}"
+        parts.append(text)
+    return "; ".join(parts)[:1000]

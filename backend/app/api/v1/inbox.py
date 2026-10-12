@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, UploadFile
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_session, require_user_app
@@ -8,6 +9,7 @@ from app.core.responses import success_response
 from app.models.file_asset import FileAsset
 from app.models.inbox_item import InboxItem
 from app.models.user import User
+from app.models.receipt import Receipt
 from app.schemas.file_asset import FileAssetPublic
 from app.schemas.inbox import InboxItemPublic, InboxResolveRequest
 from app.services.inbox_service import list_inbox_items, resolve_inbox_item, upload_inbox_item
@@ -52,4 +54,9 @@ async def resolve_inbox_endpoint(
 ) -> dict:
     item = await resolve_inbox_item(session, current_user, item_id, payload.action)
     file_asset = await session.get(FileAsset, item.file_id)
-    return success_response(_serialize(item, file_asset))
+    data = _serialize(item, file_asset)
+    if item.resolved_as == "receipt":
+        # Lets the inbox offer "open it" right away.
+        receipt_id = await session.scalar(select(Receipt.id).where(Receipt.owner_id == current_user.id, Receipt.file_id == item.file_id))
+        data["receipt_id"] = str(receipt_id) if receipt_id else None
+    return success_response(data)

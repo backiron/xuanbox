@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { CheckCircle2, FileText, Image, Inbox, ReceiptText, RotateCcw, Trash2, Upload } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 
 import PageHeader from '../../components/common/PageHeader.vue'
 import { inboxApi } from '../../api/inboxApi'
@@ -18,6 +19,7 @@ const message = ref('')
 const error = ref('')
 const { t } = useI18n()
 const dialog = useDialogStore()
+const router = useRouter()
 const authStore = useAuthStore()
 
 const pendingCount = computed(() => items.value.length)
@@ -122,7 +124,7 @@ async function resolveItem(item, action) {
   message.value = ''
   error.value = ''
   try {
-    await inboxApi.resolve(item.id, action)
+    const resolved = (await inboxApi.resolve(item.id, action)).data.data
     const label = action === 'photo'
       ? t('pages.dashboard.photos')
       : action === 'receipt'
@@ -134,7 +136,16 @@ async function resolveItem(item, action) {
       ? t('pages.inbox.dismissed')
       : t('pages.inbox.saved', { name: label })
     await loadInbox()
-    if (isProUser.value && ['file', 'receipt'].includes(action)) {
+    if (action === 'receipt' && resolved?.receipt_id) {
+      // Recognition runs in the background; the receipts page shows its progress and opens this receipt.
+      const open = await dialog.confirm({
+        title: t('pages.inbox.receiptSavedTitle'),
+        message: isProUser.value ? t('pages.inbox.aiQueuedReceipt') : t('pages.inbox.ocrQueuedReceipt'),
+        confirmText: t('pages.inbox.openReceipt'),
+        cancelText: t('pages.inbox.keepSorting')
+      })
+      if (open) await router.push({ path: '/receipts', query: { receipt: resolved.receipt_id } })
+    } else if (isProUser.value && action === 'file') {
       await dialog.confirm({
         title: t('pages.inbox.aiQueuedTitle'),
         message: action === 'receipt' ? t('pages.inbox.aiQueuedReceipt') : t('pages.inbox.aiQueuedFile'),

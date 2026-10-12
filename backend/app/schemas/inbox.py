@@ -20,6 +20,7 @@ class InboxItemPublic(BaseModel):
     suggestion_reason: str | None
     resolved_as: str | None
     resolved_at: datetime | None
+    receipt_id: UUID | None = None
     created_at: datetime
     updated_at: datetime
     file: FileAssetPublic | None = None

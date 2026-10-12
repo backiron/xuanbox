@@ -275,6 +275,10 @@
       inputRequired: '请输入内容'
     },
     inbox: {
+      receiptSavedTitle: "已存为收据",
+      openReceipt: "去收据页查看",
+      keepSorting: "继续整理",
+      ocrQueuedReceipt: "收据已保存，正在后台识别文字，稍后可在收据页确认结果。",
       title: '收件箱',
       subtitleBusy: '{count} 个待处理上传。',
       subtitleClear: '请先确认每个新上传内容，放到照片、文件或收据。',
@@ -369,6 +373,7 @@
       photoSavedTo: '照片已保存到{name}。'
     },
     receipts: {
+      recognisedItems: "识别出的商品（{count}）",
       recognising: "识别中 · {seconds} 秒（通常 30–60 秒）",
       ocrFinished: "一张小票识别完成了",
       ocrFinishedFailed: "一张小票识别失败，可以在列表里重试",
