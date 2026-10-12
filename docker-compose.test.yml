@@ -48,6 +48,6 @@ services:
     volumes:
       - ./backend:/app
     command: >
-      sh -c "pip install -q --root-user-action=ignore -r requirements-dev.txt &&
+      sh -c "mkdir -p /tmp/xuanbox-test-storage && pip install -q --root-user-action=ignore -r requirements-dev.txt &&
              alembic upgrade head &&
              python -m pytest -q -p no:cacheprovider tests"

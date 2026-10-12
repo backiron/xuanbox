@@ -1,0 +1,26 @@
+# Reach an existing Ollama container over a private Docker network instead of the host port
+# (on dev790 the host firewall blocks container networks from host:11434).
+#
+# One-time setup on the host:
+#   docker network create xb-ai
+#   docker network connect xb-ai shared-ollama
+# If shared-ollama is ever recreated, run the connect command again.
+#
+# .env:  RECEIPT_AI_BASE_URL=http://shared-ollama:11434
+#        DOCUMENT_AI_BASE_URL=http://shared-ollama:11434
+#
+# Use together with the prod file:
+#   docker compose --env-file .env -f docker-compose.prod.yml -f docker-compose.shared-ollama.yml up -d
+services:
+  xuanbox-api:
+    networks:
+      - default
+      - xb-ai
+  xuanbox-worker:
+    networks:
+      - default
+      - xb-ai
+
+networks:
+  xb-ai:
+    external: true

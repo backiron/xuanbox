@@ -1,8 +1,10 @@
 import asyncio
 import json
+import time
 from urllib import error, request
 
 from app.core.config import settings
+from app.services.ai_health_service import is_blank_ai_value, record_ai_result
 
 
 def _extract_json_object(value: str) -> dict:
@@ -93,11 +95,11 @@ def _clean_ai_payload(payload: dict) -> dict:
     }
     cleaned: dict = {}
     for key, value in payload.items():
-        if key not in allowed or value in ("", [], {}):
+        if key not in allowed or is_blank_ai_value(value):
             continue
         if key in {"keywords", "labels"}:
             if isinstance(value, list):
-                cleaned[key] = [str(item).strip()[:80] for item in value if str(item).strip()][:12]
+                cleaned[key] = [str(item).strip()[:80] for item in value if not is_blank_ai_value(item)][:12]
             continue
         cleaned[key] = str(value).strip()[:4000 if key == "summary" else 255]
     return cleaned
@@ -106,8 +108,11 @@ def _clean_ai_payload(payload: dict) -> dict:
 async def enhance_document_parse(raw_text: str, current_parse: dict, detected_type: str) -> dict:
     if not settings.DOCUMENT_AI_ENABLED:
         return {}
+    started = time.monotonic()
     try:
         payload = await asyncio.to_thread(_ollama_document_chat, raw_text, current_parse, detected_type)
-    except (OSError, TimeoutError, error.URLError, json.JSONDecodeError):
+    except (OSError, TimeoutError, error.URLError, json.JSONDecodeError) as exc:
+        await record_ai_result("document", False, time.monotonic() - started, f"{type(exc).__name__}: {exc}")
         return {}
+    await record_ai_result("document", True, time.monotonic() - started)
     return _clean_ai_payload(payload)

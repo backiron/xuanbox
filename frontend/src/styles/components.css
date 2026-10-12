@@ -3716,3 +3716,22 @@ body.xb-lightbox-open {
 .xb-danger-fill {
   background: linear-gradient(135deg, #ff7a7a, #ff4d6d);
 }
+
+.xb-ai-status {
+  font-weight: 700;
+}
+
+.xb-ai-status.is-ok {
+  color: var(--xb-color-success);
+}
+
+.xb-ai-status.is-offline,
+.xb-ai-status.is-model_missing {
+  color: var(--xb-color-danger);
+}
+
+.xb-ai-error {
+  color: var(--xb-color-danger);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}

@@ -47,13 +47,14 @@ class Settings(BaseSettings):
     RECEIPT_AI_ASSIST_ENABLED: bool = False
     RECEIPT_AI_MODEL: str = "qwen2.5:3b"
     RECEIPT_AI_BASE_URL: str = "http://host.docker.internal:11434"
-    RECEIPT_AI_TIMEOUT_SECONDS: int = Field(default=20, ge=1, le=120)
+    # CPU-only boxes take ~20s per call with a 3B model.
+    RECEIPT_AI_TIMEOUT_SECONDS: int = Field(default=60, ge=1, le=300)
     RECEIPT_AI_MAX_CHARS: int = Field(default=6000, ge=500, le=20000)
 
     DOCUMENT_AI_ENABLED: bool = False
     DOCUMENT_AI_MODEL: str = "qwen2.5:3b"
     DOCUMENT_AI_BASE_URL: str = "http://host.docker.internal:11434"
-    DOCUMENT_AI_TIMEOUT_SECONDS: int = Field(default=30, ge=1, le=120)
+    DOCUMENT_AI_TIMEOUT_SECONDS: int = Field(default=90, ge=1, le=300)
     DOCUMENT_AI_MAX_CHARS: int = Field(default=6000, ge=500, le=20000)
     DOCUMENT_AI_CONCURRENCY: int = Field(default=1, ge=1, le=4)
 

@@ -17,6 +17,8 @@ from app.models.ocr_task import OcrTask
 from app.models.user import User
 from app.models.worker_task import WorkerTask
 from app.schemas.admin import AdminOverview, AdminPlanPolicy, AdminUserPublic, AdminUserUpdateRequest, AdminWorkerStatus
+from app.core.redis import redis_client
+from app.services.ai_health_service import ai_call_state, probe_ai
 from app.services.audit_service import write_audit_log
 from app.services.system_settings_service import mb_to_bytes
 
@@ -28,6 +30,16 @@ PLAN_POLICIES = [
     AdminPlanPolicy(key="free", name="Free", storage_limit_bytes=500 * 1024**2, max_public_shares=5, max_share_downloads=3, ocr_enabled=True, ai_enabled=False),
     AdminPlanPolicy(key="pro", name="Pro", storage_limit_bytes=50 * 1024**3, max_public_shares=500, max_share_downloads=100, ocr_enabled=True, ai_enabled=True),
 ]
+
+
+async def live_service_status() -> dict:
+    # The database answered the overview queries; Redis and AI are checked for real.
+    try:
+        redis_status = "ok" if await redis_client.ping() else "error"
+    except Exception:
+        redis_status = "error"
+    ai = await probe_ai()
+    return {"api": "ok", "database": "ok", "redis": redis_status, "ai": ai["status"]}
 
 
 async def admin_overview(db: AsyncSession) -> AdminOverview:
@@ -53,7 +65,7 @@ async def admin_overview(db: AsyncSession) -> AdminOverview:
         }
         if latest_backup
         else None,
-        service_status={"api": "ok", "database": "ok", "redis": "ok"},
+        service_status=await live_service_status(),
         disk={"total": usage.total, "used": usage.used, "free": usage.free},
     )
 
@@ -140,9 +152,9 @@ async def worker_status(db: AsyncSession) -> AdminWorkerStatus:
         document_intelligence_tasks={status: int(count) for status, count in intelligence_rows.all()},
         backups={status: int(count) for status, count in backup_rows.all()},
         ai={
-            "enabled": settings.DOCUMENT_AI_ENABLED,
-            "model": settings.DOCUMENT_AI_MODEL,
-            "base_url": settings.DOCUMENT_AI_BASE_URL,
+            **await probe_ai(),
+            **await ai_call_state(),
+            "receipt_timeout_seconds": settings.RECEIPT_AI_TIMEOUT_SECONDS,
             "timeout_seconds": settings.DOCUMENT_AI_TIMEOUT_SECONDS,
             "max_chars": settings.DOCUMENT_AI_MAX_CHARS,
             "concurrency": settings.DOCUMENT_AI_CONCURRENCY,

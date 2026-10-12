@@ -1,8 +1,10 @@
 import asyncio
 import json
+import time
 from urllib import error, request
 
 from app.core.config import settings
+from app.services.ai_health_service import is_blank_ai_value, record_ai_result
 
 
 def _extract_json_object(value: str) -> dict:
@@ -81,7 +83,11 @@ def _ollama_chat(raw_text: str, parsed: dict) -> dict:
 async def enhance_receipt_parse(raw_text: str, parsed: dict) -> dict:
     if not settings.RECEIPT_AI_ASSIST_ENABLED:
         return {}
+    started = time.monotonic()
     try:
-        return await asyncio.to_thread(_ollama_chat, raw_text, parsed)
-    except (OSError, TimeoutError, error.URLError, json.JSONDecodeError):
+        result = await asyncio.to_thread(_ollama_chat, raw_text, parsed)
+    except (OSError, TimeoutError, error.URLError, json.JSONDecodeError) as exc:
+        await record_ai_result("receipt", False, time.monotonic() - started, f"{type(exc).__name__}: {exc}")
         return {}
+    await record_ai_result("receipt", True, time.monotonic() - started)
+    return {key: value for key, value in result.items() if not is_blank_ai_value(value)}

@@ -385,7 +385,7 @@ onMounted(loadAdmin)
         <article class="xb-panel">
           <Activity :size="22" />
           <h3>{{ t('pages.admin.errorsCount', { count: bundle.overview?.error_count || 0 }) }}</h3>
-          <p>{{ t('pages.admin.statusLine', { status: bundle.overview?.service_status?.api || t('common.actions.loading') }) }}</p>
+          <p>{{ t('pages.admin.statusLine', { status: bundle.overview?.service_status?.api || t('common.actions.loading') }) }}<template v-if="bundle.overview?.service_status?.ai"> · AI: {{ t(`pages.admin.aiStatus.${bundle.overview.service_status.ai}`) }}</template></p>
         </article>
         <article class="xb-panel">
           <ShieldCheck :size="22" />
@@ -646,9 +646,13 @@ onMounted(loadAdmin)
           </article>
           <article>
             <strong>{{ t('pages.admin.localAI') }}</strong>
-            <span>{{ bundle.worker?.ai?.enabled ? t('common.states.enabled') : t('common.states.disabled') }}</span>
-            <span>{{ bundle.worker?.ai?.model || t('pages.admin.noModelSelected') }}</span>
+            <span class="xb-ai-status" :class="`is-${bundle.worker?.ai?.status || 'disabled'}`">{{ t(`pages.admin.aiStatus.${bundle.worker?.ai?.status || 'disabled'}`) }}</span>
+            <span>{{ bundle.worker?.ai?.model || t('pages.admin.noModelSelected') }}<template v-if="bundle.worker?.ai?.latency_ms != null"> · {{ bundle.worker.ai.latency_ms }} ms</template></span>
             <span>{{ bundle.worker?.ai?.base_url || t('pages.admin.noConnectionConfigured') }}</span>
+            <span v-if="bundle.worker?.ai?.probe_error" class="xb-ai-error">{{ bundle.worker.ai.probe_error }}</span>
+            <span>{{ t('pages.admin.aiLastOk') }}: {{ bundle.worker?.ai?.last_ok_at ? `${formatDate(bundle.worker.ai.last_ok_at)} (${bundle.worker.ai.last_ok_seconds}s)` : t('pages.admin.aiNever') }}</span>
+            <span>{{ t('pages.admin.aiCalls', { ok: bundle.worker?.ai?.ok_count || 0, failed: bundle.worker?.ai?.error_count || 0 }) }}</span>
+            <span v-if="bundle.worker?.ai?.last_error_at" class="xb-ai-error">{{ t('pages.admin.aiLastError') }}: {{ formatDate(bundle.worker.ai.last_error_at) }} · {{ bundle.worker.ai.last_error }}</span>
           </article>
           <article>
             <strong>{{ t('pages.admin.backups') }}</strong>
