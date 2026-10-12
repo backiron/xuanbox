@@ -881,6 +881,9 @@
       unlimited: 'Unlimited'
     },
     xuandrop: {
+      tooLarge: "{name} is too large: XuanDrop files can be up to 2 GB.",
+      resuming: "Connection dropped, resuming…",
+      tooLargeForLibrary: "Over 200 MB: can't be saved to the library yet, download it instead",
       title: 'XuanDrop',
       myDevices: 'My devices',
       myDevicesHint: 'Move things between your own computer, phone and tablet',

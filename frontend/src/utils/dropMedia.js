@@ -34,6 +34,19 @@ export async function fetchMessageFile(message, onProgress) {
   return file
 }
 
+// Above this size the browser downloads natively from a short-lived link, streaming to disk,
+// instead of holding the whole file in memory (which crashes phone browsers on large videos).
+export const NATIVE_DOWNLOAD_FROM_BYTES = 100 * 1024 * 1024
+
+export async function downloadNatively(message) {
+  const response = await dropChatApi.downloadLink(message.id)
+  const link = document.createElement('a')
+  link.href = response.data.data.url
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+}
+
 export function forgetMessage(messageId) {
   fileCache.delete(messageId)
   const url = thumbnailUrls.get(messageId)

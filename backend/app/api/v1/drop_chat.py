@@ -5,10 +5,11 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, WebSocket, WebSocketDisconnect
-from fastapi.responses import Response
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi.responses import Response, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.core.dependencies import get_current_user_payload, get_session, require_user_app
 from app.core.errors import AppError
@@ -33,6 +34,7 @@ from app.schemas.drop import (
     DropDirectThreadRequest,
     DropSaveRequest,
     DropTextMessageRequest,
+    DropUploadStartRequest,
 )
 from app.services import drop_service
 
@@ -186,20 +188,91 @@ async def send_file_endpoint(
     )
 
 
+@router.post("/threads/{thread_id}/uploads")
+async def start_upload_endpoint(
+    thread_id: UUID,
+    payload: DropUploadStartRequest,
+    actor: DropActor = Depends(get_drop_actor),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    return success_response(
+        await drop_service.start_upload(
+            session,
+            actor.user,
+            actor.device_id,
+            thread_id,
+            filename=payload.filename,
+            mime_type=payload.mime_type,
+            file_size=payload.file_size,
+            target_device_id=payload.target_device_id,
+            client_id=payload.client_id,
+        )
+    )
+
+
+@router.get("/uploads/{upload_id}")
+async def upload_status_endpoint(upload_id: UUID, actor: DropActor = Depends(get_drop_actor), session: AsyncSession = Depends(get_session)) -> dict:
+    return success_response(await drop_service.upload_status(session, actor.user, upload_id))
+
+
+@router.put("/uploads/{upload_id}/chunks/{index}")
+async def upload_chunk_endpoint(
+    upload_id: UUID,
+    index: int,
+    request: Request,
+    actor: DropActor = Depends(get_drop_actor),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    limit = settings.DROP_CHUNK_SIZE_MB * 1024 * 1024
+    declared = int(request.headers.get("content-length") or 0)
+    if declared > limit:
+        raise AppError("upload_chunk_size", "Chunk is too large", 413)
+    data = await request.body()
+    if len(data) > limit:
+        raise AppError("upload_chunk_size", "Chunk is too large", 413)
+    return success_response(await drop_service.put_chunk(session, actor.user, upload_id, index, data))
+
+
+@router.post("/uploads/{upload_id}/complete")
+async def complete_upload_endpoint(upload_id: UUID, actor: DropActor = Depends(get_drop_actor), session: AsyncSession = Depends(get_session)) -> dict:
+    return success_response(await drop_service.complete_upload(session, actor.user, upload_id))
+
+
+@router.delete("/uploads/{upload_id}")
+async def cancel_upload_endpoint(upload_id: UUID, actor: DropActor = Depends(get_drop_actor), session: AsyncSession = Depends(get_session)) -> dict:
+    await drop_service.cancel_upload(session, actor.user, upload_id)
+    return success_response(message="cancelled")
+
+
 @router.post("/threads/{thread_id}/read")
 async def mark_read_endpoint(thread_id: UUID, actor: DropActor = Depends(get_drop_actor), session: AsyncSession = Depends(get_session)) -> dict:
     last_read_at = await drop_service.mark_thread_read(session, actor.user, thread_id)
     return success_response({"last_read_at": last_read_at})
 
 
+def _file_response(message, chunks) -> StreamingResponse:
+    headers = attachment_headers(message.filename or "file")
+    headers["Content-Length"] = str(message.file_size or 0)
+    headers["Cache-Control"] = "private, no-store"
+    return StreamingResponse(chunks, media_type=message.mime_type or "application/octet-stream", headers=headers)
+
+
 @router.get("/messages/{message_id}/download")
-async def download_message_endpoint(message_id: UUID, actor: DropActor = Depends(get_drop_actor), session: AsyncSession = Depends(get_session)) -> Response:
-    message, plain_bytes = await drop_service.download_message_file(session, actor.user, message_id)
-    return Response(
-        content=plain_bytes,
-        media_type=message.mime_type or "application/octet-stream",
-        headers=attachment_headers(message.filename or "file"),
-    )
+async def download_message_endpoint(message_id: UUID, actor: DropActor = Depends(get_drop_actor), session: AsyncSession = Depends(get_session)) -> StreamingResponse:
+    message, chunks = await drop_service.download_message_file(session, actor.user, message_id)
+    return _file_response(message, chunks)
+
+
+@router.post("/messages/{message_id}/download-link")
+async def download_link_endpoint(message_id: UUID, actor: DropActor = Depends(get_drop_actor), session: AsyncSession = Depends(get_session)) -> dict:
+    token = await drop_service.create_download_link(session, actor.user, message_id)
+    return success_response({"url": f"/api/v1/drop/messages/{message_id}/file?token={token}", "expires_in_seconds": drop_service.DOWNLOAD_LINK_SECONDS})
+
+
+@router.get("/messages/{message_id}/file")
+async def download_by_link_endpoint(message_id: UUID, token: str = Query(...), session: AsyncSession = Depends(get_session)) -> StreamingResponse:
+    message, chunks = await drop_service.download_with_token(session, message_id, token)
+    return _file_response(message, chunks)
 
 
 @router.get("/messages/{message_id}/thumbnail")

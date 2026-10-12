@@ -62,6 +62,8 @@ class DropMessage(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     thumb_auth_tag: Mapped[str | None] = mapped_column(Text, nullable=True)
     image_width: Mapped[int | None] = mapped_column(nullable=True)
     image_height: Mapped[int | None] = mapped_column(nullable=True)
+    # "single": one AES-GCM blob (nonce/auth_tag columns); "chunked-v1": see services/chunked_crypto.py.
+    encryption_format: Mapped[str] = mapped_column(String(16), default="single", nullable=False)
 
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False)
 
@@ -74,3 +76,24 @@ class DropMessageSave(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     user_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
     destination: Mapped[str] = mapped_column(String(32), nullable=False)
     file_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), ForeignKey("file_assets.id", ondelete="SET NULL"), nullable=True)
+
+
+class DropUpload(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """A large file arriving in chunks; becomes a DropMessage when complete."""
+
+    __tablename__ = "drop_uploads"
+
+    thread_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("drop_threads.id", ondelete="CASCADE"), index=True, nullable=False)
+    user_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    device_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), ForeignKey("devices.id", ondelete="SET NULL"), nullable=True)
+    target_device_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), ForeignKey("devices.id", ondelete="SET NULL"), nullable=True)
+    client_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    mime_type: Mapped[str] = mapped_column(String(160), nullable=False)
+    file_size: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    chunk_size: Mapped[int] = mapped_column(nullable=False)
+    next_index: Mapped[int] = mapped_column(default=0, nullable=False)
+    received_bytes: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
+    encrypted_path: Mapped[str] = mapped_column(Text, nullable=False)
+    encrypted_file_key: Mapped[str] = mapped_column(Text, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False)

@@ -881,6 +881,9 @@
       unlimited: '不限量'
     },
     xuandrop: {
+      tooLarge: "{name} 太大：XuanDrop 单个文件最大 2 GB。",
+      resuming: "网络中断，正在续传…",
+      tooLargeForLibrary: "超过 200 MB，暂不能存入资料库，请下载保存",
       title: 'XuanDrop',
       myDevices: '我的设备',
       myDevicesHint: '在你自己的电脑、手机、平板之间互传',

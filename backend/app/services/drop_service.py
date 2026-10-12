@@ -7,6 +7,7 @@ Saving an attachment copies it into the saving user's library, so the original c
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from pathlib import Path
+from collections.abc import Iterator
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -21,10 +22,11 @@ from app.core.errors import AppError
 from app.core.realtime import online_device_ids, publish_to_users
 from app.models.auth_session import AuthSession
 from app.models.device import Device
-from app.models.drop import DropContact, DropMessage, DropMessageSave, DropThread, DropThreadMember
+from app.models.drop import DropContact, DropMessage, DropMessageSave, DropThread, DropThreadMember, DropUpload
 from app.models.user import User
 from app.schemas.drop import DropSaveRequest, DropTextMessageRequest
 from app.services.audit_service import write_audit_log
+from app.services.chunked_crypto import FORMAT_CHUNKED, encrypt_chunk, iter_decrypt
 from app.services.encryption_service import decrypt_bytes, encrypt_bytes, generate_file_key, unwrap_file_key, wrap_file_key
 from app.services.storage_service import delete_physical_file, read_encrypted_file, save_encrypted_file
 from app.services.upload_limits import read_user_upload_bytes
@@ -39,6 +41,10 @@ MESSAGE_FILE = "file"
 MAX_PAGE_SIZE = 100
 THUMBNAIL_SIZE = (480, 480)
 DROP_USER_ROLES = {"user", "guest"}
+UPLOAD_TTL_HOURS = 24
+THUMBNAIL_SOURCE_MAX_BYTES = 30 * 1024 * 1024
+DOWNLOAD_LINK_SECONDS = 10 * 60
+MIB = 1024 * 1024
 
 
 def _now() -> datetime:
@@ -368,6 +374,7 @@ def message_public(message: DropMessage, saved_to: str | None = None) -> dict[st
         "file_size": message.file_size,
         "has_thumbnail": bool(message.thumb_path),
         "image_width": message.image_width,
+        "can_save_to_library": (message.file_size or 0) <= settings.DROP_LIBRARY_SAVE_MAX_MB * MIB,
         "image_height": message.image_height,
         "created_at": message.created_at,
         "expires_at": message.expires_at,
@@ -457,7 +464,8 @@ async def _ensure_pending_capacity(db: AsyncSession, user: User, incoming: int) 
             DropMessage.expires_at > _now(),
         )
     )
-    if int(used or 0) + incoming > settings.DROP_USER_PENDING_LIMIT_MB * 1024 * 1024:
+    uploading = await db.scalar(select(func.coalesce(func.sum(DropUpload.file_size), 0)).where(DropUpload.user_id == user.id))
+    if int(used or 0) + int(uploading or 0) + incoming > settings.DROP_USER_PENDING_LIMIT_MB * MIB:
         raise AppError(
             "drop_pending_limit",
             "Too many unsaved transfers. Save or delete some, or wait for older ones to expire.",
@@ -476,6 +484,19 @@ def _make_thumbnail(plain_bytes: bytes) -> tuple[bytes, int, int] | None:
         return buffer.getvalue(), width, height
     except Exception:
         return None
+
+
+async def _attach_thumbnail(message: DropMessage, plain_bytes: bytes) -> None:
+    thumbnail = _make_thumbnail(plain_bytes)
+    if thumbnail is None:
+        return
+    thumb_bytes, message.image_width, message.image_height = thumbnail
+    thumb_key = generate_file_key()
+    thumb_cipher, message.thumb_nonce, message.thumb_auth_tag = encrypt_bytes(thumb_bytes, thumb_key)
+    thumb_path = _drop_path(message.thread_id, message.id, ".thumb.bin")
+    await save_encrypted_file(thumb_path, thumb_cipher)
+    message.thumb_path = str(thumb_path)
+    message.thumb_file_key = wrap_file_key(thumb_key)
 
 
 async def send_file(
@@ -522,15 +543,7 @@ async def send_file(
         created_at=now,
     )
     if mime_type.startswith("image/"):
-        thumbnail = _make_thumbnail(plain_bytes)
-        if thumbnail is not None:
-            thumb_bytes, message.image_width, message.image_height = thumbnail
-            thumb_key = generate_file_key()
-            thumb_cipher, message.thumb_nonce, message.thumb_auth_tag = encrypt_bytes(thumb_bytes, thumb_key)
-            thumb_path = _drop_path(thread.id, message_id, ".thumb.bin")
-            await save_encrypted_file(thumb_path, thumb_cipher)
-            message.thumb_path = str(thumb_path)
-            message.thumb_file_key = wrap_file_key(thumb_key)
+        await _attach_thumbnail(message, plain_bytes)
     db.add(message)
     try:
         await db.flush()
@@ -551,23 +564,50 @@ async def _get_member_message(db: AsyncSession, user: User, message_id: UUID) ->
     return message
 
 
-def _decrypt_message_file(message: DropMessage) -> bytes:
+def iter_message_plaintext(message: DropMessage) -> Iterator[bytes]:
     if message.kind != MESSAGE_FILE or not message.encrypted_path:
         raise AppError("drop_message_not_file", "This message has no file", 400)
-    return decrypt_bytes(
-        read_encrypted_file(message.encrypted_path),
-        unwrap_file_key(message.encrypted_file_key),
-        message.nonce,
-        message.auth_tag,
+    key = unwrap_file_key(message.encrypted_file_key)
+    if message.encryption_format == FORMAT_CHUNKED:
+        yield from iter_decrypt(message.encrypted_path, key, message.id)
+    else:
+        yield decrypt_bytes(read_encrypted_file(message.encrypted_path), key, message.nonce, message.auth_tag)
+
+
+def _decrypt_message_file(message: DropMessage) -> bytes:
+    return b"".join(iter_message_plaintext(message))
+
+
+async def download_message_file(db: AsyncSession, user: User, message_id: UUID) -> tuple[DropMessage, Iterator[bytes]]:
+    message = await _get_member_message(db, user, message_id)
+    if message.kind != MESSAGE_FILE:
+        raise AppError("drop_message_not_file", "This message has no file", 400)
+    await write_audit_log(db, action="drop.message_download", actor_user_id=user.id, target_type="drop_message", target_id=str(message.id))
+    await db.commit()
+    return message, iter_message_plaintext(message)
+
+
+async def create_download_link(db: AsyncSession, user: User, message_id: UUID) -> str:
+    """A short-lived link for one file, so browsers download large files natively, streamed to disk."""
+    from app.core.security import create_access_token
+
+    message = await _get_member_message(db, user, message_id)
+    return create_access_token(
+        str(user.id),
+        {"type": "drop_download", "message_id": str(message.id), "exp": int((_now() + timedelta(seconds=DOWNLOAD_LINK_SECONDS)).timestamp())},
     )
 
 
-async def download_message_file(db: AsyncSession, user: User, message_id: UUID) -> tuple[DropMessage, bytes]:
-    message = await _get_member_message(db, user, message_id)
-    plain_bytes = _decrypt_message_file(message)
-    await write_audit_log(db, action="drop.message_download", actor_user_id=user.id, target_type="drop_message", target_id=str(message.id))
-    await db.commit()
-    return message, plain_bytes
+async def download_with_token(db: AsyncSession, message_id: UUID, token: str) -> tuple[DropMessage, Iterator[bytes]]:
+    from app.core.security import decode_token
+
+    payload = decode_token(token)
+    if payload.get("type") != "drop_download" or payload.get("message_id") != str(message_id):
+        raise AppError("invalid_download_link", "This download link is invalid or has expired", 403)
+    user = await db.get(User, UUID(payload["sub"]))
+    if user is None or user.status != "active":
+        raise AppError("invalid_download_link", "This download link is invalid or has expired", 403)
+    return await download_message_file(db, user, message_id)
 
 
 async def read_message_thumbnail(db: AsyncSession, user: User, message_id: UUID) -> bytes:
@@ -609,6 +649,12 @@ async def save_message_to_library(db: AsyncSession, user: User, message_id: UUID
     existing = await db.scalar(select(DropMessageSave).where(DropMessageSave.message_id == message.id, DropMessageSave.user_id == user.id))
     if existing is not None:
         return message_public(message, existing.destination)
+    if (message.file_size or 0) > settings.DROP_LIBRARY_SAVE_MAX_MB * MIB:
+        raise AppError(
+            "drop_too_large_for_library",
+            f"Files over {settings.DROP_LIBRARY_SAVE_MAX_MB} MB cannot be saved to the library yet. Download it instead.",
+            413,
+        )
     if payload.destination == "photos" and not (message.mime_type or "").startswith("image/"):
         raise AppError("invalid_photo", "Only images can be saved to Photos", 400)
 
@@ -645,5 +691,159 @@ async def cleanup_expired_messages(db: AsyncSession, batch_size: int = 500) -> i
         _delete_message_blobs(message)
     if expired:
         await db.execute(delete(DropMessage).where(DropMessage.id.in_([message.id for message in expired])))
+    stale = list(await db.scalars(select(DropUpload).where(DropUpload.expires_at <= _now()).limit(batch_size)))
+    for upload in stale:
+        delete_physical_file(upload.encrypted_path)
+        await db.delete(upload)
     await db.commit()
-    return len(expired)
+    return len(expired) + len(stale)
+
+
+# ---------------------------------------------------------------- chunked uploads (large files)
+
+
+def _upload_path(upload_id: UUID) -> Path:
+    return Path(settings.STORAGE_ROOT) / "encrypted_drop" / "_uploads" / f"{upload_id}.part"
+
+
+def upload_public(upload: DropUpload) -> dict[str, Any]:
+    return {
+        "id": str(upload.id),
+        "thread_id": str(upload.thread_id),
+        "filename": upload.filename,
+        "file_size": upload.file_size,
+        "chunk_size": upload.chunk_size,
+        "next_index": upload.next_index,
+        "received_bytes": upload.received_bytes,
+        "expires_at": upload.expires_at,
+    }
+
+
+async def start_upload(
+    db: AsyncSession,
+    user: User,
+    device_id: UUID | None,
+    thread_id: UUID,
+    *,
+    filename: str,
+    mime_type: str | None,
+    file_size: int,
+    target_device_id: UUID | None = None,
+    client_id: str | None = None,
+) -> dict[str, Any]:
+    thread, _member = await get_member_thread(db, user, thread_id)
+    await _ensure_can_send(db, thread, user)
+    await _validate_target_device(db, thread, user, target_device_id)
+    if file_size <= 0:
+        raise AppError("empty_file", "Uploaded file is empty", 400)
+    if file_size > settings.DROP_MAX_FILE_MB * MIB:
+        raise AppError("file_too_large", f"XuanDrop files can be up to {settings.DROP_MAX_FILE_MB} MB", 413)
+    await _ensure_pending_capacity(db, user, file_size)
+    upload_id = uuid4()
+    path = _upload_path(upload_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"")
+    upload = DropUpload(
+        id=upload_id,
+        thread_id=thread.id,
+        user_id=user.id,
+        device_id=device_id,
+        target_device_id=target_device_id,
+        client_id=client_id,
+        filename=(filename or "file")[:255],
+        mime_type=(mime_type or "application/octet-stream")[:160],
+        file_size=file_size,
+        chunk_size=settings.DROP_CHUNK_SIZE_MB * MIB,
+        next_index=0,
+        received_bytes=0,
+        encrypted_path=str(path),
+        encrypted_file_key=wrap_file_key(generate_file_key()),
+        expires_at=_now() + timedelta(hours=UPLOAD_TTL_HOURS),
+    )
+    db.add(upload)
+    await db.commit()
+    return upload_public(upload)
+
+
+async def _get_upload(db: AsyncSession, user: User, upload_id: UUID, *, lock: bool = False) -> DropUpload:
+    statement = select(DropUpload).where(DropUpload.id == upload_id, DropUpload.user_id == user.id)
+    if lock:
+        statement = statement.with_for_update()
+    upload = await db.scalar(statement)
+    if upload is None or upload.expires_at <= _now():
+        raise AppError("drop_upload_not_found", "This upload has expired or was cancelled", 404)
+    return upload
+
+
+async def upload_status(db: AsyncSession, user: User, upload_id: UUID) -> dict[str, Any]:
+    return upload_public(await _get_upload(db, user, upload_id))
+
+
+async def put_chunk(db: AsyncSession, user: User, upload_id: UUID, index: int, data: bytes) -> dict[str, Any]:
+    # The row lock serialises retries of the same chunk, so a chunk is never appended twice.
+    upload = await _get_upload(db, user, upload_id, lock=True)
+    if index < upload.next_index:
+        await db.commit()
+        return upload_public(upload)
+    if index > upload.next_index:
+        await db.commit()
+        raise AppError("upload_out_of_order", f"Expected chunk {upload.next_index}", 409)
+    expected = min(upload.chunk_size, upload.file_size - upload.received_bytes)
+    if len(data) != expected:
+        await db.commit()
+        raise AppError("upload_chunk_size", f"Chunk {index} should be {expected} bytes", 400)
+    last = upload.received_bytes + len(data) == upload.file_size
+    record = encrypt_chunk(unwrap_file_key(upload.encrypted_file_key), upload.id, index, last, data)
+    with open(upload.encrypted_path, "ab") as handle:
+        handle.write(record)
+    upload.next_index += 1
+    upload.received_bytes += len(data)
+    await db.commit()
+    return upload_public(upload)
+
+
+async def complete_upload(db: AsyncSession, user: User, upload_id: UUID) -> dict[str, Any]:
+    upload = await _get_upload(db, user, upload_id, lock=True)
+    if upload.received_bytes != upload.file_size:
+        await db.commit()
+        raise AppError("upload_incomplete", "Not all chunks have arrived yet", 400)
+    thread, _member = await get_member_thread(db, user, upload.thread_id)
+    members = await _ensure_can_send(db, thread, user)
+    final_path = _drop_path(thread.id, upload.id, ".bin")
+    final_path.parent.mkdir(parents=True, exist_ok=True)
+    Path(upload.encrypted_path).replace(final_path)
+    now = _now()
+    message = DropMessage(
+        id=upload.id,
+        thread_id=thread.id,
+        sender_user_id=user.id,
+        sender_device_id=upload.device_id,
+        target_device_id=upload.target_device_id,
+        client_id=upload.client_id,
+        kind=MESSAGE_FILE,
+        filename=upload.filename,
+        mime_type=upload.mime_type,
+        file_size=upload.file_size,
+        encrypted_path=str(final_path),
+        encrypted_file_key=upload.encrypted_file_key,
+        encryption_format=FORMAT_CHUNKED,
+        expires_at=now + timedelta(days=settings.DROP_RETENTION_DAYS),
+        created_at=now,
+    )
+    if upload.mime_type.startswith("image/") and upload.file_size <= THUMBNAIL_SOURCE_MAX_BYTES:
+        await _attach_thumbnail(message, _decrypt_message_file(message))
+    await db.delete(upload)
+    db.add(message)
+    try:
+        await db.flush()
+        return await _finish_new_message(db, thread, members, message, user)
+    except Exception:
+        _delete_message_blobs(message)
+        raise
+
+
+async def cancel_upload(db: AsyncSession, user: User, upload_id: UUID) -> None:
+    upload = await _get_upload(db, user, upload_id, lock=True)
+    delete_physical_file(upload.encrypted_path)
+    await db.delete(upload)
+    await db.commit()

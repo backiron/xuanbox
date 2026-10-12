@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Check, Copy, Download, ExternalLink, FileText, FolderInput, Share, Trash2 } from 'lucide-vue-next'
-import { cachedFile, canShareFile, deliverFile, fetchMessageFile, formatSize, isAppleMobile, splitLinks, thumbnailUrl } from '../../utils/dropMedia'
+import { NATIVE_DOWNLOAD_FROM_BYTES, cachedFile, canShareFile, deliverFile, downloadNatively, fetchMessageFile, formatSize, isAppleMobile, splitLinks, thumbnailUrl } from '../../utils/dropMedia'
 
 const props = defineProps({
   message: { type: Object, required: true },
@@ -63,7 +63,18 @@ async function copyText() {
   window.setTimeout(() => { copied.value = false }, 1500)
 }
 
+const isLarge = computed(() => (props.message.file_size || 0) >= NATIVE_DOWNLOAD_FROM_BYTES)
+
 async function saveToDevice() {
+  if (isLarge.value) {
+    fetching.value = true
+    try {
+      await downloadNatively(props.message)
+    } finally {
+      fetching.value = false
+    }
+    return
+  }
   if (readyFile.value) {
     await deliverFile(readyFile.value)
     return
@@ -130,9 +141,10 @@ function chooseDestination(destination) {
       <template v-else>
         <button type="button" class="xd-action" :class="{ 'is-ready': readyFile && isAppleMobile }" :disabled="fetching" @click="saveToDevice">
           <Share v-if="readyFile && isAppleMobile" :size="14" /><Download v-else :size="14" />
-          {{ readyFile && isAppleMobile ? t('pages.xuandrop.saveToDevice') : (isAppleMobile ? t('pages.xuandrop.prepareSave') : t('pages.xuandrop.download')) }}
+          {{ isLarge ? t('pages.xuandrop.download') : readyFile && isAppleMobile ? t('pages.xuandrop.saveToDevice') : (isAppleMobile ? t('pages.xuandrop.prepareSave') : t('pages.xuandrop.download')) }}
         </button>
-        <span v-if="message.saved_to" class="xd-saved"><Check :size="14" />{{ t('pages.xuandrop.savedTo', { destination: t(`pages.xuandrop.destinations.${message.saved_to}`) }) }}</span>
+        <span v-if="message.can_save_to_library === false && !message.saved_to" class="xd-hint">{{ t('pages.xuandrop.tooLargeForLibrary') }}</span>
+        <span v-else-if="message.saved_to" class="xd-saved"><Check :size="14" />{{ t('pages.xuandrop.savedTo', { destination: t(`pages.xuandrop.destinations.${message.saved_to}`) }) }}</span>
         <div v-else class="xd-library">
           <button type="button" class="xd-action" :disabled="saving" @click="libraryMenu = !libraryMenu">
             <FolderInput :size="14" />{{ t('pages.xuandrop.saveToLibrary') }}

@@ -7,7 +7,6 @@ import { useDropSocket } from '../../composables/useDropSocket'
 import { useDialogStore } from '../../stores/dialogStore'
 import { deliverFile, fetchMessageFile, forgetMessage, formatSize } from '../../utils/dropMedia'
 import { defaultDeviceName } from '../../utils/deviceIdentity'
-import { findUploadLimitError } from '../../utils/uploadLimits'
 import DropComposer from '../../components/drop/DropComposer.vue'
 import DropContactsPanel from '../../components/drop/DropContactsPanel.vue'
 import DropMessageBubble from '../../components/drop/DropMessageBubble.vue'
@@ -347,9 +346,9 @@ async function sendText(body) {
 function sendFiles(files) {
   const threadId = activeThreadId.value
   if (!threadId || !activeThread.value?.can_send) return
-  const limitError = findUploadLimitError(files, t)
-  if (limitError) {
-    notify(t('pages.xuandrop.uploadFailed'), limitError)
+  const tooLarge = files.find((file) => file.size > DROP_MAX_FILE_BYTES)
+  if (tooLarge) {
+    notify(t('pages.xuandrop.uploadFailed'), t('pages.xuandrop.tooLarge', { name: tooLarge.name }))
     return
   }
   pendingByThread[threadId] ||= []
@@ -362,7 +361,8 @@ function sendFiles(files) {
       status: 'uploading',
       error: '',
       controller: null,
-      previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : ''
+      uploadId: '',
+      previewUrl: file.type.startsWith('image/') && file.size < 30 * 1024 * 1024 ? URL.createObjectURL(file) : ''
     })
     pendingByThread[threadId].push(item)
     uploadPending(threadId, item)
@@ -370,13 +370,60 @@ function sendFiles(files) {
   scrollToBottom(true)
 }
 
+const DROP_MAX_FILE_BYTES = 2048 * 1024 * 1024
+// Bigger files go up in chunks: each request stays far below Cloudflare's 100 MB body limit,
+// and a dropped connection only repeats one chunk.
+const CHUNKED_FROM_BYTES = 8 * 1024 * 1024
+const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms))
+
+async function uploadInChunks(threadId, item) {
+  if (!item.uploadId) {
+    const started = await dropChatApi.startUpload(threadId, {
+      filename: item.file.name,
+      mime_type: item.file.type || null,
+      file_size: item.file.size,
+      target_device_id: item.targetDeviceId,
+      client_id: item.clientId
+    })
+    item.uploadId = started.data.data.id
+  }
+  let state = (await dropChatApi.uploadStatus(item.uploadId)).data.data
+  const { chunk_size: chunkSize } = state
+  let index = state.next_index
+  while (index * chunkSize < item.file.size) {
+    const start = index * chunkSize
+    const blob = item.file.slice(start, Math.min(start + chunkSize, item.file.size))
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        state = (await dropChatApi.uploadChunk(item.uploadId, index, blob, {
+          signal: item.controller.signal,
+          onProgress(loaded) { item.progress = (start + loaded) / item.file.size }
+        })).data.data
+        break
+      } catch (error) {
+        if (error.code === 'ERR_CANCELED' || attempt >= 4) throw error
+        if (error.response?.status === 409) {
+          state = (await dropChatApi.uploadStatus(item.uploadId)).data.data
+          break
+        }
+        item.error = t('pages.xuandrop.resuming')
+        await sleep(1000 * 2 ** attempt)
+        item.error = ''
+      }
+    }
+    index = state.next_index
+    item.progress = state.received_bytes / item.file.size
+  }
+  return dropChatApi.completeUpload(item.uploadId)
+}
+
 async function uploadPending(threadId, item) {
   item.status = 'uploading'
   item.error = ''
-  item.progress = 0
+  if (!item.uploadId) item.progress = 0
   item.controller = new AbortController()
   try {
-    const response = await dropChatApi.sendFile(threadId, item.file, {
+    const response = item.file.size >= CHUNKED_FROM_BYTES ? await uploadInChunks(threadId, item) : await dropChatApi.sendFile(threadId, item.file, {
       targetDeviceId: item.targetDeviceId,
       clientId: item.clientId,
       signal: item.controller.signal,
@@ -385,6 +432,7 @@ async function uploadPending(threadId, item) {
     upsertMessage(threadId, response.data.data)
   } catch (error) {
     if (error.code === 'ERR_CANCELED') {
+      if (item.uploadId) dropChatApi.cancelUpload(item.uploadId).catch(() => {})
       removePending(threadId, item)
       return
     }
@@ -402,7 +450,10 @@ function removePending(threadId, item) {
 
 function cancelPending(item) {
   if (item.status === 'uploading') item.controller?.abort()
-  else removePending(activeThreadId.value, item)
+  else {
+    if (item.uploadId) dropChatApi.cancelUpload(item.uploadId).catch(() => {})
+    removePending(activeThreadId.value, item)
+  }
 }
 
 function onDragOver(event) {

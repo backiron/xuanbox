@@ -37,7 +37,12 @@ class Settings(BaseSettings):
 
     DROP_RETENTION_DAYS: int = Field(default=7, ge=1, le=90)
     # Cap on not-yet-expired XuanDrop attachments a single user can have in flight.
-    DROP_USER_PENDING_LIMIT_MB: int = Field(default=2048, ge=50)
+    DROP_USER_PENDING_LIMIT_MB: int = Field(default=10240, ge=50)
+    DROP_MAX_FILE_MB: int = Field(default=2048, ge=1)
+    # Each chunk is one HTTP request; Cloudflare refuses request bodies over 100 MB.
+    DROP_CHUNK_SIZE_MB: int = Field(default=8, ge=1, le=64)
+    # Saving copies into the library, which still encrypts files in one piece in memory.
+    DROP_LIBRARY_SAVE_MAX_MB: int = Field(default=200, ge=1)
 
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:8080,http://127.0.0.1:5173"
     CORS_ALLOW_ORIGIN_REGEX: str | None = (

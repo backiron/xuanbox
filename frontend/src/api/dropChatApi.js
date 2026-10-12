@@ -35,6 +35,31 @@ export const dropChatApi = {
       }
     })
   },
+  startUpload(threadId, payload) {
+    return http.post(`/drop/threads/${threadId}/uploads`, payload)
+  },
+  uploadStatus(uploadId) {
+    return http.get(`/drop/uploads/${uploadId}`)
+  },
+  uploadChunk(uploadId, index, blob, { onProgress, signal } = {}) {
+    return http.put(`/drop/uploads/${uploadId}/chunks/${index}`, blob, {
+      headers: { 'Content-Type': 'application/octet-stream' },
+      timeout: 0,
+      signal,
+      onUploadProgress(event) {
+        if (onProgress) onProgress(event.loaded)
+      }
+    })
+  },
+  completeUpload(uploadId) {
+    return http.post(`/drop/uploads/${uploadId}/complete`, null, { timeout: 0 })
+  },
+  cancelUpload(uploadId) {
+    return http.delete(`/drop/uploads/${uploadId}`)
+  },
+  downloadLink(messageId) {
+    return http.post(`/drop/messages/${messageId}/download-link`)
+  },
   markRead(threadId) {
     return http.post(`/drop/threads/${threadId}/read`)
   },
