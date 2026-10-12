@@ -8,6 +8,7 @@ import { authApi } from '../../api/authApi'
 import XbAssetIcon from '../../components/common/XbAssetIcon.vue'
 import { setLocale } from '../../i18n'
 import { useAuthStore } from '../../stores/authStore'
+import { deviceFields } from '../../utils/deviceIdentity'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -58,15 +59,15 @@ async function submit() {
   error.value = ''
   try {
     if (mode.value === 'login') {
-      await authStore.login({ ...loginForm, device_name: 'Local Browser' })
+      await authStore.login({ ...loginForm, ...deviceFields() })
     } else if (mode.value === 'register') {
-      const response = await authApi.register({ ...registerForm, device_name: 'Local Browser' })
+      const response = await authApi.register({ ...registerForm, ...deviceFields() })
       await applyTokens(response)
     } else if (mode.value === 'invite') {
-      const response = await authApi.registerByInvite({ ...inviteForm, device_name: 'Local Browser' })
+      const response = await authApi.registerByInvite({ ...inviteForm, ...deviceFields() })
       await applyTokens(response)
     } else {
-      const response = await authApi.bootstrapOwner({ ...ownerForm, device_name: 'Local Browser' })
+      const response = await authApi.bootstrapOwner({ ...ownerForm, ...deviceFields() })
       await applyTokens(response)
     }
     router.push('/')

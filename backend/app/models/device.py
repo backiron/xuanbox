@@ -26,5 +26,7 @@ class Device(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_trusted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # sha256 of a random key the browser keeps, so signing in again on the same browser reuses this device.
+    client_key_hash: Mapped[str | None] = mapped_column(String(128), index=True, nullable=True)
 
     owner = relationship("User", back_populates="devices")

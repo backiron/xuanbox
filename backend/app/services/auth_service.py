@@ -55,9 +55,10 @@ async def create_auth_session(
     user: User,
     request: Request,
     device_name: str | None = None,
+    device_key: str | None = None,
     client_type: str = CLIENT_TYPE_USER_APP,
 ) -> TokenPair:
-    device = await create_login_device(db, owner_id=user.id, request=request, device_name=device_name)
+    device = await create_login_device(db, owner_id=user.id, request=request, device_name=device_name, device_key=device_key)
     refresh_token = generate_refresh_token()
     auth_session = AuthSession(
         owner_id=user.id,
@@ -101,6 +102,7 @@ async def bootstrap_owner(db: AsyncSession, payload: BootstrapOwnerRequest, requ
         user=owner,
         request=request,
         device_name=payload.device_name,
+        device_key=payload.device_key,
         client_type=CLIENT_TYPE_ADMIN_CONSOLE,
     )
     await write_audit_log(db, action="auth.bootstrap_owner", actor_user_id=owner.id, target_type="user", target_id=str(owner.id))
@@ -143,7 +145,7 @@ async def register_by_invite(db: AsyncSession, payload: InviteRegisterRequest, r
     db.add(user)
     await db.flush()
     client_type = CLIENT_TYPE_ADMIN_CONSOLE if user.role in ADMIN_ROLES else CLIENT_TYPE_USER_APP
-    tokens = await create_auth_session(db, user=user, request=request, device_name=payload.device_name, client_type=client_type)
+    tokens = await create_auth_session(db, user=user, request=request, device_name=payload.device_name, device_key=payload.device_key, client_type=client_type)
     await write_audit_log(
         db,
         action="auth.register_by_invite",
@@ -183,7 +185,7 @@ async def login(
         raise AppError("admin_uses_admin_console", "Admin accounts must sign in through the admin console", 403)
 
     user.last_login_at = datetime.now(UTC)
-    tokens = await create_auth_session(db, user=user, request=request, device_name=payload.device_name, client_type=client_type)
+    tokens = await create_auth_session(db, user=user, request=request, device_name=payload.device_name, device_key=payload.device_key, client_type=client_type)
     await db.commit()
     return tokens
 
@@ -212,7 +214,7 @@ async def register_open(db: AsyncSession, payload: PublicRegisterRequest, reques
     )
     db.add(user)
     await db.flush()
-    tokens = await create_auth_session(db, user=user, request=request, device_name=payload.device_name, client_type=CLIENT_TYPE_USER_APP)
+    tokens = await create_auth_session(db, user=user, request=request, device_name=payload.device_name, device_key=payload.device_key, client_type=CLIENT_TYPE_USER_APP)
     await write_audit_log(db, action="auth.register_open", actor_user_id=user.id, target_type="user", target_id=str(user.id))
     await db.commit()
     return tokens

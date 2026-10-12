@@ -4,6 +4,7 @@ from app.models.auth_session import AuthSession
 from app.models.backup_task import BackupTask
 from app.models.device import Device
 from app.models.document_asset import DocumentAsset
+from app.models.drop import DropContact, DropMessage, DropMessageSave, DropThread, DropThreadMember
 from app.models.document_intelligence import DocumentFieldValue, DocumentIntelligenceTask, DocumentProfile, DocumentTextChunk
 from app.models.file_asset import FileAsset
 from app.models.folder import Folder
@@ -29,6 +30,11 @@ __all__ = [
     "Device",
     "DocumentAsset",
     "DocumentIntelligenceTask",
+    "DropContact",
+    "DropMessage",
+    "DropMessageSave",
+    "DropThread",
+    "DropThreadMember",
     "DocumentProfile",
     "DocumentTextChunk",
     "FileAsset",

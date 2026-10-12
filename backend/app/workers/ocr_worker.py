@@ -9,6 +9,7 @@ from app.core.database import AsyncSessionLocal
 from app.models.backup_task import BackupTask
 from app.models.user import User
 from app.services.backup_service import create_backup
+from app.services.drop_service import cleanup_expired_messages
 from app.services.document_intelligence_service import DOCUMENT_EXTRACT_TASK_TYPE, process_document_extract_task
 from app.services.ocr_service import OCR_TASK_TYPE, process_receipt_ocr_task
 from app.services.system_settings_service import get_auto_backup_enabled
@@ -74,10 +75,23 @@ async def scheduled_backup_loop() -> None:
         await asyncio.sleep(3600)
 
 
+async def drop_cleanup_loop() -> None:
+    while True:
+        try:
+            async with AsyncSessionLocal() as session:
+                removed = await cleanup_expired_messages(session)
+            if removed:
+                logger.info("Removed %s expired XuanDrop messages", removed)
+        except Exception:
+            logger.exception("XuanDrop cleanup failed")
+        await asyncio.sleep(600)
+
+
 async def main() -> None:
     logging.basicConfig(level=logging.INFO)
     logger.info("XuanBox worker started")
     asyncio.create_task(scheduled_backup_loop())
+    asyncio.create_task(drop_cleanup_loop())
     while True:
         processed = await process_once()
         await asyncio.sleep(0.25 if processed else 2.0)

@@ -1,536 +1,759 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import QRCode from 'qrcode'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Check, Copy, Download, FileCheck, QrCode, RefreshCw, Save, Send, Smartphone, Trash2, Upload, Wifi, X } from 'lucide-vue-next'
-import PageHeader from '../../components/common/PageHeader.vue'
-import EmptyState from '../../components/common/EmptyState.vue'
-import { dropApi } from '../../api/dropApi'
+import { Bell, BellRing, ChevronLeft, Laptop, Pencil, QrCode, Smartphone, Trash2, UserMinus, Users, X } from 'lucide-vue-next'
+import { dropChatApi } from '../../api/dropChatApi'
+import { useDropSocket } from '../../composables/useDropSocket'
 import { useDialogStore } from '../../stores/dialogStore'
+import { deliverFile, fetchMessageFile, forgetMessage, formatSize } from '../../utils/dropMedia'
+import { defaultDeviceName } from '../../utils/deviceIdentity'
 import { findUploadLimitError } from '../../utils/uploadLimits'
+import DropComposer from '../../components/drop/DropComposer.vue'
+import DropContactsPanel from '../../components/drop/DropContactsPanel.vue'
+import DropMessageBubble from '../../components/drop/DropMessageBubble.vue'
+import DropQrDialog from '../../components/drop/DropQrDialog.vue'
+
+const RETENTION_DAYS = 7
+const PAGE_SIZE = 50
 
 const { t } = useI18n()
-const sessions = ref([])
-const items = ref([])
-const activeSession = ref(null)
-const uploadUrl = ref('')
-const qrCodeUrl = ref('')
-const loading = ref(false)
-const liveStatus = ref('Offline')
-const copied = ref(false)
-const toast = ref(null)
-const previewItem = ref(null)
-const previewUrl = ref('')
-const pageError = ref('')
-const uploadProgress = ref(0)
-const uploading = ref(false)
-const draggingLocalFiles = ref(false)
-const lastItemIds = ref(new Set())
-const savingIds = ref(new Set())
-const notificationsArmed = ref(false)
 const dialog = useDialogStore()
-let eventSource = null
+
+const me = ref(null)
+const threads = ref([])
+const contacts = ref([])
+const activeThreadId = ref('')
+const messagesByThread = reactive({})
+const hasMoreByThread = reactive({})
+const pendingByThread = reactive({})
+const savingIds = ref(new Set())
+const target = ref('')
+const pageError = ref('')
+const showQr = ref(false)
+const showContacts = ref(false)
+const dragging = ref(false)
+const preview = reactive({ message: null, url: '', file: null, loading: false })
+const toast = ref(null)
+const notificationPermission = ref(typeof Notification === 'undefined' ? 'unsupported' : Notification.permission)
+const isMobile = ref(window.matchMedia('(max-width: 840px)').matches)
+const scroller = ref(null)
 let toastTimer = null
-let pollTimer = null
-let sessionTimer = null
+let readTimer = null
+const originalTitle = document.title
 
-const configuredPublicOrigin = (import.meta.env.VITE_DROP_PUBLIC_ORIGIN || '').replace(/\/$/, '')
-const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname)
-const latestItem = computed(() => items.value[0])
-const receivedItems = computed(() => items.value)
+const socket = useDropSocket(handleEvent)
 
-function formatTime(value) {
-  if (!value) return ''
-  return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+// ---------------------------------------------------------------- derived state
+
+const myUserId = computed(() => me.value?.user?.id || '')
+const currentDeviceId = computed(() => me.value?.current_device_id || '')
+const devices = computed(() => me.value?.devices || [])
+const deviceNames = computed(() => Object.fromEntries(devices.value.map((device) => [device.id, device.device_name])))
+const otherDevices = computed(() => devices.value.filter((device) => !device.is_current))
+const activeThread = computed(() => threads.value.find((thread) => thread.id === activeThreadId.value) || null)
+const acceptedContacts = computed(() => contacts.value.filter((contact) => contact.status === 'accepted'))
+const pendingIncoming = computed(() => contacts.value.filter((contact) => contact.status === 'pending' && contact.direction === 'incoming').length)
+const totalUnread = computed(() => threads.value.reduce((sum, thread) => sum + (thread.unread_count || 0), 0))
+
+// Self thread first, then every accepted contact (with or without an existing conversation).
+const conversationList = computed(() => {
+  const list = []
+  const self = threads.value.find((thread) => thread.kind === 'self')
+  if (self) list.push({ key: self.id, thread: self, title: t('pages.xuandrop.myDevices'), self: true })
+  const direct = threads.value.filter((thread) => thread.kind === 'direct')
+  const seenPeers = new Set()
+  for (const thread of direct) {
+    seenPeers.add(thread.peer?.id)
+    list.push({ key: thread.id, thread, title: thread.peer?.display_name || '?', peer: thread.peer })
+  }
+  for (const contact of acceptedContacts.value) {
+    if (!seenPeers.has(contact.peer?.id)) list.push({ key: `contact-${contact.id}`, thread: null, title: contact.peer?.display_name, peer: contact.peer })
+  }
+  return list
+})
+
+const activeMessages = computed(() => messagesByThread[activeThreadId.value] || [])
+const activePending = computed(() => pendingByThread[activeThreadId.value] || [])
+const peerLastReadAt = computed(() => activeThread.value?.peer_last_read_at || null)
+
+const timeline = computed(() => {
+  const rows = []
+  let lastDay = ''
+  for (const message of activeMessages.value) {
+    const day = new Date(message.created_at).toDateString()
+    if (day !== lastDay) {
+      rows.push({ type: 'day', key: `day-${day}`, label: dayLabel(message.created_at) })
+      lastDay = day
+    }
+    rows.push({ type: 'message', key: message.id, message })
+  }
+  return rows
+})
+
+const connectionLabel = computed(() => ({
+  online: t('pages.xuandrop.live'),
+  connecting: t('pages.xuandrop.connecting'),
+  reconnecting: t('pages.xuandrop.reconnecting'),
+  offline: t('pages.xuandrop.offline')
+}[socket.status.value]))
+
+watch(totalUnread, (count) => {
+  document.title = count ? `(${count}) ${originalTitle}` : originalTitle
+})
+
+// ---------------------------------------------------------------- helpers
+
+function dayLabel(value) {
+  const date = new Date(value)
+  const today = new Date()
+  const yesterday = new Date(Date.now() - 86400000)
+  if (date.toDateString() === today.toDateString()) return t('pages.xuandrop.today')
+  if (date.toDateString() === yesterday.toDateString()) return t('pages.xuandrop.yesterday')
+  return date.toLocaleDateString()
 }
 
-function formatSize(bytes) {
-  if (!bytes) return '0 KB'
-  if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+function errorMessage(error) {
+  return error.response?.data?.message || error.message || t('pages.xuandrop.loadFailed')
 }
 
 function notify(message, detail = '') {
   toast.value = { message, detail }
   window.clearTimeout(toastTimer)
-  toastTimer = window.setTimeout(() => {
-    toast.value = null
-  }, 9000)
+  toastTimer = window.setTimeout(() => { toast.value = null }, 6000)
 }
 
-function getErrorMessage(error, fallback = 'Something went wrong.') {
-  return error.response?.data?.error?.message || error.response?.data?.message || fallback
+function isMine(message) {
+  if (message.sender_user_id !== myUserId.value) return false
+  if (activeThread.value?.kind === 'self') return message.sender_device_id === currentDeviceId.value
+  return true
 }
 
-function setItems(nextItems, announce = false) {
-  const previousIds = lastItemIds.value
-  const newItems = nextItems.filter((item) => !previousIds.has(item.id))
-  items.value = nextItems
-  lastItemIds.value = new Set(nextItems.map((item) => item.id))
+function senderLabel(message, thread = activeThread.value) {
+  if (message.sender_label) return message.sender_label.startsWith('QR') ? t('pages.xuandrop.fromQr') : message.sender_label
+  if (thread?.kind === 'self') {
+    if (message.sender_device_id === currentDeviceId.value) return t('pages.xuandrop.thisDevice')
+    return deviceNames.value[message.sender_device_id] || t('pages.xuandrop.otherDevice')
+  }
+  return message.sender_user_id === myUserId.value ? '' : thread?.peer?.display_name || ''
+}
 
-  if (!notificationsArmed.value) return
-  if (announce && newItems.length) {
-    notify(
-      newItems.length === 1 ? t('pages.drop.newFileReceived') : t('pages.drop.filesReceived', { count: newItems.length }),
-      newItems[0].original_filename
-    )
+function targetLabel(message) {
+  if (!message.target_device_id) return ''
+  if (message.target_device_id === currentDeviceId.value) return t('pages.xuandrop.thisDevice')
+  return deviceNames.value[message.target_device_id] || t('pages.xuandrop.otherDevice')
+}
+
+function isRead(message) {
+  if (activeThread.value?.kind !== 'direct' || message.sender_user_id !== myUserId.value || !peerLastReadAt.value) return false
+  return new Date(peerLastReadAt.value) >= new Date(message.created_at)
+}
+
+function previewText(message) {
+  if (!message) return ''
+  return message.kind === 'text' ? message.body : `📎 ${message.filename}`
+}
+
+function isNearBottom() {
+  const element = scroller.value
+  return !element || element.scrollHeight - element.scrollTop - element.clientHeight < 120
+}
+
+async function scrollToBottom(force = false) {
+  if (!force && !isNearBottom()) return
+  await nextTick()
+  if (scroller.value) scroller.value.scrollTop = scroller.value.scrollHeight
+}
+
+function upsertMessage(threadId, message) {
+  const list = messagesByThread[threadId]
+  if (!list) return
+  const index = list.findIndex((item) => item.id === message.id)
+  if (index >= 0) list.splice(index, 1, { ...list[index], ...message, saved_to: message.saved_to ?? list[index].saved_to })
+  else list.push(message)
+  const pending = pendingByThread[threadId]
+  if (pending && message.client_id) {
+    const pendingIndex = pending.findIndex((item) => item.clientId === message.client_id)
+    if (pendingIndex >= 0) {
+      if (pending[pendingIndex].previewUrl) URL.revokeObjectURL(pending[pendingIndex].previewUrl)
+      pending.splice(pendingIndex, 1)
+    }
   }
 }
 
-async function loadSessions() {
-  pageError.value = ''
+// ---------------------------------------------------------------- loading
+
+async function loadMe() {
+  me.value = (await dropChatApi.me()).data.data
+}
+
+async function loadThreads() {
+  const previous = Object.fromEntries(threads.value.map((thread) => [thread.id, thread.peer_last_read_at]))
+  const next = (await dropChatApi.threads()).data.data
+  threads.value = next.map((thread) => ({ ...thread, peer_last_read_at: previous[thread.id] || null }))
+}
+
+async function loadContacts() {
+  contacts.value = (await dropChatApi.contacts()).data.data
+}
+
+async function loadMessages(threadId) {
+  const list = (await dropChatApi.messages(threadId, { limit: PAGE_SIZE })).data.data
+  messagesByThread[threadId] = list
+  hasMoreByThread[threadId] = list.length === PAGE_SIZE
+}
+
+async function loadEarlier() {
+  const threadId = activeThreadId.value
+  const list = messagesByThread[threadId]
+  if (!list?.length) return
+  const element = scroller.value
+  const previousHeight = element?.scrollHeight || 0
+  const older = (await dropChatApi.messages(threadId, { limit: PAGE_SIZE, before: list[0].created_at })).data.data
+  messagesByThread[threadId] = [...older, ...list]
+  hasMoreByThread[threadId] = older.length === PAGE_SIZE
+  await nextTick()
+  if (element) element.scrollTop = element.scrollHeight - previousHeight
+}
+
+async function selectConversation(entry) {
   try {
-    const response = await dropApi.sessions()
-    sessions.value = response.data.data
-    const activeStillAvailable = sessions.value.some((session) => session.id === activeSession.value?.id)
-    if (!activeStillAvailable) {
-      activeSession.value = sessions.value[0] || null
-      items.value = []
-      lastItemIds.value = new Set()
-      if (activeSession.value) await loadItems()
-    } else if (activeSession.value) {
-      activeSession.value = sessions.value.find((session) => session.id === activeSession.value.id) || activeSession.value
+    let threadId = entry.thread?.id
+    if (!threadId) {
+      threadId = (await dropChatApi.openDirect(entry.peer.id)).data.data.id
+      await loadThreads()
     }
-    if (activeSession.value) {
-      await refreshUploadLink()
-    } else {
-      uploadUrl.value = ''
-      qrCodeUrl.value = ''
-    }
+    activeThreadId.value = threadId
+    target.value = ''
+    showContacts.value = false
+    if (!messagesByThread[threadId]) await loadMessages(threadId)
+    await scrollToBottom(true)
+    markActiveRead()
   } catch (error) {
-    pageError.value = getErrorMessage(error, t('pages.drop.newSessionFailed'))
-    notify(t('pages.drop.sessionLoadFailed'), pageError.value)
-    throw error
+    notify(t('pages.xuandrop.loadFailed'), errorMessage(error))
   }
 }
 
-async function refreshSessions() {
-  await loadSessions()
-  if (activeSession.value) await loadItems()
-  if (activeSession.value) await connectEvents()
+function closeConversation() {
+  activeThreadId.value = ''
 }
 
-async function ensureSession() {
-  if (activeSession.value) return activeSession.value
-  if (sessions.value.length) {
-    activeSession.value = sessions.value[0]
-    await refreshUploadLink()
-    await loadItems()
-    await connectEvents()
-    return activeSession.value
-  }
-  return null
+function markActiveRead() {
+  const thread = activeThread.value
+  if (!thread || document.visibilityState !== 'visible') return
+  window.clearTimeout(readTimer)
+  readTimer = window.setTimeout(async () => {
+    if (!thread.unread_count && thread.last_read_at && thread.last_message_at && new Date(thread.last_read_at) >= new Date(thread.last_message_at)) return
+    thread.unread_count = 0
+    try {
+      thread.last_read_at = (await dropChatApi.markRead(thread.id)).data.data.last_read_at
+    } catch {
+      // next event will retry
+    }
+  }, 400)
 }
 
-async function createSession() {
-  const title = await dialog.prompt({
-    title: t('pages.drop.newDrop'),
-    label: t('pages.drop.sessionName'),
-    defaultValue: t('pages.drop.defaultSessionName')
-  }) || t('pages.drop.defaultSessionName')
-  const response = await dropApi.createSession({ title, expires_in_minutes: 30 })
-  activeSession.value = response.data.data
-  items.value = []
-  lastItemIds.value = new Set()
-  await refreshUploadLink()
-  await loadSessions()
-  await loadItems()
-  await connectEvents()
-}
+// ---------------------------------------------------------------- realtime events
 
-function buildUploadUrl(session) {
-  const token = session?.public_token || session?.token
-  if (!token) return ''
-  const origin = configuredPublicOrigin || window.location.origin
-  return `${origin}/drop/public/${token}`
-}
-
-async function refreshUploadLink() {
-  uploadUrl.value = buildUploadUrl(activeSession.value)
-  copied.value = false
-  qrCodeUrl.value = uploadUrl.value
-    ? await QRCode.toDataURL(uploadUrl.value, { width: 168, margin: 2, errorCorrectionLevel: 'M' })
-    : ''
-}
-
-async function loadItems() {
-  if (!activeSession.value) return
-  loading.value = true
+function showSystemNotification(title, body) {
+  if (notificationPermission.value !== 'granted' || document.visibilityState === 'visible') return
   try {
-    const response = await dropApi.items(activeSession.value.id)
-    setItems(response.data.data)
-  } finally {
-    loading.value = false
+    const notification = new Notification(title, { body, tag: 'xuandrop', renotify: true })
+    notification.onclick = () => { window.focus(); notification.close() }
+  } catch {
+    // Some mobile browsers only allow notifications from a service worker.
   }
 }
 
-async function pollItems() {
-  if (!activeSession.value) {
-    await loadSessions()
+async function handleEvent({ event, data }) {
+  if (event === 'socket.open') {
+    // Catch up on anything missed while disconnected.
+    await Promise.all([loadMe(), loadThreads(), loadContacts()]).catch(() => {})
+    if (activeThreadId.value) {
+      await loadMessages(activeThreadId.value).catch(() => {})
+      scrollToBottom()
+    }
     return
   }
-  try {
-    const response = await dropApi.items(activeSession.value.id)
-    setItems(response.data.data, true)
-    liveStatus.value = eventSource ? liveStatus.value : 'Polling'
-  } catch (error) {
-    liveStatus.value = 'Reconnecting'
+  if (event === 'message.created') {
+    const thread = threads.value.find((item) => item.id === data.thread_id)
+    if (!thread) {
+      await loadThreads()
+      return
+    }
+    if (data.sender_device_id && !deviceNames.value[data.sender_device_id] && data.sender_user_id === myUserId.value) {
+      // A device that signed in after this page loaded; fetch its name before labelling the message.
+      await loadMe().catch(() => {})
+    }
+    const fromHere = data.sender_device_id && data.sender_device_id === currentDeviceId.value
+    const fromOther = thread.kind === 'self' ? !fromHere : data.sender_user_id !== myUserId.value
+    const shouldScroll = data.thread_id === activeThreadId.value && (fromHere || isNearBottom())
+    upsertMessage(data.thread_id, data)
+    thread.last_message = data
+    thread.last_message_at = data.created_at
+    threads.value = [...threads.value].sort((a, b) => (b.kind === 'self') - (a.kind === 'self') || new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0))
+    if (fromOther) {
+      const viewing = data.thread_id === activeThreadId.value && document.visibilityState === 'visible'
+      if (viewing) {
+        markActiveRead()
+      } else {
+        thread.unread_count = (thread.unread_count || 0) + 1
+        const name = senderLabel(data, thread) || t('pages.xuandrop.title')
+        notify(t('pages.xuandrop.newMessageFrom', { name }), previewText(data))
+        showSystemNotification(t('pages.xuandrop.newMessageFrom', { name }), previewText(data))
+      }
+    }
+    if (shouldScroll) scrollToBottom(true)
+    return
+  }
+  if (event === 'message.deleted') {
+    const list = messagesByThread[data.thread_id]
+    if (list) messagesByThread[data.thread_id] = list.filter((message) => message.id !== data.id)
+    forgetMessage(data.id)
+    loadThreads().catch(() => {})
+    return
+  }
+  if (event === 'thread.read') {
+    const thread = threads.value.find((item) => item.id === data.thread_id)
+    if (thread && data.user_id !== myUserId.value) thread.peer_last_read_at = data.last_read_at
+    return
+  }
+  if (event === 'presence' || event === 'devices.changed') {
+    loadMe().catch(() => {})
+    return
+  }
+  if (event === 'contacts.changed') {
+    await Promise.all([loadContacts(), loadThreads()]).catch(() => {})
   }
 }
 
-function startPolling() {
-  window.clearInterval(pollTimer)
-  pollTimer = window.setInterval(pollItems, 3000)
+// ---------------------------------------------------------------- sending
+
+function newClientId() {
+  return window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
-function startSessionRefresh() {
-  window.clearInterval(sessionTimer)
-  sessionTimer = window.setInterval(loadSessions, 5000)
+async function sendText(body) {
+  const threadId = activeThreadId.value
+  if (!threadId) return
+  try {
+    const response = await dropChatApi.sendText(threadId, { body, target_device_id: target.value || null, client_id: newClientId() })
+    upsertMessage(threadId, response.data.data)
+    scrollToBottom(true)
+  } catch (error) {
+    notify(t('pages.xuandrop.uploadFailed'), errorMessage(error))
+  }
 }
 
-async function uploadLocalFileList(fileList) {
-  const files = Array.from(fileList || [])
-  if (!files.length) return
+function sendFiles(files) {
+  const threadId = activeThreadId.value
+  if (!threadId || !activeThread.value?.can_send) return
   const limitError = findUploadLimitError(files, t)
   if (limitError) {
-    notify(t('pages.drop.uploadFailed'), limitError)
+    notify(t('pages.xuandrop.uploadFailed'), limitError)
     return
   }
-  const session = await ensureSession()
-  const token = session?.public_token || session?.token
-  if (!token) {
-    notify(t('pages.drop.noActiveDrop'), t('pages.drop.selectSessionFirst'))
-    return
+  pendingByThread[threadId] ||= []
+  for (const file of files) {
+    const item = reactive({
+      clientId: newClientId(),
+      file,
+      targetDeviceId: target.value || null,
+      progress: 0,
+      status: 'uploading',
+      error: '',
+      controller: null,
+      previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : ''
+    })
+    pendingByThread[threadId].push(item)
+    uploadPending(threadId, item)
   }
+  scrollToBottom(true)
+}
 
-  uploading.value = true
-  uploadProgress.value = 0
+async function uploadPending(threadId, item) {
+  item.status = 'uploading'
+  item.error = ''
+  item.progress = 0
+  item.controller = new AbortController()
   try {
-    for (const file of files) {
-      const formData = new FormData()
-      formData.append('file', file)
-      await dropApi.publicUpload(token, formData, {
-        onUploadProgress(progressEvent) {
-          if (progressEvent.total) uploadProgress.value = Math.round((progressEvent.loaded / progressEvent.total) * 100)
-        }
-      })
-    }
-    uploadProgress.value = 0
-    notify(t('pages.drop.filesSent'), t('pages.drop.filesSentDetail', { count: files.length, title: session.title }))
-    await loadItems()
+    const response = await dropChatApi.sendFile(threadId, item.file, {
+      targetDeviceId: item.targetDeviceId,
+      clientId: item.clientId,
+      signal: item.controller.signal,
+      onProgress(value) { item.progress = value }
+    })
+    upsertMessage(threadId, response.data.data)
   } catch (error) {
-    notify(t('pages.drop.uploadFailed'), getErrorMessage(error, t('pages.drop.uploadFailedDetail')))
-  } finally {
-    uploading.value = false
-    uploadProgress.value = 0
+    if (error.code === 'ERR_CANCELED') {
+      removePending(threadId, item)
+      return
+    }
+    item.status = 'failed'
+    item.error = errorMessage(error)
   }
 }
 
-async function uploadLocalFiles(event) {
-  await uploadLocalFileList(event.target.files)
-  event.target.value = ''
+function removePending(threadId, item) {
+  const list = pendingByThread[threadId] || []
+  const index = list.indexOf(item)
+  if (index >= 0) list.splice(index, 1)
+  if (item.previewUrl) URL.revokeObjectURL(item.previewUrl)
 }
 
-function onLocalDragEnter(event) {
-  if (!event.dataTransfer?.types?.includes('Files') || uploading.value || !activeSession.value) return
-  draggingLocalFiles.value = true
+function cancelPending(item) {
+  if (item.status === 'uploading') item.controller?.abort()
+  else removePending(activeThreadId.value, item)
 }
 
-function onLocalDragLeave(event) {
-  if (event.currentTarget.contains(event.relatedTarget)) return
-  draggingLocalFiles.value = false
+function onDragOver(event) {
+  if (!activeThread.value?.can_send || !event.dataTransfer?.types?.includes('Files')) return
+  event.preventDefault()
+  dragging.value = true
 }
 
-async function onLocalFileDrop(event) {
-  draggingLocalFiles.value = false
-  if (uploading.value || !activeSession.value) return
-  await uploadLocalFileList(event.dataTransfer?.files)
+function onDragLeave(event) {
+  if (!event.currentTarget.contains(event.relatedTarget)) dragging.value = false
 }
 
-function closeEvents() {
-  if (eventSource) {
-    eventSource.close()
-    eventSource = null
+function onDrop(event) {
+  dragging.value = false
+  const files = Array.from(event.dataTransfer?.files || [])
+  if (files.length) {
+    event.preventDefault()
+    sendFiles(files)
   }
-  liveStatus.value = 'Offline'
 }
 
-async function connectEvents() {
-  closeEvents()
-  if (!activeSession.value) return
-  await dropApi.authorizeEvents(activeSession.value.id)
-  eventSource = new EventSource(dropApi.eventUrl(activeSession.value.id))
-  liveStatus.value = 'Connecting'
-  eventSource.addEventListener('open', () => {
-    liveStatus.value = 'Live'
-    notificationsArmed.value = true
-  })
-  eventSource.addEventListener('items', (event) => {
-    const nextItems = JSON.parse(event.data || '[]')
-    setItems(nextItems, true)
-    liveStatus.value = 'Live'
-  })
-  eventSource.addEventListener('error', () => {
-    liveStatus.value = 'Reconnecting'
-  })
-}
+// ---------------------------------------------------------------- message actions
 
-async function saveItem(item, destination) {
-  if (savingIds.value.has(item.id)) return
+async function saveToLibrary(message, destination) {
   const payload = { destination }
   if (destination === 'receipts') {
-    payload.merchant = await dialog.prompt({ title: t('pages.drop.receiptMerchant'), label: t('pages.receipts.merchant'), placeholder: t('pages.drop.storeName') }) || null
-    payload.category = await dialog.prompt({ title: t('pages.drop.receiptCategory'), label: t('pages.receipts.category'), defaultValue: 'XuanDrop' }) || 'XuanDrop'
+    const merchant = await dialog.prompt({ title: t('pages.xuandrop.destinations.receipts'), label: t('pages.receipts.merchant') })
+    if (merchant === null) return
+    payload.merchant = merchant || null
   }
-  setSaving(item.id, true)
-  try {
-    await dropApi.saveItem(item.id, payload)
-    if (previewItem.value?.id === item.id) closePreview()
-    notify(t('pages.drop.itemSaved'), t('pages.drop.filesSaved', { name: item.original_filename, destination }))
-    await loadItems()
-  } catch (error) {
-    notify(t('pages.drop.saveFailed'), error.response?.data?.message || t('pages.drop.saveFail'))
-  } finally {
-    setSaving(item.id, false)
-  }
-}
-
-async function downloadItem(item) {
-  const response = await dropApi.downloadItem(item.id)
-  const url = URL.createObjectURL(response.data)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = item.original_filename
-  link.click()
-  URL.revokeObjectURL(url)
-}
-
-function isImageItem(item) {
-  return item.mime_type?.startsWith('image/')
-}
-
-function setSaving(itemId, isSaving) {
   const next = new Set(savingIds.value)
-  if (isSaving) next.add(itemId)
-  else next.delete(itemId)
+  next.add(message.id)
   savingIds.value = next
+  try {
+    const saved = (await dropChatApi.save(message.id, payload)).data.data
+    upsertMessage(message.thread_id, { ...message, saved_to: saved.saved_to })
+  } catch (error) {
+    notify(t('pages.xuandrop.uploadFailed'), errorMessage(error))
+  } finally {
+    const after = new Set(savingIds.value)
+    after.delete(message.id)
+    savingIds.value = after
+  }
 }
 
-async function openItem(item) {
-  if (!isImageItem(item)) {
-    await downloadItem(item)
-    return
+async function deleteMessage(message) {
+  const confirmed = await dialog.confirm({ title: t('pages.xuandrop.deleteForAll'), message: t('pages.xuandrop.deleteConfirm'), danger: true })
+  if (!confirmed) return
+  try {
+    await dropChatApi.remove(message.id)
+    const list = messagesByThread[message.thread_id]
+    if (list) messagesByThread[message.thread_id] = list.filter((item) => item.id !== message.id)
+    forgetMessage(message.id)
+  } catch (error) {
+    notify(t('pages.xuandrop.loadFailed'), errorMessage(error))
   }
-  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
-  const response = await dropApi.downloadItem(item.id)
-  previewItem.value = item
-  previewUrl.value = URL.createObjectURL(response.data)
+}
+
+async function openPreview(message) {
+  closePreview()
+  preview.message = message
+  preview.loading = true
+  try {
+    const file = await fetchMessageFile(message)
+    if (preview.message?.id !== message.id) return
+    preview.file = file
+    preview.url = URL.createObjectURL(file)
+  } catch (error) {
+    notify(t('pages.xuandrop.loadFailed'), errorMessage(error))
+    closePreview()
+  } finally {
+    preview.loading = false
+  }
 }
 
 function closePreview() {
-  previewItem.value = null
-  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
-  previewUrl.value = ''
+  if (preview.url) URL.revokeObjectURL(preview.url)
+  preview.message = null
+  preview.url = ''
+  preview.file = null
 }
 
-async function deleteItem(item) {
+const GENERIC_DEVICE_NAMES = ['Local Browser', 'Browser', 'Unknown Device']
+
+// Devices signed in by older versions are all called "Local Browser"; give this one a readable name.
+async function upgradeCurrentDeviceName() {
+  const current = devices.value.find((device) => device.is_current)
+  if (!current || !GENERIC_DEVICE_NAMES.includes(current.device_name)) return
+  try {
+    await dropChatApi.renameDevice(current.id, defaultDeviceName())
+    await loadMe()
+  } catch {
+    // keep the old name
+  }
+}
+
+function isPhone(device) {
+  return /iPhone|Android|iPad/.test(`${device.device_type} ${device.device_name}`)
+}
+
+function lastSeenText(device) {
+  if (device.online || device.is_current) return t('pages.xuandrop.online')
+  if (!device.last_seen_at) return t('pages.xuandrop.offline')
+  const minutes = Math.round((Date.now() - new Date(device.last_seen_at)) / 60000)
+  if (minutes < 60) return t('pages.xuandrop.seenMinutesAgo', { n: Math.max(1, minutes) })
+  if (minutes < 60 * 24) return t('pages.xuandrop.seenHoursAgo', { n: Math.round(minutes / 60) })
+  return t('pages.xuandrop.seenDaysAgo', { n: Math.round(minutes / 1440) })
+}
+
+async function renameDevice(device) {
+  const name = await dialog.prompt({ title: t('pages.xuandrop.renameDevice'), label: t('pages.xuandrop.deviceName'), defaultValue: device.device_name })
+  if (!name?.trim()) return
+  await dropChatApi.renameDevice(device.id, name.trim())
+  await loadMe()
+}
+
+async function removeDevice(device) {
   const confirmed = await dialog.confirm({
-    title: t('pages.drop.deleteItemTitle'),
-    message: t('pages.drop.deleteItemMessage', { name: item.original_filename }),
-    confirmText: t('common.actions.delete'),
+    title: t('pages.xuandrop.removeDevice'),
+    message: t('pages.xuandrop.removeDeviceConfirm', { name: device.device_name }),
     danger: true
   })
   if (!confirmed) return
-  await dropApi.deleteItem(item.id)
-  await loadItems()
+  try {
+    await dropChatApi.removeDevice(device.id)
+    await loadMe()
+  } catch (error) {
+    notify(t('pages.xuandrop.loadFailed'), errorMessage(error))
+  }
 }
 
-async function copyUploadLink() {
-  if (!uploadUrl.value) return
-  await navigator.clipboard.writeText(uploadUrl.value)
-  copied.value = true
-  window.setTimeout(() => {
-    copied.value = false
-  }, 1500)
+async function removeActiveContact() {
+  const peerId = activeThread.value?.peer?.id
+  const contact = contacts.value.find((item) => item.peer?.id === peerId)
+  if (!contact) return
+  const confirmed = await dialog.confirm({ title: t('pages.xuandrop.removeContact'), message: t('pages.xuandrop.removeContactConfirm'), danger: true })
+  if (!confirmed) return
+  await dropChatApi.removeContact(contact.id)
+  await Promise.all([loadContacts(), loadThreads()])
 }
 
-async function selectSession(session) {
-  activeSession.value = session
-  await refreshUploadLink()
-  await loadItems()
-  await connectEvents()
+async function enableNotifications() {
+  if (typeof Notification === 'undefined') {
+    notify(t('pages.xuandrop.notificationsUnsupported'))
+    return
+  }
+  notificationPermission.value = await Notification.requestPermission()
 }
+
+// ---------------------------------------------------------------- lifecycle
+
+function onVisibility() {
+  if (document.visibilityState === 'visible') markActiveRead()
+}
+
+const mobileQuery = window.matchMedia('(max-width: 840px)')
+function onMobileChange(event) {
+  isMobile.value = event.matches
+}
+
+watch([activeThreadId, isMobile], ([threadId, mobile]) => {
+  document.body.classList.toggle('xd-chat-open', Boolean(threadId && mobile))
+}, { immediate: true })
 
 onMounted(async () => {
+  document.addEventListener('visibilitychange', onVisibility)
+  mobileQuery.addEventListener('change', onMobileChange)
   try {
-    await loadSessions()
-    notificationsArmed.value = true
-    startPolling()
-    startSessionRefresh()
-    await connectEvents()
-  } catch {
-    closeEvents()
-    notificationsArmed.value = true
-    startPolling()
-    startSessionRefresh()
+    await Promise.all([loadMe(), loadThreads(), loadContacts()])
+    await upgradeCurrentDeviceName()
+    const self = threads.value.find((thread) => thread.kind === 'self')
+    if (self && !isMobile.value) await selectConversation({ thread: self })
+  } catch (error) {
+    pageError.value = errorMessage(error)
   }
+  socket.start()
 })
+
 onBeforeUnmount(() => {
-  closeEvents()
-  closePreview()
+  document.removeEventListener('visibilitychange', onVisibility)
+  mobileQuery.removeEventListener('change', onMobileChange)
+  document.body.classList.remove('xd-chat-open')
+  document.title = originalTitle
   window.clearTimeout(toastTimer)
-  window.clearInterval(pollTimer)
-  window.clearInterval(sessionTimer)
+  window.clearTimeout(readTimer)
+  closePreview()
 })
 </script>
 
 <template>
-  <PageHeader :title="t('pages.drop.title')" :subtitle="t('pages.drop.subtitle')">
-    <button class="xb-secondary-button" type="button" @click="refreshSessions">
-      <RefreshCw :size="18" />
-      {{ t('common.actions.refresh') }}
-    </button>
-    <button class="xb-primary-button" type="button" @click="createSession">
-      <Send :size="18" />
-      {{ t('pages.drop.newDrop') }}
-    </button>
-  </PageHeader>
-
-  <div class="xb-drop-livebar" :class="{ 'is-visible': toast }">
-    <span class="xb-livebar-pulse"></span>
-    <strong>{{ toast?.message || t('pages.drop.transferChannel', { status: liveStatus }) }}</strong>
-    <span>{{ toast?.detail || (latestItem ? t('pages.drop.receiveLatest', { name: latestItem.original_filename }) : t('pages.drop.waiting')) }}</span>
-  </div>
-
-  <p v-if="pageError" class="xb-form-error xb-drop-error">{{ pageError }}</p>
-
-  <section class="xb-drop-layout">
-    <article class="xb-drop-zone">
-      <div class="xb-drop-session-head">
+  <div class="xd-page" :class="{ 'has-active': activeThreadId }">
+    <aside class="xd-sidebar">
+      <header class="xd-sidebar-head">
         <div>
-          <span class="xb-drop-kicker"><Wifi :size="15" /> {{ liveStatus }}</span>
-          <strong>{{ activeSession?.title || t('pages.drop.noSession') }}</strong>
-          <p v-if="activeSession">{{ t('pages.drop.expires', { date: new Date(activeSession.expires_at).toLocaleString() }) }}</p>
-          <p v-else>{{ t('pages.drop.createSessionHint') }}</p>
+          <strong>XuanDrop</strong>
+          <span class="xd-status" :class="`is-${socket.status.value}`"><i />{{ connectionLabel }}</span>
         </div>
-        <div class="xb-drop-count">
-          <strong>{{ items.length }}</strong>
-          <span>{{ t('pages.drop.receiveCount') }}</span>
+        <div class="xd-head-actions">
+          <button type="button" class="xd-icon-only" :title="t('pages.xuandrop.qrUpload')" @click="showQr = true"><QrCode :size="18" /></button>
+          <button
+            v-if="notificationPermission !== 'granted'"
+            type="button"
+            class="xd-icon-only"
+            :title="t('pages.xuandrop.notifications')"
+            @click="enableNotifications"
+          ><Bell :size="18" /></button>
+          <span v-else class="xd-icon-only is-static" :title="t('pages.xuandrop.notificationsOn')"><BellRing :size="18" /></span>
+          <button type="button" class="xd-icon-only" :class="{ 'has-badge': pendingIncoming }" :title="t('pages.xuandrop.contacts')" @click="showContacts = !showContacts">
+            <Users :size="18" />
+          </button>
         </div>
-      </div>
+      </header>
 
-      <div v-if="uploadUrl" class="xb-drop-link">
-        <div class="xb-drop-qr-shell">
-          <img :src="qrCodeUrl" alt="XuanDrop upload QR code" />
+      <p v-if="pageError" class="xd-error">{{ pageError }}</p>
+
+      <DropContactsPanel v-if="showContacts || pendingIncoming" :contacts="contacts" @changed="handleEvent({ event: 'contacts.changed' })" />
+
+      <nav class="xd-conversations" :aria-label="t('pages.xuandrop.conversations')">
+        <button
+          v-for="entry in conversationList"
+          :key="entry.key"
+          type="button"
+          class="xd-conversation"
+          :class="{ 'is-active': entry.thread && entry.thread.id === activeThreadId }"
+          @click="selectConversation(entry)"
+        >
+          <span class="xd-avatar" :class="{ 'is-self': entry.self }">
+            <Laptop v-if="entry.self" :size="20" />
+            <template v-else>{{ (entry.title || '?').slice(0, 1).toUpperCase() }}</template>
+          </span>
+          <span class="xd-conversation-main">
+            <strong>{{ entry.title }}</strong>
+            <small>{{ entry.thread?.last_message ? previewText(entry.thread.last_message) : (entry.self ? t('pages.xuandrop.myDevicesHint') : `@${entry.peer?.username}`) }}</small>
+          </span>
+          <span v-if="entry.thread?.unread_count" class="xd-unread">{{ entry.thread.unread_count }}</span>
+        </button>
+        <p v-if="!acceptedContacts.length && !showContacts" class="xd-hint xd-pad">{{ t('pages.xuandrop.noContacts') }}</p>
+      </nav>
+
+      <section class="xd-devices">
+        <header>
+          <strong>{{ t('pages.xuandrop.devices') }}</strong>
+        </header>
+        <div v-for="device in devices" :key="device.id" class="xd-device" :class="{ 'is-current': device.is_current }">
+          <span class="xd-device-icon">
+            <Smartphone v-if="isPhone(device)" :size="18" />
+            <Laptop v-else :size="18" />
+            <i :class="{ 'is-online': device.online || device.is_current }" />
+          </span>
+          <span class="xd-device-main">
+            <strong>{{ device.device_name }}</strong>
+            <small>{{ device.is_current ? t('pages.xuandrop.thisDevice') : lastSeenText(device) }}</small>
+          </span>
+          <button type="button" class="xd-icon-only" :title="t('pages.xuandrop.renameDevice')" @click="renameDevice(device)"><Pencil :size="14" /></button>
+          <button v-if="!device.is_current" type="button" class="xd-icon-only is-danger" :title="t('pages.xuandrop.removeDevice')" @click="removeDevice(device)"><Trash2 :size="14" /></button>
         </div>
-        <div class="xb-drop-link-copy">
-          <QrCode :size="18" />
-          <strong>{{ t('pages.drop.scanToSend') }}</strong>
-          <span>{{ uploadUrl }}</span>
-          <div class="xb-row-actions">
-            <button class="xb-secondary-button" type="button" @click="copyUploadLink">
-              <component :is="copied ? Check : Copy" :size="16" />
-              {{ copied ? t('pages.drop.copied') : t('pages.drop.copyLink') }}
-            </button>
-            <router-link class="xb-text-button" to="/files">{{ t('pages.drop.openVault') }}</router-link>
+      </section>
+    </aside>
+
+    <section
+      class="xd-chat"
+      :class="{ 'is-dragging': dragging }"
+      @dragover="onDragOver"
+      @dragleave="onDragLeave"
+      @drop="onDrop"
+    >
+      <template v-if="activeThread">
+        <header class="xd-chat-head">
+          <button type="button" class="xd-icon-only xd-back" :aria-label="t('pages.xuandrop.back')" @click="closeConversation"><ChevronLeft :size="22" /></button>
+          <div class="xd-chat-title">
+            <strong>{{ activeThread.kind === 'self' ? t('pages.xuandrop.myDevices') : activeThread.peer?.display_name }}</strong>
+            <small v-if="activeThread.kind === 'self'">
+              {{ devices.filter((device) => device.online || device.is_current).length }} / {{ devices.length }} {{ t('pages.xuandrop.online') }}
+            </small>
+            <small v-else>@{{ activeThread.peer?.username }}</small>
           </div>
-          <small v-if="!configuredPublicOrigin && isLocalhost">{{ t('pages.drop.noDeviceWarning') }}</small>
+          <button v-if="activeThread.kind === 'direct' && activeThread.can_send" type="button" class="xd-icon-only" :title="t('pages.xuandrop.removeContact')" @click="removeActiveContact">
+            <UserMinus :size="18" />
+          </button>
+        </header>
+
+        <div ref="scroller" class="xd-messages">
+          <button v-if="hasMoreByThread[activeThreadId]" type="button" class="xb-text-button xd-load-earlier" @click="loadEarlier">{{ t('pages.xuandrop.loadEarlier') }}</button>
+          <p v-if="!activeMessages.length && !activePending.length" class="xd-empty">
+            {{ activeThread.kind === 'self' ? t('pages.xuandrop.empty') : t('pages.xuandrop.emptyDirect', { name: activeThread.peer?.display_name, days: RETENTION_DAYS }) }}
+          </p>
+          <template v-for="row in timeline" :key="row.key">
+            <div v-if="row.type === 'day'" class="xd-day"><span>{{ row.label }}</span></div>
+            <DropMessageBubble
+              v-else
+              :message="row.message"
+              :mine="isMine(row.message)"
+              :sender-label="senderLabel(row.message)"
+              :target-label="targetLabel(row.message)"
+              :read="isRead(row.message)"
+              :can-delete="row.message.sender_user_id === myUserId"
+              :saving="savingIds.has(row.message.id)"
+              @preview="openPreview"
+              @save="(destination) => saveToLibrary(row.message, destination)"
+              @delete="deleteMessage"
+            />
+          </template>
+          <div v-for="item in activePending" :key="item.clientId" class="xd-msg is-mine is-pending">
+            <div class="xd-bubble" :class="{ 'is-media': item.previewUrl }">
+              <img v-if="item.previewUrl" :src="item.previewUrl" class="xd-pending-image" alt="" />
+              <div class="xd-file" :class="{ 'is-compact': item.previewUrl }">
+                <div class="xd-file-main">
+                  <strong>{{ item.file.name }}</strong>
+                  <span>{{ formatSize(item.file.size) }} · {{ item.status === 'failed' ? t('pages.xuandrop.uploadFailed') : `${t('pages.xuandrop.uploading')} ${Math.round(item.progress * 100)}%` }}</span>
+                </div>
+              </div>
+              <div v-if="item.status === 'uploading'" class="xd-progress"><span :style="{ width: `${Math.round(item.progress * 100)}%` }" /></div>
+              <p v-if="item.error" class="xd-error">{{ item.error }}</p>
+            </div>
+            <div class="xd-msg-actions">
+              <button v-if="item.status === 'failed'" type="button" class="xd-action" @click="uploadPending(activeThreadId, item)">{{ t('pages.xuandrop.retry') }}</button>
+              <button type="button" class="xd-action" @click="cancelPending(item)">{{ t('pages.xuandrop.cancelUpload') }}</button>
+            </div>
+          </div>
         </div>
+
+        <p v-if="!activeThread.can_send" class="xd-hint xd-pad">{{ t('pages.xuandrop.notContactsAnymore') }}</p>
+        <DropComposer
+          v-else
+          v-model:target="target"
+          :targets="activeThread.kind === 'self' ? otherDevices : []"
+          @send-text="sendText"
+          @send-files="sendFiles"
+        />
+        <p class="xd-retention">{{ t('pages.xuandrop.retention', { days: RETENTION_DAYS }) }}</p>
+        <div v-if="dragging" class="xd-drop-hint">{{ t('pages.xuandrop.dropHere') }}</div>
+      </template>
+      <div v-else class="xd-empty xd-empty-center">{{ t('pages.xuandrop.selectConversation') }}</div>
+    </section>
+
+    <Teleport to="body">
+      <DropQrDialog v-if="showQr" @close="showQr = false" />
+
+      <div v-if="preview.message" class="xd-overlay xd-lightbox" @click.self="closePreview">
+        <button type="button" class="xd-icon-only xd-lightbox-close" :aria-label="t('common.actions.close')" @click="closePreview"><X :size="22" /></button>
+        <img v-if="preview.url" :src="preview.url" :alt="preview.message.filename" />
+        <span v-else class="xd-hint">{{ t('common.actions.loading') }}</span>
+        <button v-if="preview.file" type="button" class="xb-primary-button xd-lightbox-save" @click="deliverFile(preview.file)">
+          {{ t('pages.xuandrop.saveToDevice') }}
+        </button>
       </div>
 
-      <div v-else-if="activeSession" class="xb-drop-link">
-        <strong>{{ t('pages.drop.sessionUnavailable') }}</strong>
-        <span>{{ t('pages.drop.sessionUnavailableHint') }}</span>
+      <div v-if="toast" class="xd-toast" role="status" @click="toast = null">
+        <strong>{{ toast.message }}</strong>
+        <span v-if="toast.detail">{{ toast.detail }}</span>
       </div>
-
-      <label
-        class="xb-drop-upload-target"
-        :class="{ 'is-disabled': !activeSession || uploading, 'is-dragging': draggingLocalFiles }"
-        @dragenter.prevent="onLocalDragEnter"
-        @dragover.prevent="draggingLocalFiles = Boolean(activeSession) && !uploading"
-        @dragleave="onLocalDragLeave"
-        @drop.prevent="onLocalFileDrop"
-      >
-        <Upload :size="22" />
-        <strong>{{ uploading ? t('pages.drop.sending') : t('pages.drop.sendHere') }}</strong>
-        <span>{{ activeSession ? t('pages.drop.sendElse') : t('pages.drop.sendHintNoSession') }}</span>
-        <div v-if="uploadProgress" class="xb-progress">
-          <span :style="{ width: `${uploadProgress}%` }"></span>
-        </div>
-        <input type="file" multiple :disabled="!activeSession || uploading" @change="uploadLocalFiles" />
-      </label>
-    </article>
-
-    <article class="xb-panel xb-drop-side">
-      <div class="xb-panel-title">
-        <h3>{{ t('pages.drop.sessionsTitle') }}</h3>
-        <span>{{ sessions.length }}</span>
-      </div>
-      <p v-if="sessions.length === 0">{{ t('pages.drop.noActiveSessions') }}</p>
-      <div class="xb-drop-session-list">
-        <button v-for="session in sessions" :key="session.id" class="xb-session-row" :class="{ 'is-active': activeSession?.id === session.id }" type="button" @click="selectSession(session)">
-          <strong>{{ session.title }}</strong>
-          <span>{{ session.status }} · {{ formatTime(session.expires_at) }}</span>
-        </button>
-      </div>
-    </article>
-  </section>
-
-  <section class="xb-panel xb-drop-items">
-    <div class="xb-panel-title">
-      <h3>{{ t('pages.drop.receivedItems') }}</h3>
-      <span>{{ t('pages.drop.storedCount', { count: receivedItems.length }) }}</span>
-    </div>
-    <EmptyState v-if="!loading && receivedItems.length === 0" :title="t('pages.drop.noReceived')" :description="t('pages.drop.noReceivedHint')" />
-    <article v-for="item in receivedItems" :key="item.id" class="xb-file-row xb-drop-item-row">
-      <button class="xb-drop-file-icon" type="button" :title="isImageItem(item) ? t('pages.drop.previewImage') : t('pages.drop.downloadFile')" @click="openItem(item)">
-        <FileCheck :size="18" />
-      </button>
-      <div class="xb-file-main">
-        <button class="xb-drop-file-open" type="button" @click="openItem(item)">{{ item.original_filename }}</button>
-        <span>{{ item.mime_type || 'application/octet-stream' }} · {{ formatSize(item.file_size) }} · {{ t('pages.drop.storedIn', { destination: item.saved_to || t('pages.drop.files') }) }}</span>
-      </div>
-      <div class="xb-row-actions">
-        <button class="xb-text-button" type="button" @click="downloadItem(item)">
-          <Download :size="16" />
-          {{ t('common.actions.download') }}
-        </button>
-        <button v-if="item.status !== 'saved'" class="xb-text-button" type="button" :disabled="savingIds.has(item.id)" @click="saveItem(item, 'files')">
-          <Save :size="16" />
-          {{ savingIds.has(item.id) ? t('pages.drop.saving') : t('pages.drop.files') }}
-        </button>
-        <button v-if="item.status !== 'saved' && isImageItem(item)" class="xb-text-button" type="button" :disabled="savingIds.has(item.id)" @click="saveItem(item, 'photos')">
-          <Smartphone :size="16" />
-          {{ t('routes.photos') }}
-        </button>
-        <button v-if="item.status !== 'saved'" class="xb-text-button" type="button" :disabled="savingIds.has(item.id)" @click="saveItem(item, 'receipts')">{{ t('routes.receipts') }}</button>
-        <button class="xb-text-button xb-danger-button" type="button" @click="deleteItem(item)">
-          <Trash2 :size="16" />
-          {{ t('common.actions.delete') }}
-        </button>
-      </div>
-    </article>
-  </section>
-
-  <div v-if="previewItem" class="xb-preview-backdrop" @click.self="closePreview">
-    <article class="xb-preview-modal">
-      <div class="xb-panel-title">
-        <h3>{{ previewItem.original_filename }}</h3>
-        <button class="xb-icon-button" type="button" :title="t('common.actions.close')" @click="closePreview">
-          <X :size="18" />
-        </button>
-      </div>
-      <img :src="previewUrl" alt="" />
-      <div class="xb-row-actions">
-        <button class="xb-secondary-button" type="button" @click="downloadItem(previewItem)">
-          <Download :size="16" />
-          {{ t('common.actions.download') }}
-        </button>
-        <button class="xb-primary-button" type="button" :disabled="savingIds.has(previewItem.id)" @click="saveItem(previewItem, 'photos')">
-          <Smartphone :size="16" />
-          {{ savingIds.has(previewItem.id) ? t('pages.drop.saving') : t('pages.drop.saveToPhotos') }}
-        </button>
-      </div>
-    </article>
+    </Teleport>
   </div>
 </template>

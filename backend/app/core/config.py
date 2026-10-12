@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     )
     BACKUP_SCHEDULE_HOURS: int = Field(default=24, ge=0)
 
+    DROP_RETENTION_DAYS: int = Field(default=7, ge=1, le=90)
+    # Cap on not-yet-expired XuanDrop attachments a single user can have in flight.
+    DROP_USER_PENDING_LIMIT_MB: int = Field(default=2048, ge=50)
+
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:8080,http://127.0.0.1:5173"
     CORS_ALLOW_ORIGIN_REGEX: str | None = (
         r"https?://(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|"

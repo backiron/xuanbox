@@ -7,6 +7,7 @@ class BootstrapOwnerRequest(BaseModel):
     password: str = Field(min_length=10, max_length=128)
     display_name: str | None = Field(default=None, max_length=120)
     device_name: str | None = Field(default=None, max_length=120)
+    device_key: str | None = Field(default=None, min_length=16, max_length=128)
 
 
 class InviteRegisterRequest(BaseModel):
@@ -16,6 +17,7 @@ class InviteRegisterRequest(BaseModel):
     password: str = Field(min_length=10, max_length=128)
     display_name: str | None = Field(default=None, max_length=120)
     device_name: str | None = Field(default=None, max_length=120)
+    device_key: str | None = Field(default=None, min_length=16, max_length=128)
 
 
 class PublicRegisterRequest(BaseModel):
@@ -24,12 +26,14 @@ class PublicRegisterRequest(BaseModel):
     password: str = Field(min_length=10, max_length=128)
     display_name: str | None = Field(default=None, max_length=120)
     device_name: str | None = Field(default=None, max_length=120)
+    device_key: str | None = Field(default=None, min_length=16, max_length=128)
 
 
 class LoginRequest(BaseModel):
     username_or_email: str = Field(min_length=3, max_length=255)
     password: str = Field(min_length=1, max_length=128)
     device_name: str | None = Field(default=None, max_length=120)
+    device_key: str | None = Field(default=None, min_length=16, max_length=128)
 
 
 class RefreshTokenRequest(BaseModel):

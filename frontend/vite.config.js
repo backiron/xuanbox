@@ -9,7 +9,8 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: 'http://xuanbox-api:8000',
-        changeOrigin: true
+        changeOrigin: true,
+        ws: true
       }
     }
   }

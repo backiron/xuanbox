@@ -1,5 +1,23 @@
 # XuanBox Changelog
 
+## 2026-10-11 XuanDrop 2.0 (conversation transfer)
+
+- Replaced the one-way QR session page with an AirDrop-style conversation view: a "My devices" thread between the user's own signed-in browsers, plus direct threads with accepted contacts (family accounts).
+- Text, links and files are delivered instantly over a WebSocket (`/api/v1/drop/ws`, single-use Redis ticket, Redis pub/sub fan-out) with device presence, unread counts and read receipts in direct threads.
+- Attachments are encrypted per file under `STORAGE_ROOT/encrypted_drop/`, kept outside the library, and removed by the worker after `DROP_RETENTION_DAYS` (default 7). "Save to library" copies an item into the saving user's Photos, Files or Receipts.
+- Contacts require a request and acceptance; asking back accepts. Only members can read a thread, only the sender can delete a message, and a target device must belong to the sender.
+- Signing in again from the same browser reuses its device (`device_key`), and devices get readable names (for example `iPhone · Safari`).
+- QR uploads now arrive in the "My devices" conversation instead of being filed straight into the library.
+- iPhone/iPad: received files are fetched first, then a second tap opens the share sheet to save into Photos or Files.
+- Added migration `0018_drop_chat`, `docker-compose.test.yml`, and the first integration test suite (`backend/tests`, 14 tests against a live server and WebSocket).
+
+### Verification
+
+- `docker compose -f docker-compose.test.yml run --rm tests` → 14 passed.
+- `alembic downgrade 0017_system_settings && alembic upgrade head` on the test database.
+- `vite build` succeeds.
+- Local browser check against an isolated stack: realtime delivery from a simulated phone, contact request/accept, family conversation, reply, save to Photos, desktop and 375px phone layouts.
+
 ## 2026-05-07 Hardening
 
 - Replaced the XuanDrop QR placeholder icon with a real scannable QR code generated from the temporary upload URL.

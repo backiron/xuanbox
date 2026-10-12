@@ -1,0 +1,53 @@
+# Isolated integration-test stack: throwaway Postgres/Redis (no host ports, data in tmpfs).
+#   docker compose -f docker-compose.test.yml run --rm tests
+#   docker compose -f docker-compose.test.yml down
+name: xuanbox-test
+
+services:
+  test-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: xuanbox_test
+      POSTGRES_USER: xuanbox
+      POSTGRES_PASSWORD: xuanbox_test_password
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U xuanbox -d xuanbox_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  test-redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  tests:
+    build:
+      context: ./backend
+    depends_on:
+      test-postgres:
+        condition: service_healthy
+      test-redis:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: test-postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: xuanbox_test
+      POSTGRES_USER: xuanbox
+      POSTGRES_PASSWORD: xuanbox_test_password
+      REDIS_URL: redis://test-redis:6379/0
+      JWT_SECRET_KEY: test-only-jwt-secret-key-0123456789
+      MASTER_KEY: test-only-master-key-0123456789abcdef
+      STORAGE_ROOT: /tmp/xuanbox-test-storage
+      BACKUP_SCHEDULE_HOURS: 0
+    volumes:
+      - ./backend:/app
+    command: >
+      sh -c "pip install -q --root-user-action=ignore -r requirements-dev.txt &&
+             alembic upgrade head &&
+             python -m pytest -q -p no:cacheprovider tests"

@@ -56,14 +56,37 @@ async def upload_file(
     folder_id: UUID | None = None,
 ) -> FileAsset:
     plain_bytes = await read_user_upload_bytes(upload)
+    file_asset = await add_library_file(
+        db,
+        owner=owner,
+        plain_bytes=plain_bytes,
+        original_filename=upload.filename or str(uuid4()),
+        mime_type=upload.content_type,
+        source=source,
+        folder_id=folder_id,
+    )
+    await db.commit()
+    await db.refresh(file_asset)
+    return file_asset
 
-    original_filename = upload.filename or str(uuid4())
+
+async def add_library_file(
+    db: AsyncSession,
+    *,
+    owner: User,
+    plain_bytes: bytes,
+    original_filename: str,
+    mime_type: str | None,
+    source: str,
+    folder_id: UUID | None = None,
+) -> FileAsset:
+    """Encrypt bytes into the owner's library with the same follow-up work as a normal upload. Does not commit."""
     file_asset = await create_encrypted_asset_from_bytes(
         db,
         owner=owner,
         plain_bytes=plain_bytes,
         original_filename=original_filename,
-        mime_type=upload.content_type,
+        mime_type=mime_type,
         source=source,
         folder_id=folder_id,
     )
@@ -82,8 +105,6 @@ async def upload_file(
         from app.services.photo_service import create_photo_record_for_asset
 
         await create_photo_record_for_asset(db, owner, file_asset, plain_bytes)
-    await db.commit()
-    await db.refresh(file_asset)
     return file_asset
 
 

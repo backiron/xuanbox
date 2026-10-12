@@ -13,7 +13,6 @@ from app.models.transfer import TransferItem, TransferSession
 from app.models.user import User
 from app.schemas.transfer import TransferSaveRequest, TransferSessionCreateRequest
 from app.services.audit_service import write_audit_log
-from app.services.file_service import upload_file
 from app.services.file_service import decrypt_file_asset, soft_delete_file
 from app.services.photo_service import create_photo_from_file
 from app.services.receipt_service import create_receipt_for_file
@@ -65,36 +64,16 @@ async def get_open_session_by_token(db: AsyncSession, token: str) -> TransferSes
     return session
 
 
-async def upload_transfer_item(db: AsyncSession, token: str, upload: UploadFile) -> TransferItem:
+async def upload_transfer_item(db: AsyncSession, token: str, upload: UploadFile) -> dict:
+    """A QR upload lands in the owner's "my devices" conversation as a temporary XuanDrop message."""
+    from app.services.drop_service import ensure_self_thread, send_file
+
     session = await get_open_session_by_token(db, token)
     owner = await db.get(User, session.owner_id)
     if owner is None:
         raise AppError("owner_not_found", "Transfer owner no longer exists", 404)
-    file_asset = await upload_file(db, owner=owner, upload=upload, source="xuandrop_upload")
-    saved_to = "files"
-    if file_asset.mime_type and file_asset.mime_type.startswith("image/"):
-        try:
-            await create_photo_from_file(db, owner, file_asset.id)
-            saved_to = "photos"
-        except AppError as exc:
-            if exc.error_code != "invalid_photo":
-                raise
-    item = TransferItem(
-        session_id=session.id,
-        owner_id=owner.id,
-        file_id=file_asset.id,
-        original_filename=file_asset.original_filename,
-        mime_type=file_asset.mime_type,
-        file_size=file_asset.file_size,
-        status="saved",
-        saved_to=saved_to,
-    )
-    db.add(item)
-    await db.flush()
-    await write_audit_log(db, action="drop.upload", actor_user_id=owner.id, target_type="transfer_session", target_id=str(session.id))
-    await db.commit()
-    await db.refresh(item)
-    return item
+    thread = await ensure_self_thread(db, owner)
+    return await send_file(db, owner, None, thread.id, upload, sender_label=f"QR · {session.title}")
 
 
 async def list_transfer_items(db: AsyncSession, owner: User, session_id: UUID) -> list[TransferItem]:

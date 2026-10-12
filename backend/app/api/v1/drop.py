@@ -168,5 +168,5 @@ async def public_upload_endpoint(
     file: UploadFile = File(...),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    item = await upload_transfer_item(session, token, file)
-    return success_response(TransferItemPublic.model_validate(item).model_dump(mode="json"))
+    message = await upload_transfer_item(session, token, file)
+    return success_response({"id": message["id"], "filename": message["filename"], "file_size": message["file_size"]})
