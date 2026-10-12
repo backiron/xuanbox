@@ -1,3 +1,4 @@
+import base64
 import argparse
 import json
 import shutil
@@ -14,7 +15,9 @@ from app.services.backup_service import backup_tables
 def normalize_row(row: dict) -> dict:
     normalized = {}
     for key, value in row.items():
-        if isinstance(value, (dict, list)):
+        if isinstance(value, dict) and set(value) == {"__bytes__"}:
+            normalized[key] = base64.b64decode(value["__bytes__"])
+        elif isinstance(value, (dict, list)):
             normalized[key] = json.dumps(value, ensure_ascii=False)
         else:
             normalized[key] = value

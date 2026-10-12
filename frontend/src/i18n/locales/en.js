@@ -1041,6 +1041,7 @@
       labelOcrText: 'Extracted text',
       labelMatch: 'Match',
       typeLabels: {
+        semantic: 'Matched by meaning',
         file: 'Files',
         photo: 'Photos',
         receipt: 'Receipts',

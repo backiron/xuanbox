@@ -275,4 +275,47 @@ async def search_all(db: AsyncSession, owner: User, query: str, *, limit: int = 
         )
 
     ordered = sorted(results.values(), key=lambda item: item.score, reverse=True)[:limit]
-    return SearchResponse(query=q, results=ordered)
+    return SearchResponse(query=q, results=ordered + await _semantic_results(db, owner, q, vault_file_ids))
+
+
+async def _semantic_results(db: AsyncSession, owner: User, query: str, vault_file_ids) -> list[SearchResult]:
+    from app.services.search_index_service import semantic_search
+
+    matches = await semantic_search(db, owner, query)
+    results = []
+    for match in matches:
+        # Re-check ownership and visibility at query time: the item may have been deleted or locked since indexing.
+        if match["source_type"] == "receipt":
+            receipt = await db.scalar(select(Receipt).where(Receipt.id == match["source_id"], Receipt.owner_id == owner.id))
+            if receipt is None:
+                continue
+            title = receipt.merchant or "Receipt"
+            subtitle = " · ".join(str(value) for value in (receipt.purchase_date, f"{receipt.amount} {receipt.currency}" if receipt.amount is not None else None) if value)
+            route, target_type = "/receipts", "receipt"
+        else:
+            file_asset = await db.scalar(
+                select(FileAsset).where(
+                    FileAsset.id == match["source_id"],
+                    FileAsset.owner_id == owner.id,
+                    FileAsset.is_deleted.is_(False),
+                    FileAsset.id.not_in(vault_file_ids),
+                )
+            )
+            if file_asset is None:
+                continue
+            title, subtitle, route, target_type = file_asset.display_name, file_asset.mime_type, "/files", "file"
+        results.append(
+            SearchResult(
+                type="semantic",
+                target_type=target_type,
+                id=match["source_id"],
+                file_id=match["file_id"],
+                title=title,
+                subtitle=subtitle,
+                snippet=match["text"][:220],
+                route=route,
+                source="meaning",
+                score=int(round(match["score"] * 100)),
+            )
+        )
+    return results

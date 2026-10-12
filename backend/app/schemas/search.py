@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 class SearchResult(BaseModel):
     type: str
+    target_type: str | None = None
     id: UUID
     file_id: UUID | None = None
     title: str

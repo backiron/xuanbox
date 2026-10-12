@@ -63,6 +63,10 @@ class Settings(BaseSettings):
     DOCUMENT_AI_BASE_URL: str = "http://host.docker.internal:11434"
     DOCUMENT_AI_TIMEOUT_SECONDS: int = Field(default=90, ge=1, le=300)
     DOCUMENT_AI_MAX_CHARS: int = Field(default=6000, ge=500, le=20000)
+    # Meaning-based search over a user's own receipts and documents (Pro only), via an Ollama embedding model.
+    SEARCH_AI_ENABLED: bool = False
+    SEARCH_AI_MODEL: str = "bge-m3"
+
     DOCUMENT_AI_CONCURRENCY: int = Field(default=1, ge=1, le=4)
 
     model_config = SettingsConfigDict(

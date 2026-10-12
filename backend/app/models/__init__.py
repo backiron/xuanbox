@@ -14,6 +14,7 @@ from app.models.message import Message
 from app.models.photo_asset import PhotoAsset
 from app.models.ocr_task import OcrTask
 from app.models.receipt import Receipt
+from app.models.search_embedding import SearchEmbedding
 from app.models.share import Share, ShareAccessLog
 from app.models.system_setting import SystemSetting
 from app.models.tag import Tag, TagLink
@@ -46,6 +47,7 @@ __all__ = [
     "PhotoAsset",
     "OcrTask",
     "Receipt",
+    "SearchEmbedding",
     "Share",
     "ShareAccessLog",
     "SystemSetting",

@@ -1041,6 +1041,7 @@
       labelOcrText: '提取文本',
       labelMatch: '匹配',
       typeLabels: {
+        semantic: '按意思找到',
         file: '文件',
         photo: '照片',
         receipt: '收据',

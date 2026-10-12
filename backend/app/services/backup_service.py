@@ -1,3 +1,4 @@
+import base64
 import json
 import tarfile
 from datetime import UTC, datetime
@@ -138,5 +139,12 @@ async def _prune_old_backups(db: AsyncSession) -> None:
         task.backup_path = None
 
 
+def _json_default(value: object) -> object:
+    # Binary columns (search vectors) survive the JSON round trip as base64; restore_backup decodes them.
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return {"__bytes__": base64.b64encode(bytes(value)).decode("ascii")}
+    return str(value)
+
+
 def _write_json(path: Path, value: object) -> None:
-    path.write_text(json.dumps(value, default=str, ensure_ascii=False, indent=2), encoding="utf-8")
+    path.write_text(json.dumps(value, default=_json_default, ensure_ascii=False, indent=2), encoding="utf-8")

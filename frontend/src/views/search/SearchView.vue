@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { BrainCircuit, FileText, Image, ReceiptText, Search, ShieldCheck } from 'lucide-vue-next'
+import { BrainCircuit, FileText, Image, ReceiptText, Search, ShieldCheck, Sparkles } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import PageHeader from '../../components/common/PageHeader.vue'
 import { searchApi } from '../../api/searchApi'
@@ -20,7 +20,8 @@ const resultGroups = computed(() => {
     receipt: t('pages.search.typeLabels.receipt'),
     document: t('pages.search.typeLabels.document'),
     intelligence: t('pages.search.typeLabels.intelligence'),
-    ocr: t('pages.search.typeLabels.ocr')
+    ocr: t('pages.search.typeLabels.ocr'),
+    semantic: t('pages.search.typeLabels.semantic')
   }
   const icons = {
     file: FileText,
@@ -28,7 +29,8 @@ const resultGroups = computed(() => {
     receipt: ReceiptText,
     document: ShieldCheck,
     intelligence: BrainCircuit,
-    ocr: Search
+    ocr: Search,
+    semantic: Sparkles
   }
   const groups = new Map()
   for (const item of results.value) {
@@ -63,6 +65,10 @@ function resultKey(item) {
 }
 
 function resultRoute(item) {
+  // A match by meaning may not contain the typed words, so open the receipt without filtering by them.
+  if (item.type === 'semantic' && item.target_type === 'receipt') {
+    return { path: '/receipts', query: { receipt: item.id } }
+  }
   if (item.type === 'receipt') {
     return {
       path: '/receipts',

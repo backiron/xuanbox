@@ -7,10 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
 from app.models.receipt import Receipt
+from app.models.search_embedding import SearchEmbedding
 from app.models.ocr_task import OcrTask
 from app.models.user import User
 from app.schemas.receipt import ReceiptCreateRequest, ReceiptUpdateRequest
 from app.services.audit_service import write_audit_log
+from app.services.search_index_service import enqueue_search_index
 from app.services.file_service import get_owned_file, upload_file
 
 
@@ -95,6 +97,7 @@ async def update_receipt(db: AsyncSession, owner: User, receipt_id: UUID, payloa
     for field, value in payload.model_dump().items():
         setattr(receipt, field, value)
     await write_audit_log(db, action="receipt.update", actor_user_id=owner.id, target_type="receipt", target_id=str(receipt.id))
+    await enqueue_search_index(db, owner, "receipt", receipt.id)
     await db.commit()
     await db.refresh(receipt)
     return receipt
@@ -106,6 +109,7 @@ async def delete_receipt(db: AsyncSession, owner: User, receipt_id: UUID) -> Non
         raise AppError("receipt_not_found", "Receipt not found", 404)
 
     await db.execute(delete(OcrTask).where(OcrTask.receipt_id == receipt.id, OcrTask.owner_id == owner.id))
+    await db.execute(delete(SearchEmbedding).where(SearchEmbedding.source_type == "receipt", SearchEmbedding.source_id == receipt.id))
     await write_audit_log(
         db,
         action="receipt.delete",

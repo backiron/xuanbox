@@ -15,6 +15,7 @@ from app.services.document_ai_service import enhance_document_parse
 from app.services.file_service import decrypt_file_asset, get_owned_file
 from app.services.ocr_service import extract_receipt_image_text, extract_text_from_bytes
 from app.services.worker_service import enqueue_worker_task, mark_task_completed, mark_task_failed
+from app.services.search_index_service import enqueue_search_index
 
 DOCUMENT_EXTRACT_TASK_TYPE = "document_extract_text"
 SUPPORTED_EXTENSIONS = {"txt", "md", "csv", "pdf"}
@@ -283,6 +284,7 @@ async def process_document_extract_task(db: AsyncSession, worker_task: WorkerTas
                 )
             )
         await upsert_profile(db, task, file_asset, parsed)
+        await enqueue_search_index(db, owner, "file", file_asset.id)
         await mark_task_completed(db, worker_task)
     except Exception as exc:
         message = str(exc)

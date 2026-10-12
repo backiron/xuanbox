@@ -18,6 +18,7 @@ from app.models.worker_task import WorkerTask
 from app.schemas.ocr import OcrConfirmRequest
 from app.services.file_service import decrypt_file_asset
 from app.services.receipt_ai_service import enhance_receipt_parse
+from app.services.search_index_service import enqueue_search_index
 from app.services.worker_service import enqueue_worker_task, mark_task_completed, mark_task_failed
 
 OCR_TASK_TYPE = "receipt_ocr"
@@ -129,6 +130,7 @@ async def confirm_ocr_task(
     receipt.warranty_until = payload.warranty_until if "warranty_until" in payload.model_fields_set else _date_or_none(parsed.get("warranty_until")) or receipt.warranty_until
     receipt.notes = payload.notes if "notes" in payload.model_fields_set else parsed.get("notes") or receipt.notes
     receipt.ocr_status = "confirmed"
+    await enqueue_search_index(db, owner, "receipt", receipt.id)
     task.status = "confirmed"
     task.confirmed_at = datetime.now(UTC)
     await db.commit()
@@ -403,6 +405,7 @@ async def process_receipt_ocr_task(db: AsyncSession, task: WorkerTask) -> None:
         ocr_task.error_message = None
         receipt.ocr_status = "completed"
         prefill_receipt_from_parse(receipt, ocr_task.parsed_json)
+        await enqueue_search_index(db, owner, "receipt", receipt.id)
         await mark_task_completed(db, task)
     except Exception as exc:
         message = str(exc)
