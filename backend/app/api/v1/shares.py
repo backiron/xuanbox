@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_session, require_user_app
 from app.core.http import attachment_headers
+from app.core.rate_limit import client_ip, count_failure, guard
 from app.core.responses import success_response
 from app.models.user import User
 from app.schemas.share import PublicShareMetadata, ShareCreateRequest, SharePasswordRequest, SharePasswordResponse, SharePublic, ShareUpdateRequest
@@ -15,6 +16,7 @@ from app.services.share_service import (
     create_share,
     deactivate_share,
     download_public_share,
+    download_received_share,
     get_owned_share,
     get_public_share,
     list_created_shares,
@@ -32,15 +34,14 @@ router = APIRouter()
 public_router = APIRouter()
 
 
-def _client_ip(request: Request) -> str | None:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else None
+_client_ip = client_ip
 
 
 async def _share_public(db: AsyncSession, share) -> dict:
     payload = SharePublic.model_validate(share).model_dump(mode="json")
+    if share.shared_with_user_id is not None:
+        # No link exists for a share addressed to one person; the recipient opens it from "Shared with me".
+        payload["public_token"] = None
     payload["target_name"] = await target_name(db, share)
     payload["requires_password"] = bool(share.password_hash)
     return payload
@@ -98,6 +99,19 @@ async def delete_share_endpoint(
 ) -> dict:
     await deactivate_share(session, current_user, share_id)
     return success_response(message="deactivated")
+
+
+@router.get("/received/{share_id}/download")
+async def download_received_share_endpoint(
+    share_id: UUID,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_user_app),
+) -> Response:
+    file_asset, plain_bytes = await download_received_share(
+        session, current_user, share_id, ip_address=_client_ip(request), user_agent=request.headers.get("user-agent")
+    )
+    return Response(content=plain_bytes, media_type=file_asset.mime_type or "application/octet-stream", headers=attachment_headers(file_asset.original_filename))
 
 
 @router.post("/archive-inactive")
@@ -160,7 +174,15 @@ async def verify_public_share_password_endpoint(
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     share = await get_public_share(session, token, action="password.verify", ip_address=_client_ip(request), user_agent=request.headers.get("user-agent"))
-    await verify_share_password(session, share, payload.password, ip_address=_client_ip(request), user_agent=request.headers.get("user-agent"))
+    ip = _client_ip(request) or "unknown"
+    keys = (f"share-pw:{share.id}:{ip}", 8), (f"share-pw:{share.id}", 30)
+    await guard(*keys, message="Too many wrong passwords for this link. Try again later.")
+    try:
+        await verify_share_password(session, share, payload.password, ip_address=ip, user_agent=request.headers.get("user-agent"))
+    except Exception:
+        for key, _limit in keys:
+            await count_failure(key, 15 * 60)
+        raise
     await write_share_access_log(
         session,
         share,
@@ -178,8 +200,6 @@ async def verify_public_share_password_endpoint(
 async def download_public_share_endpoint(
     token: str,
     request: Request,
-    password: str | None = None,
-    access_token: str | None = None,
     session: AsyncSession = Depends(get_session),
 ) -> Response:
     header_token = request.headers.get("x-share-access")
@@ -187,8 +207,7 @@ async def download_public_share_endpoint(
     file_asset, plain_bytes = await download_public_share(
         session,
         share,
-        password=password,
-        access_token=header_token or access_token,
+        access_token=header_token,
         ip_address=_client_ip(request),
         user_agent=request.headers.get("user-agent"),
     )

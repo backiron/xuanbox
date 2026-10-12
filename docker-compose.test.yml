@@ -45,6 +45,7 @@ services:
       MASTER_KEY: test-only-master-key-0123456789abcdef
       STORAGE_ROOT: /tmp/xuanbox-test-storage
       BACKUP_SCHEDULE_HOURS: 0
+      REGISTRATIONS_PER_IP_PER_HOUR: 100000
     volumes:
       - ./backend:/app
     command: >

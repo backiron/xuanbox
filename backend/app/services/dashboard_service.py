@@ -34,6 +34,8 @@ async def dashboard_summary(db: AsyncSession, owner: User) -> DashboardSummary:
     expiring_result = await db.scalars(
         select(DocumentAsset)
         .where(DocumentAsset.owner_id == owner.id, DocumentAsset.expires_at.is_not(None))
+        # Vault documents stay hidden until the vault is unlocked, including their expiry reminders.
+        .where(DocumentAsset.security_level != "vault_locked")
         .where(DocumentAsset.expires_at >= today, DocumentAsset.expires_at <= until)
         .order_by(DocumentAsset.expires_at.asc())
         .limit(8)

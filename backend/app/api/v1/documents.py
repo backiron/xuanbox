@@ -1,10 +1,12 @@
 from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, UploadFile
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import AppError
+from app.core.rate_limit import count_failure, guard
 from app.core.dependencies import get_session, require_user_app
 from app.core.http import attachment_headers
 from app.core.responses import success_response
@@ -95,10 +97,18 @@ async def update_document_endpoint(
 @router.get("/{document_id}/download")
 async def download_document_endpoint(
     document_id: UUID,
-    password: str | None = None,
+    x_document_password: str | None = Header(default=None),
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_user_app),
 ) -> Response:
-    _, file_asset, plain_bytes = await decrypt_document(session, current_user, document_id, password=password)
+    # The account password re-check travels in a header, never in the URL (URLs end up in logs).
+    key = f"doc-reauth:{current_user.id}"
+    await guard((key, 8), message="Too many wrong passwords. Try again in 15 minutes.")
+    try:
+        _, file_asset, plain_bytes = await decrypt_document(session, current_user, document_id, password=x_document_password)
+    except AppError as exc:
+        if exc.error_code == "document_reauth_required" and x_document_password:
+            await count_failure(key, 15 * 60)
+        raise
     headers = attachment_headers(file_asset.original_filename)
     return Response(content=plain_bytes, media_type=file_asset.mime_type or "application/octet-stream", headers=headers)

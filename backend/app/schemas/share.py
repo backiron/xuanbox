@@ -28,7 +28,7 @@ class SharePublic(BaseModel):
     target_type: str
     target_id: UUID
     shared_with_user_id: UUID | None
-    public_token: str
+    public_token: str | None
     permission: str
     max_downloads: int | None
     download_count: int

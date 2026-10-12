@@ -157,6 +157,9 @@ async def list_contacts(db: AsyncSession, user: User) -> list[dict[str, Any]]:
 
 
 async def request_contact(db: AsyncSession, user: User, identifier: str) -> dict[str, Any]:
+    from app.core.rate_limit import hit
+
+    await hit(f"drop-contact:{user.id}", 30, 3600, "Too many contact requests. Try again later.")
     value = identifier.strip()
     target = await db.scalar(
         select(User).where(or_(User.username == value, func.lower(User.email) == value.lower()))

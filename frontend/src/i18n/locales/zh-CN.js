@@ -546,6 +546,8 @@
       vaultPinUnset: '使用重要文档前请先设置 PIN。'
     },
     shared: {
+      downloadShared: "下载",
+      privateShare: "仅对方登录后可见，无公开链接",
       title: '共享',
       subtitle: '创建可控下载链接，支持文件、照片、收据。',
       createTitle: '创建分享',

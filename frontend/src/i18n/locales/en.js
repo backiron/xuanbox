@@ -546,6 +546,8 @@
       vaultPinUnset: 'Set a PIN before using important docs.'
     },
     shared: {
+      downloadShared: "Download",
+      privateShare: "Only visible to them after signing in; no public link",
       title: 'Shared',
       subtitle: 'Create controlled download links for files, photos, and receipts.',
       createTitle: 'Create share',

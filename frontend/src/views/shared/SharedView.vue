@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Archive, Check, Copy, FileText, Image, Link, LockKeyhole, RefreshCw, ReceiptText, Shield, Trash2, UserRound, X } from 'lucide-vue-next'
+import { Archive, Check, Copy, Download, FileText, Image, Link, LockKeyhole, RefreshCw, ReceiptText, Shield, Trash2, UserRound, X } from 'lucide-vue-next'
 
 import PageHeader from '../../components/common/PageHeader.vue'
 import EmptyState from '../../components/common/EmptyState.vue'
@@ -216,7 +216,7 @@ async function loadAll() {
     applyRouteSelection()
     applyDefaultTarget()
   } catch (err) {
-    error.value = err.response?.data?.error?.message || t('pages.shared.loadError')
+    error.value = err.response?.data?.message || err.response?.data?.error?.message || t('pages.shared.loadError')
   } finally {
     loading.value = false
   }
@@ -246,9 +246,27 @@ async function createShare() {
     await loadAll()
     await copyShare(responses[0].data.data)
   } catch (err) {
-    error.value = err.response?.data?.error?.message || t('pages.shared.createError')
+    error.value = err.response?.data?.message || err.response?.data?.error?.message || t('pages.shared.createError')
   } finally {
     creating.value = false
+  }
+}
+
+async function downloadReceived(share) {
+  error.value = ''
+  try {
+    const response = await shareApi.downloadReceived(share.id)
+    const url = URL.createObjectURL(response.data)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = share.target_name || 'xuanbox-share'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 30000)
+  } catch (err) {
+    const body = err.response?.data
+    error.value = (body instanceof Blob ? JSON.parse(await body.text()).message : body?.message) || t('pages.shared.loadError')
   }
 }
 
@@ -426,10 +444,15 @@ onBeforeUnmount(() => {
           <div class="xb-share-card-side">
             <span class="xb-share-status" :class="{ 'is-active': statusFor(share) === 'Active' }">{{ statusLabel(share) }}</span>
             <div class="xb-row-actions">
-              <button class="xb-text-button" type="button" @click="copyShare(share)">
+              <button v-if="activeTab === 'received'" class="xb-text-button" type="button" @click="downloadReceived(share)">
+                <Download :size="16" />
+                {{ t('pages.shared.downloadShared') }}
+              </button>
+              <button v-else-if="share.public_token" class="xb-text-button" type="button" @click="copyShare(share)">
                 <component :is="copiedId === share.id ? Check : Copy" :size="16" />
                 {{ copiedId === share.id ? t('pages.shared.copied') : t('pages.shared.copyLink') }}
               </button>
+              <span v-else class="xb-muted">{{ t('pages.shared.privateShare') }}</span>
               <button v-if="activeTab === 'created' && share.is_active" class="xb-text-button xb-danger-button" type="button" @click="cancelShare(share)">
                 <Trash2 :size="16" />
                 {{ t('pages.shared.cancel') }}

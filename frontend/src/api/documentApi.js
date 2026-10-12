@@ -15,7 +15,7 @@ export const documentApi = {
   },
   download(id, password) {
     return http.get(`/documents/${id}/download`, {
-      params: password ? { password } : {},
+      headers: password ? { 'X-Document-Password': password } : {},
       responseType: 'blob'
     })
   }

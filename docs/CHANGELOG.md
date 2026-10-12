@@ -1,5 +1,21 @@
 # XuanBox Changelog
 
+## 2026-10-11 Security hardening, local AI and receipts
+
+- Sharing: a share addressed to one person has no public link; the recipient downloads it while signed in. Public links always expire (max 30 days) and have a download limit (max 100). Share passwords are no longer accepted in the URL and are rate limited.
+- Accounts: failed sign-ins are throttled per account and per IP; registration is throttled per IP; signing out or removing a device revokes access tokens immediately.
+- Admin: only the owner manages administrators and owners; nobody changes their own role; the last active owner cannot be demoted or disabled.
+- Client IP is taken from forwarding headers only when the request comes from a private-network proxy; on dev790 the API port is bound to 127.0.0.1.
+- Backups cover every table (derived from the models), are encrypted (chunked AES-256-GCM, key from MASTER_KEY via HKDF, tamper-evident) and only the newest 7 are kept. The restore script decrypts them.
+- Vault documents no longer appear in dashboard expiry reminders; the document re-check password moved from the URL to a header.
+- Local AI: reconnected to the shared Ollama container, status visible in the admin console, timeouts sized for CPU inference, empty "None" values dropped.
+- Receipts: recognised values show immediately (still "needs review"), in-progress receipts are listed first with a live indicator, ISO dates are parsed, and return/warranty dates are computed in code instead of by the model.
+
+### Verification
+
+- `docker compose -f docker-compose.test.yml run --rm tests` → 31 passed, including an encrypted backup → tamper check → restore round trip.
+- dev790: health checks, direct share token returns 404 publicly, API port unreachable from the LAN, one manual encrypted backup decrypted and checked (33 tables).
+
 ## 2026-10-11 XuanDrop 2.0 (conversation transfer)
 
 - Replaced the one-way QR session page with an AirDrop-style conversation view: a "My devices" thread between the user's own signed-in browsers, plus direct threads with accepted contacts (family accounts).

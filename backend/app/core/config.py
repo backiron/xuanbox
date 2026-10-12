@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     )
     BACKUP_SCHEDULE_HOURS: int = Field(default=24, ge=0)
 
+    REGISTRATIONS_PER_IP_PER_HOUR: int = Field(default=5, ge=1)
+
     DROP_RETENTION_DAYS: int = Field(default=7, ge=1, le=90)
     # Cap on not-yet-expired XuanDrop attachments a single user can have in flight.
     DROP_USER_PENDING_LIMIT_MB: int = Field(default=2048, ge=50)

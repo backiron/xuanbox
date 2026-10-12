@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db_session
 from app.core.errors import AppError
 from app.core.security import decode_token
+from app.models.auth_session import AuthSession
 from app.models.user import User
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -38,6 +39,12 @@ async def get_current_user_payload(
     user = await session.get(User, UUID(user_id))
     if user is None or user.status != "active":
         raise AppError("user_inactive", "User is inactive or does not exist", 401)
+    # Signing out, "sign out everywhere" and removing a device revoke the session; honour that at once
+    # instead of letting the access token run out its remaining minutes.
+    session_id = payload.get("session_id")
+    auth_session = await session.get(AuthSession, UUID(session_id)) if session_id else None
+    if auth_session is None or auth_session.owner_id != user.id or not auth_session.is_active or auth_session.revoked_at is not None:
+        raise AppError("session_revoked", "This session has been signed out", 401)
     return user, payload
 
 

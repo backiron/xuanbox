@@ -19,6 +19,9 @@ export const shareApi = {
   archiveInactive() {
     return http.post('/shares/archive-inactive')
   },
+  downloadReceived(id) {
+    return http.get(`/shares/received/${id}/download`, { responseType: 'blob' })
+  },
   publicMetadata(token) {
     return http.get(`/public-share/${token}`)
   },

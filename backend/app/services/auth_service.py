@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.constants import USER_ROLE_ADMIN, USER_ROLE_OWNER, USER_ROLE_USER, USER_STATUS_ACTIVE
 from app.core.errors import AppError
+from app.core.rate_limit import clear, client_ip, count_failure, guard, hit
 from app.core.security import (
     create_access_token,
     generate_refresh_token,
@@ -34,6 +35,9 @@ CLIENT_TYPE_USER_APP = "user_app"
 CLIENT_TYPE_ADMIN_CONSOLE = "admin_console"
 ADMIN_ROLES = {USER_ROLE_OWNER, USER_ROLE_ADMIN}
 PLAN_FREE = "free"
+LOGIN_WINDOW_SECONDS = 15 * 60
+LOGIN_ACCOUNT_FAILURES = 8
+LOGIN_IP_FAILURES = 30
 PLAN_PRO = "pro"
 
 
@@ -111,6 +115,7 @@ async def bootstrap_owner(db: AsyncSession, payload: BootstrapOwnerRequest, requ
 
 
 async def register_by_invite(db: AsyncSession, payload: InviteRegisterRequest, request: Request) -> TokenPair:
+    await hit(f"register-ip:{client_ip(request) or 'unknown'}", settings.REGISTRATIONS_PER_IP_PER_HOUR, 3600, "Too many sign-ups from this network. Try again later.")
     invite = await db.scalar(select(Invite).where(Invite.invite_code == payload.invite_code))
     now = datetime.now(UTC)
     if (
@@ -164,14 +169,20 @@ async def login(
     *,
     client_type: str = CLIENT_TYPE_USER_APP,
 ) -> TokenPair:
+    ip = client_ip(request) or "unknown"
+    account_key = f"login-account:{payload.username_or_email.strip().lower()}"
+    ip_key = f"login-ip:{ip}"
+    await guard((account_key, LOGIN_ACCOUNT_FAILURES), (ip_key, LOGIN_IP_FAILURES), message="Too many failed sign-ins. Wait 15 minutes and try again.")
     user = await db.scalar(
         select(User).where(or_(User.username == payload.username_or_email, User.email == payload.username_or_email))
     )
     if user is None or not verify_password(payload.password, user.password_hash):
+        await count_failure(account_key, LOGIN_WINDOW_SECONDS)
+        await count_failure(ip_key, LOGIN_WINDOW_SECONDS)
         await write_audit_log(
             db,
             action="auth.login_failed",
-            ip_address=request.client.host if request.client else None,
+            ip_address=ip,
             user_agent=request.headers.get("user-agent"),
             metadata_json={"username_or_email": payload.username_or_email},
         )
@@ -184,6 +195,7 @@ async def login(
     if client_type == CLIENT_TYPE_USER_APP and user.role in ADMIN_ROLES:
         raise AppError("admin_uses_admin_console", "Admin accounts must sign in through the admin console", 403)
 
+    await clear(account_key)
     user.last_login_at = datetime.now(UTC)
     tokens = await create_auth_session(db, user=user, request=request, device_name=payload.device_name, device_key=payload.device_key, client_type=client_type)
     await db.commit()
@@ -191,6 +203,7 @@ async def login(
 
 
 async def register_open(db: AsyncSession, payload: PublicRegisterRequest, request: Request) -> TokenPair:
+    await hit(f"register-ip:{client_ip(request) or 'unknown'}", settings.REGISTRATIONS_PER_IP_PER_HOUR, 3600, "Too many sign-ups from this network. Try again later.")
     registration_mode = await get_registration_mode(db)
     if registration_mode != REGISTRATION_OPEN:
         raise AppError("registration_closed", "Open registration is not enabled", 403)

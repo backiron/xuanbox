@@ -556,8 +556,10 @@ def _refine_receipt_fields(raw_text: str, parsed: dict) -> dict:
     category = _guess_category(raw_text)
     if category:
         refined["category"] = category
-    if not refined.get("warranty_until"):
-        refined["warranty_until"] = _guess_warranty_until(raw_text, refined.get("purchase_date"))
+    # Date arithmetic is done here, not by the model: a small LLM reads "90 days" fine but adds it wrong.
+    computed = _guess_warranty_until(raw_text, refined.get("purchase_date"))
+    if computed:
+        refined["warranty_until"] = computed
     return refined
 
 
@@ -595,7 +597,30 @@ def _guess_warranty_until(raw_text: str, purchase_date: object) -> str | None:
         days = int(match.group(1))
         if 0 < days <= 365:
             return (purchased_on + timedelta(days=days)).isoformat()
+    warranty_patterns = (
+        r"warrant\w*.{0,60}?(\d{1,2})\s*(year|yr|month|mo)s?(?![a-z])",
+        r"(\d{1,2})[\s-]*(year|yr|month|mo)s?(?![a-z]).{0,30}?(?:limited\s+)?warrant",
+    )
+    for pattern in warranty_patterns:
+        match = re.search(pattern, compact, re.IGNORECASE)
+        if not match:
+            continue
+        count = int(match.group(1))
+        months = count * 12 if match.group(2).startswith("y") else count
+        if 0 < months <= 120:
+            return _add_months(purchased_on, months).isoformat()
     return None
+
+
+def _add_months(start: date, months: int) -> date:
+    month_index = start.month - 1 + months
+    year, month = start.year + month_index // 12, month_index % 12 + 1
+    for day in (start.day, 30, 29, 28):
+        try:
+            return date(year, month, day)
+        except ValueError:
+            continue
+    raise ValueError("invalid date")
 
 
 def _known_merchant(raw_text: str) -> str | None:

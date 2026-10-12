@@ -5,6 +5,7 @@ from fastapi import Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.rate_limit import client_ip
 from app.core.security import hash_token
 from app.models.device import Device
 
@@ -40,7 +41,7 @@ async def create_login_device(
     device_key: str | None = None,
 ) -> Device:
     user_agent = request.headers.get("user-agent")
-    client_host = request.client.host if request.client else None
+    client_host = client_ip(request)
     client_key_hash = hash_token(device_key) if device_key else None
     if client_key_hash:
         existing = await session.scalar(

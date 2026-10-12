@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -13,30 +13,17 @@ from app.models.backup_task import BackupTask
 from app.models.user import User
 from app.services.admin_service import backup_directory
 from app.services.audit_service import write_audit_log
+from app.services.backup_crypto import ENCRYPTED_SUFFIX, encrypt_file
 
-BACKUP_TABLES = [
-    "users",
-    "invites",
-    "devices",
-    "auth_sessions",
-    "audit_logs",
-    "folders",
-    "file_assets",
-    "photo_assets",
-    "albums",
-    "album_photos",
-    "tags",
-    "tag_links",
-    "receipts",
-    "documents",
-    "shares",
-    "share_access_logs",
-    "transfer_sessions",
-    "transfer_items",
-    "ocr_tasks",
-    "worker_tasks",
-    "backup_tasks",
-]
+BACKUP_KEEP = 7
+
+
+def backup_tables() -> list[str]:
+    """Every application table in foreign-key order, so a new model can never be left out of backups."""
+    import app.models  # noqa: F401  registers all models on Base.metadata
+    from app.core.database import Base
+
+    return [table.name for table in Base.metadata.sorted_tables]
 
 
 async def create_backup(db: AsyncSession, actor: User, *, backup_type: str = "manual") -> BackupTask:
@@ -51,6 +38,8 @@ async def create_backup(db: AsyncSession, actor: User, *, backup_type: str = "ma
         task.file_size = archive_path.stat().st_size
         task.manifest_json = manifest
         task.finished_at = datetime.now(UTC)
+        await db.flush()
+        await _prune_old_backups(db)
     except Exception as exc:
         task.status = "failed"
         task.error_message = str(exc)
@@ -80,11 +69,12 @@ async def delete_backup(db: AsyncSession, actor: User, backup_id) -> None:
 
 async def _write_backup_archive(db: AsyncSession, task: BackupTask) -> tuple[Path, dict]:
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    archive_path = backup_directory() / f"xuanbox-backup-{timestamp}-{task.id}.tar.gz"
+    archive_path = backup_directory() / f"xuanbox-backup-{timestamp}-{task.id}.tar.gz{ENCRYPTED_SUFFIX}"
     with TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
+        plain_archive = tmp_path / "backup.tar.gz"
         database_export = {}
-        for table in BACKUP_TABLES:
+        for table in backup_tables():
             result = await db.execute(text(f"SELECT * FROM {table}"))
             database_export[table] = [dict(row._mapping) for row in result]
         _write_json(tmp_path / "database_export.json", database_export)
@@ -94,6 +84,9 @@ async def _write_backup_archive(db: AsyncSession, task: BackupTask) -> tuple[Pat
             "app": settings.APP_NAME,
             "version": settings.APP_VERSION,
             "contents": ["database_export.json", "encrypted_files/", "encrypted_thumbnails/", "encrypted_previews/", "config/"],
+            "tables": list(database_export.keys()),
+            "encryption": "AES-256-GCM chunks, key = HKDF(MASTER_KEY); restore with python -m app.scripts.restore_backup",
+            "not_included": ["encrypted_drop/ (XuanDrop transfers are temporary)"],
             "restore": [
                 "Install Docker and clone the repository.",
                 "Restore .env values, especially MASTER_KEY and database credentials.",
@@ -117,7 +110,7 @@ async def _write_backup_archive(db: AsyncSession, task: BackupTask) -> tuple[Pat
                 "STORAGE_ROOT": settings.STORAGE_ROOT,
             },
         )
-        with tarfile.open(archive_path, "w:gz") as archive:
+        with tarfile.open(plain_archive, "w:gz") as archive:
             archive.add(tmp_path / "manifest.json", arcname="manifest.json")
             archive.add(tmp_path / "database_export.json", arcname="database_export.json")
             archive.add(config_dir, arcname="config")
@@ -126,7 +119,23 @@ async def _write_backup_archive(db: AsyncSession, task: BackupTask) -> tuple[Pat
                 path = storage_root / dirname
                 if path.exists():
                     archive.add(path, arcname=dirname)
+        # The database export holds password hashes, OCR text and wrapped file keys: never store it in clear.
+        encrypt_file(plain_archive, archive_path)
         return archive_path, manifest
+
+
+async def _prune_old_backups(db: AsyncSession) -> None:
+    """Keep the newest BACKUP_KEEP completed backups; each one is a full copy of the storage."""
+    completed = list(
+        await db.scalars(select(BackupTask).where(BackupTask.status == "completed").order_by(BackupTask.created_at.desc()))
+    )
+    for task in completed[BACKUP_KEEP:]:
+        if task.backup_path:
+            path = Path(task.backup_path)
+            if path.is_file() and backup_directory().resolve() in path.resolve().parents:
+                path.unlink()
+        task.status = "pruned"
+        task.backup_path = None
 
 
 def _write_json(path: Path, value: object) -> None:

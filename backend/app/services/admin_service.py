@@ -88,13 +88,31 @@ async def list_admin_users(db: AsyncSession) -> list[AdminUserPublic]:
     return users
 
 
+async def _ensure_another_owner(db: AsyncSession, user: User) -> None:
+    others = await db.scalar(
+        select(func.count(User.id)).where(User.role == "owner", User.status == "active", User.id != user.id)
+    )
+    if not others:
+        raise AppError("last_owner", "There must always be at least one active owner", 400)
+
+
 async def update_admin_user(db: AsyncSession, actor: User, user_id: UUID, payload: AdminUserUpdateRequest) -> User:
     user = await db.get(User, user_id)
     if user is None:
         raise AppError("user_not_found", "User not found", 404)
-    if payload.role is not None:
+    privileged = {"owner", "admin"}
+    # Admins manage ordinary accounts; only the owner manages admins and owners.
+    if user.role in privileged and actor.role != "owner":
+        raise AppError("permission_denied", "Only the owner can change administrator accounts", 403)
+    if payload.role is not None and payload.role != user.role:
         if payload.role not in VALID_ROLES:
             raise AppError("invalid_role", "Invalid role", 400)
+        if user.id == actor.id:
+            raise AppError("cannot_change_own_role", "You cannot change your own role", 400)
+        if payload.role in privileged and actor.role != "owner":
+            raise AppError("permission_denied", "Only the owner can grant administrator roles", 403)
+        if user.role == "owner":
+            await _ensure_another_owner(db, user)
         user.role = payload.role
     if payload.plan is not None:
         if payload.plan not in VALID_PLANS:
@@ -105,6 +123,8 @@ async def update_admin_user(db: AsyncSession, actor: User, user_id: UUID, payloa
             raise AppError("invalid_status", "Invalid status", 400)
         if user.id == actor.id and payload.status != "active":
             raise AppError("cannot_disable_self", "You cannot disable your own account", 400)
+        if user.role == "owner" and payload.status != "active":
+            await _ensure_another_owner(db, user)
         user.status = payload.status
     if "storage_limit_mb" in payload.model_fields_set:
         user.storage_limit_bytes = None if payload.storage_limit_mb is None else mb_to_bytes(payload.storage_limit_mb)

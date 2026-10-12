@@ -7,7 +7,8 @@ from pathlib import Path
 from sqlalchemy import create_engine, text
 
 from app.core.config import settings
-from app.services.backup_service import BACKUP_TABLES
+from app.services.backup_crypto import ENCRYPTED_SUFFIX, decrypt_file
+from app.services.backup_service import backup_tables
 
 
 def normalize_row(row: dict) -> dict:
@@ -40,8 +41,16 @@ def restore_archive(archive_path: Path, *, storage_root: Path, yes: bool) -> Non
         shutil.rmtree(extract_root)
     extract_root.mkdir(parents=True, exist_ok=True)
 
-    with tarfile.open(archive_path, "r:gz") as archive:
-        safe_extract(archive, extract_root)
+    plain_archive = archive_path
+    if archive_path.name.endswith(ENCRYPTED_SUFFIX):
+        plain_archive = extract_root.parent / f"{archive_path.stem}.decrypted.tar.gz"
+        decrypt_file(archive_path, plain_archive)
+    try:
+        with tarfile.open(plain_archive, "r:gz") as archive:
+            safe_extract(archive, extract_root)
+    finally:
+        if plain_archive != archive_path:
+            plain_archive.unlink(missing_ok=True)
 
     database_export_path = extract_root / "database_export.json"
     if not database_export_path.exists():
@@ -57,10 +66,11 @@ def restore_archive(archive_path: Path, *, storage_root: Path, yes: bool) -> Non
 
     database_export = json.loads(database_export_path.read_text(encoding="utf-8"))
     engine = create_engine(settings.sync_database_url)
+    tables = [table for table in backup_tables() if table in database_export]
     with engine.begin() as connection:
-        for table in reversed(BACKUP_TABLES):
+        for table in reversed(tables):
             connection.execute(text(f'DELETE FROM "{table}"'))
-        for table in BACKUP_TABLES:
+        for table in tables:
             rows = [normalize_row(row) for row in database_export.get(table, [])]
             if not rows:
                 continue
@@ -69,6 +79,7 @@ def restore_archive(archive_path: Path, *, storage_root: Path, yes: bool) -> Non
             value_sql = ", ".join(f":{column}" for column in columns)
             statement = text(f'INSERT INTO "{table}" ({column_sql}) VALUES ({value_sql})')
             connection.execute(statement, rows)
+    shutil.rmtree(extract_root, ignore_errors=True)
 
 
 def main() -> None:

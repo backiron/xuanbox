@@ -22,6 +22,9 @@ ALLOWED_PERMISSIONS = {"read", "download", "upload", "comment"}
 DOWNLOADABLE_TARGET_TYPES = {"file", "photo", "receipt", "document"}
 DEFAULT_PUBLIC_SHARE_DAYS = 7
 DEFAULT_PUBLIC_MAX_DOWNLOADS = 3
+# Public links must always end: they expire and run out of downloads.
+MAX_PUBLIC_SHARE_DAYS = 30
+MAX_PUBLIC_DOWNLOADS = 100
 SHARE_ACCESS_SECONDS = 10 * 60
 
 
@@ -145,11 +148,14 @@ async def create_share(db: AsyncSession, owner: User, payload: ShareCreateReques
         raise AppError("shared_user_not_found", "Shared user not found", 404)
     if shared_user is None and await _is_vault_locked_target(db, owner, target_type, payload.target_id):
         raise AppError("public_share_denied_for_vault", "Important docs cannot be shared through a public link", 403)
+    if shared_user is not None and shared_user.id == owner.id:
+        raise AppError("share_with_self", "You cannot share with yourself", 400)
     expires_at = payload.expires_at
     max_downloads = payload.max_downloads
     if shared_user is None:
         expires_at = expires_at or (datetime.now(UTC) + timedelta(days=DEFAULT_PUBLIC_SHARE_DAYS))
         max_downloads = max_downloads or DEFAULT_PUBLIC_MAX_DOWNLOADS
+        _check_public_limits(expires_at, max_downloads)
 
     share = Share(
         owner_id=owner.id,
@@ -166,6 +172,17 @@ async def create_share(db: AsyncSession, owner: User, payload: ShareCreateReques
     await db.commit()
     await db.refresh(share)
     return share
+
+
+def _check_public_limits(expires_at: datetime | None, max_downloads: int | None) -> None:
+    if expires_at is None or max_downloads is None:
+        raise AppError("public_share_needs_limits", "Public links need an expiry time and a download limit", 400)
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=UTC)
+    if expires_at > datetime.now(UTC) + timedelta(days=MAX_PUBLIC_SHARE_DAYS, minutes=5):
+        raise AppError("public_share_too_long", f"Public links can last at most {MAX_PUBLIC_SHARE_DAYS} days", 400)
+    if max_downloads > MAX_PUBLIC_DOWNLOADS:
+        raise AppError("public_share_too_many_downloads", f"Public links allow at most {MAX_PUBLIC_DOWNLOADS} downloads", 400)
 
 
 async def get_owned_share(db: AsyncSession, owner: User, share_id: UUID) -> Share:
@@ -188,6 +205,8 @@ async def update_share(db: AsyncSession, owner: User, share_id: UUID, payload: S
         share.max_downloads = payload.max_downloads
     if "expires_at" in payload.model_fields_set:
         share.expires_at = payload.expires_at
+    if share.shared_with_user_id is None:
+        _check_public_limits(share.expires_at, share.max_downloads)
     if payload.is_active is not None:
         share.is_active = payload.is_active
     await db.commit()
@@ -258,8 +277,13 @@ async def write_share_access_log(
 
 async def get_public_share(db: AsyncSession, token: str, *, action: str, ip_address: str | None, user_agent: str | None) -> Share:
     share = await db.scalar(select(Share).where(Share.public_token == token))
-    if share is None:
+    # A share addressed to one person is only reachable by that person while signed in.
+    if share is None or share.shared_with_user_id is not None:
         raise AppError("share_not_found", "Share not found", 404)
+    return await _check_share_available(db, share, action=action, ip_address=ip_address, user_agent=user_agent)
+
+
+async def _check_share_available(db: AsyncSession, share: Share, *, action: str, ip_address: str | None, user_agent: str | None, actor_user_id: UUID | None = None) -> Share:
     failure_reason = None
     if not share.is_active:
         failure_reason = "inactive"
@@ -268,7 +292,7 @@ async def get_public_share(db: AsyncSession, token: str, *, action: str, ip_addr
     elif share.max_downloads is not None and share.download_count >= share.max_downloads:
         failure_reason = "download_limit_reached"
     if failure_reason:
-        await write_share_access_log(db, share, action=action, success=False, ip_address=ip_address, user_agent=user_agent, failure_reason=failure_reason)
+        await write_share_access_log(db, share, action=action, success=False, ip_address=ip_address, user_agent=user_agent, actor_user_id=actor_user_id, failure_reason=failure_reason)
         await db.commit()
         raise AppError(f"share_{failure_reason}", "Share is no longer available", 403)
     return share
@@ -317,7 +341,6 @@ async def download_public_share(
     db: AsyncSession,
     share: Share,
     *,
-    password: str | None,
     access_token: str | None,
     ip_address: str | None,
     user_agent: str | None,
@@ -326,15 +349,27 @@ async def download_public_share(
         await write_share_access_log(db, share, action="share.download", success=False, ip_address=ip_address, user_agent=user_agent, failure_reason="permission_denied")
         await db.commit()
         raise AppError("share_download_denied", "This share does not allow downloads", 403)
-    if share.password_hash:
-        if access_token:
-            verify_share_access_token(share, access_token)
-        else:
-            await verify_share_password(db, share, password, ip_address=ip_address, user_agent=user_agent)
+    # Passwords are checked once by verify-password, which hands out a short-lived access token.
+    verify_share_access_token(share, access_token)
     file_asset = await _target_file(db, share)
     plain_bytes = decrypt_file_asset(file_asset)
     share.download_count += 1
     await write_share_access_log(db, share, action="share.download", success=True, ip_address=ip_address, user_agent=user_agent)
     await db.commit()
     await db.refresh(share)
+    return file_asset, plain_bytes
+
+
+async def download_received_share(db: AsyncSession, user: User, share_id: UUID, *, ip_address: str | None, user_agent: str | None) -> tuple[FileAsset, bytes]:
+    share = await db.scalar(select(Share).where(Share.id == share_id, Share.shared_with_user_id == user.id))
+    if share is None:
+        raise AppError("share_not_found", "Share not found", 404)
+    await _check_share_available(db, share, action="share.download", ip_address=ip_address, user_agent=user_agent, actor_user_id=user.id)
+    if share.permission not in {"download", "read"}:
+        raise AppError("share_download_denied", "This share does not allow downloads", 403)
+    file_asset = await _target_file(db, share)
+    plain_bytes = decrypt_file_asset(file_asset)
+    share.download_count += 1
+    await write_share_access_log(db, share, action="share.download", success=True, ip_address=ip_address, user_agent=user_agent, actor_user_id=user.id)
+    await db.commit()
     return file_asset, plain_bytes
