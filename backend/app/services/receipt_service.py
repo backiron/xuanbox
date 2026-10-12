@@ -2,7 +2,7 @@ from datetime import date
 from uuid import UUID
 
 from fastapi import UploadFile
-from sqlalchemy import delete, exists, or_, select
+from sqlalchemy import case, delete, exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
@@ -45,7 +45,9 @@ async def list_receipts(
         statement = statement.where(Receipt.merchant.ilike(f"%{merchant}%"))
     if year:
         statement = statement.where(Receipt.purchase_date >= date(year, 1, 1), Receipt.purchase_date <= date(year, 12, 31))
-    result = await db.scalars(statement.order_by(Receipt.purchase_date.desc().nullslast(), Receipt.created_at.desc()))
+    # Receipts still being recognised or waiting for review come first, so a fresh upload is visible.
+    needs_attention = case((Receipt.ocr_status.in_(("pending", "processing", "completed")), 0), else_=1)
+    result = await db.scalars(statement.order_by(needs_attention, Receipt.purchase_date.desc().nullslast(), Receipt.created_at.desc()))
     return list(result)
 
 

@@ -369,6 +369,7 @@
       photoSavedTo: 'Photo saved to {name}.'
     },
     receipts: {
+      recognising: "Recognising · {seconds}s (usually 30–60s)",
       ocrFinished: "A receipt has been recognised",
       ocrFinishedFailed: "A receipt could not be recognised; you can retry it from the list",
       ocrFinishedReview: "Review and confirm",

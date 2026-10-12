@@ -136,6 +136,27 @@ async def confirm_ocr_task(
     return task
 
 
+def prefill_receipt_from_parse(receipt: Receipt, parsed: dict | None) -> None:
+    """Show recognised values right away; the receipt stays "completed" (needs review) until confirmed.
+
+    Only empty fields are filled, so anything the user typed is kept. Currency is the exception: uploads
+    default it to USD, so a currency read from the receipt wins.
+    """
+    parsed = parsed or {}
+    if not receipt.merchant and parsed.get("merchant"):
+        receipt.merchant = str(parsed["merchant"])[:160]
+    if not receipt.category and parsed.get("category"):
+        receipt.category = str(parsed["category"])[:80]
+    if receipt.amount is None:
+        receipt.amount = _decimal_or_none(parsed.get("amount"))
+    if parsed.get("currency"):
+        receipt.currency = str(parsed["currency"])[:8].upper()
+    if receipt.purchase_date is None:
+        receipt.purchase_date = _date_or_none(parsed.get("purchase_date"))
+    if receipt.warranty_until is None:
+        receipt.warranty_until = _date_or_none(parsed.get("warranty_until"))
+
+
 def extract_text_from_bytes(file_asset: FileAsset, plain_bytes: bytes) -> str:
     mime_type = file_asset.mime_type or ""
     if mime_type.startswith("text/") or file_asset.file_ext in {"txt", "csv", "md"}:
@@ -381,6 +402,7 @@ async def process_receipt_ocr_task(db: AsyncSession, task: WorkerTask) -> None:
         ocr_task.finished_at = datetime.now(UTC)
         ocr_task.error_message = None
         receipt.ocr_status = "completed"
+        prefill_receipt_from_parse(receipt, ocr_task.parsed_json)
         await mark_task_completed(db, task)
     except Exception as exc:
         message = str(exc)
@@ -489,7 +511,8 @@ def _guess_purchase_date(raw_text: str) -> str | None:
             continue
         value = match.group(0).replace(".", "-").replace("/", "-")
         parts = value.split("-")
-        if len(parts[-1]) == 2:
+        # Expand a two-digit year (10/03/26), but not the day of an ISO date (2026-10-05).
+        if len(parts[-1]) == 2 and len(parts[0]) != 4:
             parts[-1] = f"20{parts[-1]}"
             value = "-".join(parts)
         normalized = _normalize_date(value)

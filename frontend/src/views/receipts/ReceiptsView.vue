@@ -140,7 +140,18 @@ function reviewStateFromReceipt(receipt, task = null) {
 const ACTIVE_OCR_STATUSES = ['pending', 'processing']
 const OCR_POLL_MS = 3000
 const ocrFinished = ref([])
+const nowTick = ref(Date.now())
 let ocrPollTimer = null
+let clockTimer = null
+
+function isRecognising(receipt) {
+  return ACTIVE_OCR_STATUSES.includes(receipt.ocr_status)
+}
+
+function recognisingText(receipt) {
+  const seconds = Math.max(0, Math.round((nowTick.value - new Date(receipt.updated_at || receipt.created_at)) / 1000))
+  return t('pages.receipts.recognising', { seconds })
+}
 
 async function loadReceipts({ silent = false } = {}) {
   if (!silent) loading.value = true
@@ -163,7 +174,13 @@ async function loadReceipts({ silent = false } = {}) {
 function scheduleOcrPoll() {
   window.clearTimeout(ocrPollTimer)
   ocrPollTimer = null
-  if (!receipts.value.some((receipt) => ACTIVE_OCR_STATUSES.includes(receipt.ocr_status))) return
+  const active = receipts.value.some((receipt) => ACTIVE_OCR_STATUSES.includes(receipt.ocr_status))
+  if (active && !clockTimer) clockTimer = window.setInterval(() => { nowTick.value = Date.now() }, 1000)
+  if (!active && clockTimer) {
+    window.clearInterval(clockTimer)
+    clockTimer = null
+  }
+  if (!active) return
   ocrPollTimer = window.setTimeout(() => {
     if (document.visibilityState === 'visible') loadReceipts({ silent: true })
     else scheduleOcrPoll()
@@ -355,6 +372,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   window.clearTimeout(ocrPollTimer)
+  window.clearInterval(clockTimer)
   cancelReceiptSheetFrame()
   cleanupPreview()
   document.body.classList.remove('xb-lightbox-open')
@@ -434,14 +452,15 @@ onBeforeUnmount(() => {
         <EmptyState v-if="!loading && receipts.length === 0" :title="t('pages.receipts.noData')" :description="t('pages.receipts.noDataHint')" />
 
         <div v-else class="xb-receipt-list">
-          <article v-for="receipt in receipts" :key="receipt.id" class="xb-receipt-row" @click="openReceiptSheet(receipt)">
+          <article v-for="receipt in receipts" :key="receipt.id" class="xb-receipt-row" :class="{ 'is-recognising': isRecognising(receipt) }" @click="openReceiptSheet(receipt)">
             <div class="xb-receipt-row-main">
               <strong>{{ receipt.merchant || t('pages.receipts.unknownMerchant') }}</strong>
               <span>{{ t('pages.receipts.rowMetaCategory', { category: receipt.category || t('pages.receipts.unCategorized'), date: receipt.purchase_date || t('common.file.noDate') }) }}</span>
             </div>
             <strong class="xb-receipt-row-amount">{{ formatMoney(receipt) }}</strong>
             <div class="xb-receipt-row-meta">
-              <span>{{ receiptStatusLabel(receipt) }}</span>
+              <span v-if="isRecognising(receipt)" class="xb-recognising-label"><i class="xb-spinner" />{{ recognisingText(receipt) }}</span>
+              <span v-else>{{ receiptStatusLabel(receipt) }}</span>
               <span>{{ receipt.warranty_until ? t('pages.receipts.rowWarranty', { date: receipt.warranty_until }) : t('pages.receipts.noWarranty') }}</span>
             </div>
             <button class="xb-icon-button xb-receipt-more-button" type="button" title="Receipt actions" @click.stop="openReceiptSheet(receipt)">

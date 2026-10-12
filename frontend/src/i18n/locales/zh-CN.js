@@ -369,6 +369,7 @@
       photoSavedTo: '照片已保存到{name}。'
     },
     receipts: {
+      recognising: "识别中 · {seconds} 秒（通常 30–60 秒）",
       ocrFinished: "一张小票识别完成了",
       ocrFinishedFailed: "一张小票识别失败，可以在列表里重试",
       ocrFinishedReview: "查看并确认",
