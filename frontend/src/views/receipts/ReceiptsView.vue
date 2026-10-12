@@ -137,16 +137,44 @@ function reviewStateFromReceipt(receipt, task = null) {
   }
 }
 
-async function loadReceipts() {
-  loading.value = true
+const ACTIVE_OCR_STATUSES = ['pending', 'processing']
+const OCR_POLL_MS = 3000
+const ocrFinished = ref([])
+let ocrPollTimer = null
+
+async function loadReceipts({ silent = false } = {}) {
+  if (!silent) loading.value = true
   try {
     const params = Object.fromEntries(Object.entries(filters.value).filter(([, value]) => value))
     const response = await receiptApi.list(params)
+    const previous = new Map(receipts.value.map((receipt) => [receipt.id, receipt.ocr_status]))
     receipts.value = response.data.data
+    // Receipts whose recognition finished while this page was open: offer to review them.
+    const finished = receipts.value.filter((receipt) => ACTIVE_OCR_STATUSES.includes(previous.get(receipt.id)) && !ACTIVE_OCR_STATUSES.includes(receipt.ocr_status))
+    if (finished.length) ocrFinished.value = [...finished, ...ocrFinished.value.filter((item) => !finished.some((receipt) => receipt.id === item.id))]
     openRoutedReceipt()
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
+    scheduleOcrPoll()
   }
+}
+
+// OCR plus local AI takes tens of seconds on a CPU-only box, so keep checking while anything is in progress.
+function scheduleOcrPoll() {
+  window.clearTimeout(ocrPollTimer)
+  ocrPollTimer = null
+  if (!receipts.value.some((receipt) => ACTIVE_OCR_STATUSES.includes(receipt.ocr_status))) return
+  ocrPollTimer = window.setTimeout(() => {
+    if (document.visibilityState === 'visible') loadReceipts({ silent: true })
+    else scheduleOcrPoll()
+  }, OCR_POLL_MS)
+}
+
+function reviewFinished(receipt) {
+  ocrFinished.value = ocrFinished.value.filter((item) => item.id !== receipt.id)
+  const current = receipts.value.find((item) => item.id === receipt.id) || receipt
+  if (current.ocr_status === 'failed') return
+  loadOcrReview(current)
 }
 
 function applyRouteSearch() {
@@ -187,7 +215,6 @@ async function uploadReceiptFiles(files) {
   uploadProgress.value = 0
   draft.value = { merchant: '', category: '', amount: '', currency: 'USD', purchase_date: '', warranty_until: '', notes: '' }
   await loadReceipts()
-  window.setTimeout(loadReceipts, 2000)
 }
 
 async function onReceiptFile(event) {
@@ -245,7 +272,6 @@ async function startOcr(receipt) {
   closeReceiptSheet()
   await receiptApi.startOcr(receipt.id)
   await loadReceipts()
-  window.setTimeout(loadReceipts, 2000)
 }
 
 async function loadReceiptPreview(receipt) {
@@ -301,7 +327,6 @@ async function retryOcr() {
   await receiptApi.retryOcr(ocrReview.value.receipt.id, ocrReview.value.task.id)
   closeOcrReview()
   await loadReceipts()
-  window.setTimeout(loadReceipts, 2000)
 }
 
 async function downloadOriginal(receipt) {
@@ -329,6 +354,7 @@ onMounted(() => {
   loadReceipts()
 })
 onBeforeUnmount(() => {
+  window.clearTimeout(ocrPollTimer)
   cancelReceiptSheetFrame()
   cleanupPreview()
   document.body.classList.remove('xb-lightbox-open')
@@ -364,6 +390,13 @@ onBeforeUnmount(() => {
         {{ t('common.actions.refresh') }}
       </button>
     </PageHeader>
+    <div v-if="ocrFinished.length" class="xb-ocr-finished">
+      <div v-for="receipt in ocrFinished" :key="receipt.id" class="xb-ocr-finished-row" :class="{ 'is-error': receipt.ocr_status === 'failed' }">
+        <span>{{ receipt.ocr_status === 'failed' ? t('pages.receipts.ocrFinishedFailed') : t('pages.receipts.ocrFinished') }}</span>
+        <button v-if="receipt.ocr_status !== 'failed'" class="xb-primary-button" type="button" @click="reviewFinished(receipt)">{{ t('pages.receipts.ocrFinishedReview') }}</button>
+        <button class="xb-text-button" type="button" @click="ocrFinished = ocrFinished.filter((item) => item.id !== receipt.id)"><X :size="16" /></button>
+      </div>
+    </div>
 
     <div v-if="uploadProgress" class="xb-progress">
       <span :style="{ width: `${uploadProgress}%` }"></span>

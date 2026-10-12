@@ -369,6 +369,9 @@
       photoSavedTo: 'Photo saved to {name}.'
     },
     receipts: {
+      ocrFinished: "A receipt has been recognised",
+      ocrFinishedFailed: "A receipt could not be recognised; you can retry it from the list",
+      ocrFinishedReview: "Review and confirm",
       title: 'Receipts',
       subtitle: 'Encrypted receipt captures with automatic OCR, review, original attachments, filters, and search.',
       takePhoto: 'Take Photo',

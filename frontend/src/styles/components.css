@@ -3735,3 +3735,31 @@ body.xb-lightbox-open {
   font-size: 12px;
   overflow-wrap: anywhere;
 }
+
+.xb-ocr-finished {
+  display: grid;
+  gap: 8px;
+  margin: -4px 0 14px;
+}
+
+.xb-ocr-finished-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--xb-color-success);
+  border-radius: var(--xb-radius-lg);
+  background: rgba(46, 233, 143, 0.08);
+  color: var(--xb-text-main);
+}
+
+.xb-ocr-finished-row > span {
+  flex: 1;
+  min-width: 160px;
+}
+
+.xb-ocr-finished-row.is-error {
+  border-color: var(--xb-color-danger);
+  background: rgba(255, 95, 109, 0.08);
+}

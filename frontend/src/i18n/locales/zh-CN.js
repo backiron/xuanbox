@@ -369,6 +369,9 @@
       photoSavedTo: '照片已保存到{name}。'
     },
     receipts: {
+      ocrFinished: "一张小票识别完成了",
+      ocrFinishedFailed: "一张小票识别失败，可以在列表里重试",
+      ocrFinishedReview: "查看并确认",
       title: '收据',
       subtitle: '加密存储收据扫描件，自动 OCR、审核、附件下载、筛选与搜索。',
       takePhoto: '拍照',
