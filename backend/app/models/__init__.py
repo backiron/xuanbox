@@ -11,6 +11,7 @@ from app.models.folder import Folder
 from app.models.inbox_item import InboxItem
 from app.models.invite import Invite
 from app.models.message import Message
+from app.models.note import Note, NoteImage
 from app.models.photo_asset import PhotoAsset
 from app.models.ocr_task import OcrTask
 from app.models.receipt import Receipt
@@ -44,6 +45,8 @@ __all__ = [
     "InboxItem",
     "Invite",
     "Message",
+    "Note",
+    "NoteImage",
     "PhotoAsset",
     "OcrTask",
     "Receipt",

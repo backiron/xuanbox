@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import admin, albums, auth, dashboard, devices, documents, drop, drop_chat, files, folders, health, important_docs, inbox, intelligence, invites, messages, photos, receipts, search, settings, shares, tags, trash
+from app.api.v1 import admin, albums, auth, dashboard, devices, documents, drop, drop_chat, files, folders, health, important_docs, inbox, intelligence, invites, messages, notes, photos, receipts, search, settings, shares, tags, trash
 
 api_router = APIRouter()
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
@@ -20,6 +20,7 @@ api_router.include_router(important_docs.router, prefix="/important-docs", tags=
 api_router.include_router(inbox.router, prefix="/inbox", tags=["inbox"])
 api_router.include_router(intelligence.router, prefix="/intelligence", tags=["intelligence"])
 api_router.include_router(messages.router, prefix="/messages", tags=["messages"])
+api_router.include_router(notes.router, prefix="/notes", tags=["notes"])
 api_router.include_router(photos.router, prefix="/photos", tags=["photos"])
 api_router.include_router(receipts.router, prefix="/receipts", tags=["receipts"])
 api_router.include_router(search.router, prefix="/search", tags=["search"])

@@ -127,6 +127,7 @@
     mobileSearchButton: 'Search'
   },
   routes: {
+    notes: "Notes",
     dashboard: 'Dashboard',
     inbox: 'Inbox',
     photos: 'Photos',
@@ -148,6 +149,40 @@
     }
   },
   pages: {
+    notes: {
+      title: "Notes",
+      new: "New",
+      back: "Back to list",
+      searchPlaceholder: "Search notes",
+      emptyList: "No notes yet. Tap New to jot something down; you can paste or drop images.",
+      noMatches: "No matching notes",
+      untitled: "Empty note",
+      imageNote: "Image note",
+      imageCount: "{count} images",
+      pickOrCreate: "Pick a note on the left or start a new one",
+      placeholder: "Jot something down... paste or drop images right here",
+      emptyNote: "This note is empty. Tap Edit to start writing.",
+      edit: "Edit",
+      done: "Done",
+      pin: "Pin",
+      unpin: "Unpin",
+      insertImage: "Insert image",
+      removeImage: "Remove this image",
+      imageMissing: "Image can't be shown",
+      imageFailed: "Image upload failed",
+      saved: "Saved",
+      saving: "Saving...",
+      saveError: "Not saved yet, retrying automatically",
+      saveFailed: "Could not save",
+      loadFailed: "Could not load notes",
+      deleteFailed: "Could not delete",
+      conflictShort: "Conflict",
+      conflict: "This note was just changed on another device; your edits here are not saved yet.",
+      loadLatest: "Load the latest version",
+      keepMine: "Overwrite with mine",
+      deleteTitle: "Delete this note?",
+      deleteMessage: "The note and its images will be deleted for good."
+    },
     auth: {
       brand: 'XuanBox',
       heroKicker: 'A VIANBENI open-source project',

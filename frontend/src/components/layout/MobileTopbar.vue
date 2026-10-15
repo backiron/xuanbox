@@ -20,6 +20,7 @@ const localeTitle = computed(() => locale.value === 'zh-CN' ? t('common.language
 const links = [
   { to: '/inbox', label: () => t('routes.inbox'), icon: 'inbox' },
   { to: '/receipts', label: () => t('routes.receipts'), icon: 'receipts' },
+  { to: '/notes', label: () => t('routes.notes'), icon: 'documents' },
   { to: '/shared', label: () => t('routes.shared'), icon: 'share' },
   { to: '/messages', label: () => t('routes.messages'), icon: 'notifications' },
   { to: '/settings', label: () => t('routes.settings'), icon: 'settings' }

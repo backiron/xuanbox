@@ -127,6 +127,7 @@
     mobileSearchButton: '搜索'
   },
   routes: {
+    notes: "记事板",
     dashboard: '仪表盘',
     inbox: '收件箱',
     photos: '照片',
@@ -148,6 +149,40 @@
     }
   },
   pages: {
+    notes: {
+      title: "记事板",
+      new: "新建",
+      back: "返回列表",
+      searchPlaceholder: "搜索记事",
+      emptyList: "还没有记事。点“新建”随手记点什么，可以粘贴或拖入图片。",
+      noMatches: "没有找到匹配的记事",
+      untitled: "空白记事",
+      imageNote: "图片记事",
+      imageCount: "{count} 张图",
+      pickOrCreate: "从左边选一条记事，或者新建一条",
+      placeholder: "随手记点什么… 可以直接粘贴或拖入图片",
+      emptyNote: "这条记事还是空的，点“编辑”开始写",
+      edit: "编辑",
+      done: "完成",
+      pin: "置顶",
+      unpin: "取消置顶",
+      insertImage: "插入图片",
+      removeImage: "移除这张图",
+      imageMissing: "图片无法显示",
+      imageFailed: "图片上传失败",
+      saved: "已保存",
+      saving: "保存中…",
+      saveError: "没保存成功，会自动重试",
+      saveFailed: "保存失败",
+      loadFailed: "记事加载失败",
+      deleteFailed: "删除失败",
+      conflictShort: "有冲突",
+      conflict: "这条记事刚在别的设备上改过，你这里的修改还没保存。",
+      loadLatest: "载入最新版本",
+      keepMine: "用我这里的覆盖",
+      deleteTitle: "删除这条记事？",
+      deleteMessage: "记事和里面的图片会一起删除，无法恢复。"
+    },
     auth: {
       brand: 'XuanBox',
       heroKicker: 'VIANBENI 开源项目',
