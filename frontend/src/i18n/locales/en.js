@@ -3,6 +3,13 @@
     title: 'XuanBox'
   },
   common: {
+    saveFile: {
+      readyTitle: 'Ready to save',
+      readyMessage: '{name} is ready. Tap Save to phone, then pick Save Video / Save Image for Photos, or Save to Files.',
+      save: 'Save to phone',
+      downloading: 'Downloading {percent}%',
+      failed: 'Download failed. Please try again.'
+    },
     language: {
       label: 'Language',
       en: 'English',

@@ -22,8 +22,8 @@ export const fileApi = {
   trash() {
     return http.get('/trash')
   },
-  download(id) {
-    return http.get(`/files/${id}/download`, { responseType: 'blob' })
+  download(id, onDownloadProgress) {
+    return http.get(`/files/${id}/download`, { responseType: 'blob', timeout: 600000, onDownloadProgress })
   }
 }
 

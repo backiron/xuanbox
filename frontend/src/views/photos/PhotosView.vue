@@ -11,12 +11,14 @@ import { albumApi, photoApi } from '../../api/photoApi'
 import { receiptApi } from '../../api/receiptApi'
 import { useDialogStore } from '../../stores/dialogStore'
 import { findUploadLimitError } from '../../utils/uploadLimits'
+import { downloadPercent, saveBlobToDevice, withExtension } from '../../utils/saveFile'
 
 const photos = ref([])
 const albums = ref([])
 const activeAlbumId = ref(null)
 const loading = ref(false)
 const uploadProgress = ref(0)
+const downloadProgress = ref(0)
 const draggingPhotos = ref(false)
 const previewIndex = ref(-1)
 const previewUrl = ref('')
@@ -330,14 +332,26 @@ function closePreview() {
   previewUrl.value = ''
 }
 
+function askToSave(file) {
+  return dialog.confirm({
+    title: t('common.saveFile.readyTitle'),
+    message: t('common.saveFile.readyMessage', { name: file.name }),
+    confirmText: t('common.saveFile.save'),
+    cancelText: t('common.actions.cancel')
+  })
+}
+
 async function downloadOriginal(photo) {
-  const response = await photoApi.originalBlob(photo.id)
-  const url = URL.createObjectURL(response.data)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `photo-${photo.id}`
-  link.click()
-  URL.revokeObjectURL(url)
+  if (downloadProgress.value) return
+  downloadProgress.value = 1
+  try {
+    const response = await photoApi.originalBlob(photo.id, (event) => { downloadProgress.value = downloadPercent(event) })
+    downloadProgress.value = 0
+    await saveBlobToDevice(response.data, withExtension(`photo-${photo.id}`, response.data.type), askToSave)
+  } catch {
+    downloadProgress.value = 0
+    await dialog.confirm({ title: t('common.saveFile.failed'), message: '', confirmText: t('common.actions.close') })
+  }
 }
 
 async function savePhotoAsReceipt(photo = activePreview.value) {
@@ -445,6 +459,7 @@ onBeforeUnmount(() => {
     <div v-if="uploadProgress" class="xb-progress">
       <span :style="{ width: `${uploadProgress}%` }"></span>
     </div>
+    <p v-if="downloadProgress && !activePreview" class="xb-status-note">{{ t('common.saveFile.downloading', { percent: downloadProgress }) }}</p>
 
     <section class="xb-photo-drop-hint" :class="{ 'is-visible': draggingPhotos }">
       <Upload :size="18" />
@@ -599,7 +614,7 @@ onBeforeUnmount(() => {
           <button class="xb-icon-button" type="button" :title="t('pages.photos.previousPhoto')" @click="stepPreview(-1)">
             <ChevronLeft :size="20" />
           </button>
-          <strong>{{ activePreview.width }} x {{ activePreview.height }}</strong>
+          <strong>{{ downloadProgress ? t('common.saveFile.downloading', { percent: downloadProgress }) : `${activePreview.width} x ${activePreview.height}` }}</strong>
           <button class="xb-icon-button" type="button" :title="t('pages.photos.downloadOriginal')" @click="downloadOriginal(activePreview)">
             <Download :size="19" />
           </button>

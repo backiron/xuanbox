@@ -9,6 +9,7 @@ import { fileApi } from '../../api/fileApi'
 import { receiptApi } from '../../api/receiptApi'
 import { useDialogStore } from '../../stores/dialogStore'
 import { findUploadLimitError } from '../../utils/uploadLimits'
+import { saveBlobToDevice, withExtension } from '../../utils/saveFile'
 
 const receipts = ref([])
 const loading = ref(false)
@@ -347,15 +348,24 @@ async function retryOcr() {
   await loadReceipts()
 }
 
+function askToSave(file) {
+  return dialog.confirm({
+    title: t('common.saveFile.readyTitle'),
+    message: t('common.saveFile.readyMessage', { name: file.name }),
+    confirmText: t('common.saveFile.save'),
+    cancelText: t('common.actions.cancel')
+  })
+}
+
 async function downloadOriginal(receipt) {
   closeReceiptSheet()
-  const response = await fileApi.download(receipt.file_id)
-  const url = URL.createObjectURL(response.data)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = `${receipt.merchant || 'receipt'}-${receipt.purchase_date || receipt.id}`
-  anchor.click()
-  URL.revokeObjectURL(url)
+  try {
+    const response = await fileApi.download(receipt.file_id)
+    const name = withExtension(`${receipt.merchant || 'receipt'}-${receipt.purchase_date || receipt.id}`, response.data.type)
+    await saveBlobToDevice(response.data, name, askToSave)
+  } catch {
+    await dialog.confirm({ title: t('common.saveFile.failed'), message: '', confirmText: t('common.actions.close') })
+  }
 }
 
 watch(hasOpenOverlay, (isOpen) => {

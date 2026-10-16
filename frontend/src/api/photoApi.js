@@ -19,8 +19,8 @@ export const photoApi = {
   previewBlob(photoId) {
     return http.get(`/photos/${photoId}/preview`, { responseType: 'blob' })
   },
-  originalBlob(photoId) {
-    return http.get(`/photos/${photoId}/original`, { responseType: 'blob' })
+  originalBlob(photoId, onDownloadProgress) {
+    return http.get(`/photos/${photoId}/original`, { responseType: 'blob', timeout: 600000, onDownloadProgress })
   },
   favorite(photoId, isFavorite) {
     return http.patch(`/photos/${photoId}/favorite`, null, { params: { is_favorite: isFavorite } })

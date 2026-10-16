@@ -27,6 +27,7 @@ import { useVaultStore } from '../../stores/vaultStore'
 import { receiptApi } from '../../api/receiptApi'
 import { useDialogStore } from '../../stores/dialogStore'
 import { findUploadLimitError } from '../../utils/uploadLimits'
+import { downloadPercent, saveBlobToDevice } from '../../utils/saveFile'
 
 const files = ref([])
 const { t, locale } = useI18n()
@@ -48,6 +49,7 @@ const intelligenceForm = ref({})
 const intelligenceLoading = ref(false)
 const actionFile = ref(null)
 const uploadProgress = ref(0)
+const downloadProgress = ref(0)
 const draggingFiles = ref(false)
 const tagModalOpen = ref(false)
 const tagTargetFiles = ref([])
@@ -423,14 +425,26 @@ async function moveFile(file) {
   openMoveModal([file])
 }
 
+function askToSave(file) {
+  return dialog.confirm({
+    title: t('common.saveFile.readyTitle'),
+    message: t('common.saveFile.readyMessage', { name: file.name }),
+    confirmText: t('common.saveFile.save'),
+    cancelText: t('common.actions.cancel')
+  })
+}
+
 async function downloadFile(file) {
-  const response = await fileApi.download(file.id)
-  const url = URL.createObjectURL(response.data)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = file.original_filename || file.display_name
-  link.click()
-  URL.revokeObjectURL(url)
+  if (downloadProgress.value) return
+  downloadProgress.value = 1
+  try {
+    const response = await fileApi.download(file.id, (event) => { downloadProgress.value = downloadPercent(event) })
+    downloadProgress.value = 0
+    await saveBlobToDevice(response.data, file.original_filename || file.display_name, askToSave)
+  } catch {
+    downloadProgress.value = 0
+    await dialog.confirm({ title: t('common.saveFile.failed'), message: '', confirmText: t('common.actions.close') })
+  }
 }
 
 async function bulkMove() {
@@ -655,6 +669,10 @@ onMounted(loadFiles)
   <div v-if="uploadProgress" class="xb-progress">
     <span :style="{ width: `${uploadProgress}%` }"></span>
   </div>
+  <template v-if="downloadProgress">
+    <p class="xb-status-note">{{ t('common.saveFile.downloading', { percent: downloadProgress }) }}</p>
+    <div class="xb-progress"><span :style="{ width: `${downloadProgress}%` }"></span></div>
+  </template>
 
   <section class="xb-upload-drop-hint" :class="{ 'is-visible': draggingFiles }">
     <Upload :size="18" />

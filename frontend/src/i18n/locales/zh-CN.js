@@ -3,6 +3,13 @@
     title: 'XuanBox'
   },
   common: {
+    saveFile: {
+      readyTitle: '可以保存了',
+      readyMessage: '{name} 已下载好。点「保存到手机」，再选「存储视频」或「存储图像」放进相册，或选「存储到文件」。',
+      save: '保存到手机',
+      downloading: '正在下载 {percent}%',
+      failed: '下载失败，请重试。'
+    },
     language: {
       label: '语言',
       en: 'English',
