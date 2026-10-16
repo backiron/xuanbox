@@ -12,7 +12,7 @@ import { receiptApi } from '../../api/receiptApi'
 import { shareApi } from '../../api/shareApi'
 
 const route = useRoute()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const activeTab = ref('created')
 const shareMode = ref('public')
 const targetType = ref('file')
@@ -106,7 +106,7 @@ function formatSize(bytes) {
 
 function formatDate(value) {
   if (!value) return t('common.file.noExpiry')
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
 function shareUrl(share) {
@@ -363,7 +363,7 @@ onBeforeUnmount(() => {
             <strong>{{ target.label }}</strong>
             <span>{{ target.meta }}</span>
           </div>
-          <button type="button" title="Remove" @click="removeQueuedTarget(target.key)">
+          <button type="button" :title="t('common.actions.remove')" @click="removeQueuedTarget(target.key)">
             <X :size="14" />
           </button>
         </article>

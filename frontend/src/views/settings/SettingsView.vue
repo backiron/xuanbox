@@ -102,7 +102,7 @@ function formatBytes(value) {
 
 function formatDate(value) {
   if (!value) return t('pages.settings.neverSeen')
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
 function syncProfileForm() {

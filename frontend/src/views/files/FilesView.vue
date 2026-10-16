@@ -29,7 +29,7 @@ import { useDialogStore } from '../../stores/dialogStore'
 import { findUploadLimitError } from '../../utils/uploadLimits'
 
 const files = ref([])
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const folders = ref([])
 const allFolders = ref([])
 const activeFileScope = ref('all')
@@ -96,7 +96,7 @@ function formatSize(bytes) {
 }
 
 function formatDate(value) {
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
 function tagsFor(fileId) {
@@ -108,6 +108,35 @@ function hasTag(fileId, tagId) {
   return tagLinks.value.some((link) => link.target_id === fileId && link.tag_id === tagId)
 }
 
+function docTypeLabel(type) {
+  return ['receipt', 'invoice', 'contract', 'warranty', 'manual', 'statement', 'general', 'unknown'].includes(type)
+    ? t(`pages.files.docTypes.${type}`)
+    : type
+}
+
+const FIELD_LABEL_KEYS = {
+  document_type: 'pages.files.type',
+  title: 'pages.files.fields.title',
+  issuer: 'pages.files.fields.issuer',
+  counterparty: 'pages.files.fields.counterparty',
+  primary_date: 'pages.files.fields.date',
+  amount: 'pages.files.fields.amount',
+  currency: 'pages.files.fields.currency',
+  warranty_until: 'pages.files.fields.warrantyUntil',
+  serial_number: 'pages.files.fields.serialNumber'
+}
+
+function fieldLabel(field) {
+  const key = FIELD_LABEL_KEYS[field.field_key]
+  return key ? t(key) : field.field_label || field.field_key
+}
+
+function taskStatusLabel(status) {
+  return ['pending', 'processing', 'completed', 'confirmed', 'failed'].includes(status)
+    ? t(`pages.files.taskStatus.${status}`)
+    : status
+}
+
 function folderLabel(folder) {
   return folder.path_cache || folder.name
 }
@@ -116,7 +145,7 @@ function folderNameById(folderId) {
   if (!folderId) return t('pages.files.allFiles')
   return allFolders.value.find((folder) => folder.id === folderId)?.name
     || folderStack.value.find((folder) => folder.id === folderId)?.name
-    || 'Unknown folder'
+    || t('pages.files.unknownFolder')
 }
 
 function uniqueFolders(items) {
@@ -160,9 +189,9 @@ async function uploadFiles(pickedFiles) {
   const imageFiles = pickedFiles.filter((file) => file.type.startsWith('image/'))
   if (imageFiles.length) {
     await dialog.confirm({
-      title: 'Use Inbox for images',
-      message: 'Images are managed in Photos. Use Dashboard or Inbox if you want to decide whether an image should become a Photo, File, or Receipt.',
-      confirmText: 'OK'
+      title: t('pages.files.uploadInboxTitle'),
+      message: t('pages.files.imagesGoToPhotos'),
+      confirmText: t('pages.files.dialogOk')
     })
     return
   }
@@ -202,21 +231,21 @@ async function onFileDrop(event) {
 }
 
 async function createFolder() {
-  const name = await dialog.prompt({ title: 'New folder', label: 'Folder name', placeholder: 'Family documents' })
+  const name = await dialog.prompt({ title: t('pages.files.newFolder'), label: t('pages.files.newFolderLabel'), placeholder: t('pages.files.newFolderPlaceholder') })
   if (!name) return
   await folderApi.create({ name, parent_id: currentFolderId.value })
   await loadFiles()
 }
 
 async function renameFile(file) {
-  const displayName = await dialog.prompt({ title: 'Rename file', label: 'New name', defaultValue: file.display_name })
+  const displayName = await dialog.prompt({ title: t('pages.files.renameFile'), label: t('pages.files.renameFileLabel'), defaultValue: file.display_name })
   if (!displayName) return
   await fileApi.update(file.id, { display_name: displayName })
   await loadFiles()
 }
 
 async function renameFolder(folder) {
-  const name = await dialog.prompt({ title: 'Rename folder', label: 'New folder name', defaultValue: folder.name })
+  const name = await dialog.prompt({ title: t('pages.files.renameFolder'), label: t('pages.files.renameFolderLabel'), defaultValue: folder.name })
   if (!name) return
   await folderApi.update(folder.id, { name })
   await loadFiles()
@@ -261,11 +290,13 @@ async function retryFileIntelligence() {
 async function saveFileAsReceipt(file = activeFile.value) {
   if (!file?.id) return
   await receiptApi.createFromFile(file.id, { category: 'file import' })
-  await dialog.confirm({
-    title: 'Saved as receipt',
-    message: 'This item now appears in Receipts. OCR will run in the background and you can review fields there.',
-    confirmText: 'Open Receipts'
+  const open = await dialog.confirm({
+    title: t('pages.files.savedAsReceiptTitle'),
+    message: t('pages.files.savedAsReceiptMessage'),
+    confirmText: t('pages.files.openReceipts'),
+    cancelText: t('common.actions.close')
   })
+  if (open) await router.push('/receipts')
 }
 
 function openIntelligenceEditor() {
@@ -378,9 +409,9 @@ async function restoreFile(file) {
 
 async function purgeFile(file) {
   const confirmed = await dialog.confirm({
-    title: 'Permanently delete',
-    message: `${file.display_name} will be removed from encrypted storage.`,
-    confirmText: 'Delete forever',
+    title: t('pages.files.removeFromVault'),
+    message: t('pages.files.removeFromVaultMessage', { name: file.display_name }),
+    confirmText: t('pages.files.removeFromVaultAction'),
     danger: true
   })
   if (!confirmed) return
@@ -431,7 +462,7 @@ function chooseMoveFolder(folderId) {
 async function moveFilesToFolder(targetFolderId) {
   const filesToMove = moveTargetFiles.value.filter((file) => file.folder_id !== targetFolderId)
   if (!filesToMove.length) {
-    moveError.value = 'These files are already in that folder.'
+    moveError.value = t('pages.files.folderExists')
     return
   }
   await Promise.all(filesToMove.map((file) => fileApi.update(file.id, { folder_id: targetFolderId })))
@@ -451,7 +482,7 @@ async function moveToImportantDocs() {
 async function createFolderAndMove() {
   const name = moveNewFolderName.value.trim()
   if (!name) {
-    moveError.value = 'Enter a folder name first.'
+    moveError.value = t('pages.files.enterFolderName')
     return
   }
   const response = await folderApi.create({ name, parent_id: currentFolderId.value })
@@ -514,11 +545,11 @@ function resetTagEdit() {
 
 async function applyExistingTag() {
   if (!tagTargetFiles.value.length) {
-    tagError.value = 'Select one or more files before applying a tag.'
+    tagError.value = t('pages.files.selectFilesFirst')
     return
   }
   if (!selectedTagId.value) {
-    tagError.value = 'Choose a tag first.'
+    tagError.value = t('pages.files.chooseTagFirst')
     return
   }
   const tag = tags.value.find((item) => item.id === selectedTagId.value)
@@ -532,7 +563,7 @@ async function applyExistingTag() {
 async function saveTagDraft() {
   const name = tagDraft.value.name.trim()
   if (!name) {
-    tagError.value = 'Enter a tag name first.'
+    tagError.value = t('pages.files.enterTagName')
     return
   }
   let tag = tags.value.find((item) => item.id === editingTagId.value)
@@ -661,10 +692,10 @@ onMounted(loadFiles)
         <span>{{ formatDate(file.updated_at) }}</span>
       </div>
       <div class="xb-row-actions">
-        <button class="xb-icon-button" type="button" title="Restore" @click="restoreFile(file)">
+        <button class="xb-icon-button" type="button" :title="t('pages.files.restore')" @click="restoreFile(file)">
           <RotateCcw :size="17" />
         </button>
-        <button class="xb-icon-button xb-danger-button" type="button" title="Purge" @click="purgeFile(file)">
+        <button class="xb-icon-button xb-danger-button" type="button" :title="t('pages.files.purge')" @click="purgeFile(file)">
           <Trash2 :size="17" />
         </button>
       </div>
@@ -689,7 +720,7 @@ onMounted(loadFiles)
         <details v-if="hiddenMobileFolders.length" class="xb-album-more">
           <summary class="xb-album-pill">
             <span>{{ t('common.actions.more') }}</span>
-              <span aria-hidden="true">v</span>
+              <span aria-hidden="true">▾</span>
           </summary>
           <nav>
             <button v-for="folder in hiddenMobileFolders" :key="folder.id" type="button" @click="openFolder(folder)">
@@ -725,29 +756,29 @@ onMounted(loadFiles)
           </div>
           <span class="xb-file-date">{{ formatDate(file.updated_at) }}</span>
           <div class="xb-row-actions">
-            <button class="xb-icon-button" type="button" title="Download" @click="downloadFile(file)">
+            <button class="xb-icon-button" type="button" :title="t('common.actions.download')" @click="downloadFile(file)">
               <Download :size="17" />
             </button>
-            <button class="xb-icon-button" type="button" title="Favorite" @click="toggleFavorite(file)">
+            <button class="xb-icon-button" type="button" :title="t('pages.files.favorite')" @click="toggleFavorite(file)">
               <Star :size="17" :fill="file.is_favorite ? 'currentColor' : 'none'" />
             </button>
-            <button class="xb-icon-button" type="button" title="Details" @click="openFileDetails(file)">
+            <button class="xb-icon-button" type="button" :title="t('pages.files.detailsTitle')" @click="openFileDetails(file)">
               <Info :size="17" />
             </button>
-            <button class="xb-icon-button" type="button" title="Move" @click="moveFile(file)">
+            <button class="xb-icon-button" type="button" :title="t('pages.files.move')" @click="moveFile(file)">
               <MoveRight :size="17" />
             </button>
-            <button class="xb-text-button" type="button" @click="renameFile(file)">Rename</button>
-            <button class="xb-icon-button" type="button" title="Tag" @click="attachTag(file)">
+            <button class="xb-text-button" type="button" @click="renameFile(file)">{{ t('pages.files.rename') }}</button>
+            <button class="xb-icon-button" type="button" :title="t('pages.files.tag')" @click="attachTag(file)">
               <Tag :size="17" />
             </button>
             <button class="xb-icon-button" type="button" :title="t('pages.vault.addTo')" @click="addToVault([file])">
               <ShieldCheck :size="17" />
             </button>
-            <button class="xb-icon-button xb-danger-button" type="button" title="Delete" @click="deleteFile(file)">
+            <button class="xb-icon-button xb-danger-button" type="button" :title="t('common.actions.delete')" @click="deleteFile(file)">
               <Trash2 :size="17" />
             </button>
-            <button class="xb-icon-button xb-file-more-button" type="button" title="More actions" @click="openFileActions(file)">
+            <button class="xb-icon-button xb-file-more-button" type="button" :title="t('pages.files.moreActions')" @click="openFileActions(file)">
               <MoreHorizontal :size="18" />
             </button>
           </div>
@@ -759,80 +790,80 @@ onMounted(loadFiles)
 
     <aside class="xb-detail-drawer" :class="{ 'is-open': activeFile }">
       <template v-if="activeFile">
-        <button class="xb-text-button" type="button" @click="activeFile = null">Close</button>
+        <button class="xb-text-button" type="button" @click="activeFile = null">{{ t('common.actions.close') }}</button>
         <h3>{{ activeFile.display_name }}</h3>
         <dl>
-          <div><dt>Original</dt><dd>{{ activeFile.original_filename }}</dd></div>
-          <div><dt>Location</dt><dd>{{ folderNameById(activeFile.folder_id) }}</dd></div>
-          <div><dt>Type</dt><dd>{{ activeFile.mime_type || 'application/octet-stream' }}</dd></div>
-          <div><dt>Size</dt><dd>{{ formatSize(activeFile.file_size) }}</dd></div>
-          <div><dt>Hash</dt><dd>{{ activeFile.sha256_hash }}</dd></div>
-          <div><dt>Created</dt><dd>{{ formatDate(activeFile.created_at) }}</dd></div>
-          <div><dt>Updated</dt><dd>{{ formatDate(activeFile.updated_at) }}</dd></div>
+          <div><dt>{{ t('pages.files.original') }}</dt><dd>{{ activeFile.original_filename }}</dd></div>
+          <div><dt>{{ t('pages.files.location') }}</dt><dd>{{ folderNameById(activeFile.folder_id) }}</dd></div>
+          <div><dt>{{ t('pages.files.type') }}</dt><dd>{{ activeFile.mime_type || 'application/octet-stream' }}</dd></div>
+          <div><dt>{{ t('pages.files.size') }}</dt><dd>{{ formatSize(activeFile.file_size) }}</dd></div>
+          <div><dt>{{ t('pages.files.hash') }}</dt><dd>{{ activeFile.sha256_hash }}</dd></div>
+          <div><dt>{{ t('pages.files.created') }}</dt><dd>{{ formatDate(activeFile.created_at) }}</dd></div>
+          <div><dt>{{ t('pages.files.updated') }}</dt><dd>{{ formatDate(activeFile.updated_at) }}</dd></div>
         </dl>
         <div class="xb-tag-list">
           <span v-for="tag in tagsFor(activeFile.id)" :key="tag.id" :style="{ borderColor: tag.color, color: tag.color }">{{ tag.name }}</span>
         </div>
         <button class="xb-secondary-button" type="button" @click="attachTag(activeFile)">
           <Tag :size="17" />
-          Add tag
+          {{ t('pages.files.addTag') }}
         </button>
         <button class="xb-secondary-button" type="button" @click="moveFile(activeFile)">
           <MoveRight :size="17" />
-          Move
+          {{ t('pages.files.move') }}
         </button>
         <button class="xb-secondary-button" type="button" @click="saveFileAsReceipt(activeFile)">
           <ReceiptText :size="17" />
-          Save as receipt
+          {{ t('pages.files.saveAsReceipt') }}
         </button>
         <section class="xb-intelligence-panel">
           <div class="xb-intelligence-head">
             <div>
-              <strong>Intelligence</strong>
-              <span v-if="intelligenceLoading">Loading...</span>
-              <span v-else>{{ latestIntelligenceTask?.status || 'not queued' }}</span>
+              <strong>{{ t('pages.files.intelligence') }}</strong>
+              <span v-if="intelligenceLoading">{{ t('pages.files.loadingLabel') }}</span>
+              <span v-else>{{ latestIntelligenceTask?.status ? taskStatusLabel(latestIntelligenceTask.status) : t('pages.files.notQueued') }}</span>
             </div>
             <div class="xb-row-actions">
               <button class="xb-text-button" type="button" @click="openIntelligenceEditor">
-                {{ activeFileIntelligence?.profile ? 'Edit' : 'Create profile' }}
+                {{ activeFileIntelligence?.profile ? t('common.actions.edit') : t('pages.files.createProfile') }}
               </button>
-              <button class="xb-text-button" type="button" @click="retryFileIntelligence">Retry</button>
+              <button class="xb-text-button" type="button" @click="retryFileIntelligence">{{ t('pages.files.retry') }}</button>
             </div>
           </div>
           <template v-if="activeFileIntelligence?.profile">
             <dl>
-              <div><dt>Type</dt><dd>{{ activeFileIntelligence.profile.document_type }}</dd></div>
-              <div><dt>Title</dt><dd>{{ activeFileIntelligence.profile.title || 'Untitled' }}</dd></div>
-              <div v-if="activeFileIntelligence.profile.summary"><dt>Summary</dt><dd>{{ activeFileIntelligence.profile.summary }}</dd></div>
-              <div v-if="activeFileIntelligence.profile.issuer"><dt>Issuer</dt><dd>{{ activeFileIntelligence.profile.issuer }}</dd></div>
-              <div v-if="activeFileIntelligence.profile.counterparty"><dt>Counterparty</dt><dd>{{ activeFileIntelligence.profile.counterparty }}</dd></div>
-              <div v-if="activeFileIntelligence.profile.amount"><dt>Amount</dt><dd>{{ activeFileIntelligence.profile.currency }} {{ activeFileIntelligence.profile.amount }}</dd></div>
-              <div v-if="activeFileIntelligence.profile.serial_number"><dt>Serial</dt><dd>{{ activeFileIntelligence.profile.serial_number }}</dd></div>
+              <div><dt>{{ t('pages.files.type') }}</dt><dd>{{ docTypeLabel(activeFileIntelligence.profile.document_type) }}</dd></div>
+              <div><dt>{{ t('pages.files.fields.title') }}</dt><dd>{{ activeFileIntelligence.profile.title || t('pages.files.untitled') }}</dd></div>
+              <div v-if="activeFileIntelligence.profile.summary"><dt>{{ t('pages.files.fields.summary') }}</dt><dd>{{ activeFileIntelligence.profile.summary }}</dd></div>
+              <div v-if="activeFileIntelligence.profile.issuer"><dt>{{ t('pages.files.fields.issuer') }}</dt><dd>{{ activeFileIntelligence.profile.issuer }}</dd></div>
+              <div v-if="activeFileIntelligence.profile.counterparty"><dt>{{ t('pages.files.fields.counterparty') }}</dt><dd>{{ activeFileIntelligence.profile.counterparty }}</dd></div>
+              <div v-if="activeFileIntelligence.profile.amount"><dt>{{ t('pages.files.fields.amount') }}</dt><dd>{{ activeFileIntelligence.profile.currency }} {{ activeFileIntelligence.profile.amount }}</dd></div>
+              <div v-if="activeFileIntelligence.profile.serial_number"><dt>{{ t('pages.files.fields.serial') }}</dt><dd>{{ activeFileIntelligence.profile.serial_number }}</dd></div>
             </dl>
             <div v-if="activeFileIntelligence.profile.labels?.length" class="xb-tag-list">
               <span v-for="label in activeFileIntelligence.profile.labels" :key="label">{{ label }}</span>
             </div>
             <div v-if="intelligenceFields.length" class="xb-intelligence-fields">
               <span v-for="field in intelligenceFields" :key="field.id">
-                <strong>{{ field.field_label || field.field_key }}</strong>
-                {{ field.field_value }}
+                <strong>{{ fieldLabel(field) }}</strong>
+                {{ field.field_key === 'document_type' ? docTypeLabel(field.field_value) : field.field_value }}
               </span>
             </div>
             <p class="xb-inline-help">
-              {{ activeFileIntelligence.profile.confirmed_at ? 'Confirmed by you.' : 'Review and confirm fields before relying on them.' }}
+              {{ activeFileIntelligence.profile.confirmed_at ? t('pages.files.confirmedByYou') : t('pages.files.confirmFields') }}
             </p>
           </template>
           <p v-else-if="latestIntelligenceTask?.error_message" class="xb-form-error">{{ latestIntelligenceTask.error_message }}</p>
-          <p v-else class="xb-muted">Text extraction runs automatically for supported images, PDFs, and text files.</p>
+          <p v-else class="xb-muted">{{ t('pages.files.textExtraction') }}</p>
           <details v-if="activeFileIntelligence?.chunks?.length" class="xb-intelligence-text">
-            <summary>Extracted text</summary>
+            <summary>{{ t('pages.files.extractedText') }}</summary>
             <p v-for="chunk in activeFileIntelligence.chunks.slice(0, 2)" :key="chunk.id">{{ chunk.text }}</p>
           </details>
         </section>
       </template>
       <template v-else>
-        <h3>Details</h3>
-        <p>Select a file to view details, manage tags, download it, or move it.</p>
+        <h3>{{ t('pages.files.detailsTitle') }}</h3>
+        <p>{{ t('pages.files.detailsHint') }}</p>
       </template>
     </aside>
   </div>
@@ -845,32 +876,32 @@ onMounted(loadFiles)
             <strong>{{ actionFile.display_name }}</strong>
             <span>{{ actionFile.mime_type || 'application/octet-stream' }} · {{ formatSize(actionFile.file_size) }}</span>
           </div>
-          <button class="xb-icon-button" type="button" title="Close" @click="closeFileActions">×</button>
+          <button class="xb-icon-button" type="button" :title="t('common.actions.close')" @click="closeFileActions">×</button>
         </header>
         <div class="xb-mobile-action-grid">
           <button type="button" @click="runFileAction('download')">
             <Download :size="18" />
-            Download
+            {{ t('common.actions.download') }}
           </button>
           <button type="button" @click="runFileAction('favorite')">
             <Star :size="18" :fill="actionFile.is_favorite ? 'currentColor' : 'none'" />
-            {{ actionFile.is_favorite ? 'Unfavorite' : 'Favorite' }}
+            {{ actionFile.is_favorite ? t('pages.files.unfavorite') : t('pages.files.favorite') }}
           </button>
           <button type="button" @click="runFileAction('details')">
             <Info :size="18" />
-            Details
+            {{ t('pages.files.detailsTitle') }}
           </button>
           <button type="button" @click="runFileAction('move')">
             <MoveRight :size="18" />
-            Move
+            {{ t('pages.files.move') }}
           </button>
           <button type="button" @click="runFileAction('rename')">
             <Pencil :size="18" />
-            Rename
+            {{ t('pages.files.rename') }}
           </button>
           <button type="button" @click="runFileAction('tag')">
             <Tag :size="18" />
-            Tag
+            {{ t('pages.files.tag') }}
           </button>
           <button type="button" @click="runFileAction('important')">
             <ShieldCheck :size="18" />
@@ -878,7 +909,7 @@ onMounted(loadFiles)
           </button>
           <button class="is-danger" type="button" @click="runFileAction('delete')">
             <Trash2 :size="18" />
-            Delete
+            {{ t('common.actions.delete') }}
           </button>
         </div>
       </div>
@@ -890,70 +921,70 @@ onMounted(loadFiles)
     <section v-if="intelligenceEditorOpen" class="xb-modal-backdrop" @click.self="closeIntelligenceEditor">
       <form class="xb-modal xb-intelligence-editor" @submit.prevent="saveIntelligenceProfile">
         <Info :size="24" />
-        <h3>Review intelligence</h3>
-        <p>Correct the extracted fields, then confirm this profile for search and future document views.</p>
+        <h3>{{ t('pages.files.reviewProfile') }}</h3>
+        <p>{{ t('pages.files.reviewHint') }}</p>
         <label>
-          Type
+          {{ t('pages.files.type') }}
           <select v-model="intelligenceForm.document_type">
-            <option value="receipt">Receipt</option>
-            <option value="invoice">Invoice</option>
-            <option value="contract">Contract</option>
-            <option value="warranty">Warranty</option>
-            <option value="manual">Manual</option>
-            <option value="statement">Statement</option>
-            <option value="general">General</option>
-            <option value="unknown">Unknown</option>
+            <option value="receipt">{{ t('pages.files.docTypes.receipt') }}</option>
+            <option value="invoice">{{ t('pages.files.docTypes.invoice') }}</option>
+            <option value="contract">{{ t('pages.files.docTypes.contract') }}</option>
+            <option value="warranty">{{ t('pages.files.docTypes.warranty') }}</option>
+            <option value="manual">{{ t('pages.files.docTypes.manual') }}</option>
+            <option value="statement">{{ t('pages.files.docTypes.statement') }}</option>
+            <option value="general">{{ t('pages.files.docTypes.general') }}</option>
+            <option value="unknown">{{ t('pages.files.docTypes.unknown') }}</option>
           </select>
         </label>
         <label>
-          Title
+          {{ t('pages.files.fields.title') }}
           <input v-model="intelligenceForm.title" maxlength="255" />
         </label>
         <label>
-          Summary
+          {{ t('pages.files.fields.summary') }}
           <textarea v-model="intelligenceForm.summary" rows="4" maxlength="4000"></textarea>
         </label>
         <div class="xb-two-column-form">
           <label>
-            Issuer
+            {{ t('pages.files.fields.issuer') }}
             <input v-model="intelligenceForm.issuer" maxlength="255" />
           </label>
           <label>
-            Counterparty
+            {{ t('pages.files.fields.counterparty') }}
             <input v-model="intelligenceForm.counterparty" maxlength="255" />
           </label>
           <label>
-            Date
+            {{ t('pages.files.fields.date') }}
             <input v-model="intelligenceForm.primary_date" maxlength="32" />
           </label>
           <label>
-            Warranty until
+            {{ t('pages.files.fields.warrantyUntil') }}
             <input v-model="intelligenceForm.warranty_until" maxlength="32" />
           </label>
           <label>
-            Amount
+            {{ t('pages.files.fields.amount') }}
             <input v-model="intelligenceForm.amount" maxlength="64" />
           </label>
           <label>
-            Currency
+            {{ t('pages.files.fields.currency') }}
             <input v-model="intelligenceForm.currency" maxlength="16" />
           </label>
           <label>
-            Serial number
+            {{ t('pages.files.fields.serialNumber') }}
             <input v-model="intelligenceForm.serial_number" maxlength="120" />
           </label>
           <label>
-            Labels
-            <input v-model="intelligenceForm.labelsText" placeholder="invoice, warranty" />
+            {{ t('pages.files.fields.labels') }}
+            <input v-model="intelligenceForm.labelsText" :placeholder="t('pages.files.labelsPlaceholder')" />
           </label>
         </div>
         <label>
-          Keywords
-          <input v-model="intelligenceForm.keywordsText" placeholder="comma separated" />
+          {{ t('pages.files.fields.keywords') }}
+          <input v-model="intelligenceForm.keywordsText" :placeholder="t('pages.files.keywordsPlaceholder')" />
         </label>
         <div class="xb-row-actions">
-          <button class="xb-primary-button" type="submit">Confirm profile</button>
-          <button class="xb-secondary-button" type="button" @click="closeIntelligenceEditor">Cancel</button>
+          <button class="xb-primary-button" type="submit">{{ t('pages.files.confirmProfile') }}</button>
+          <button class="xb-secondary-button" type="button" @click="closeIntelligenceEditor">{{ t('common.actions.cancel') }}</button>
         </div>
       </form>
     </section>
@@ -963,9 +994,9 @@ onMounted(loadFiles)
     <section v-if="tagModalOpen" class="xb-modal-backdrop" @click.self="closeTagModal">
       <form class="xb-modal xb-tag-modal" @submit.prevent="saveTagDraft">
         <Tag :size="24" />
-        <h3>{{ tagTargetFiles.length ? 'Apply tag' : 'Tags' }}</h3>
+        <h3>{{ tagTargetFiles.length ? t('pages.files.applyTagTitle') : t('pages.files.tagsTitle') }}</h3>
         <p>
-          {{ tagTargetFiles.length ? 'Choose an existing tag, or create a new one for the selected files.' : 'Create reusable labels here. Select files first when you want to apply a tag.' }}
+          {{ tagTargetFiles.length ? t('pages.files.tagHintApply') : t('pages.files.tagHintManage') }}
         </p>
 
         <div v-if="tags.length" class="xb-tag-picker">
@@ -980,12 +1011,12 @@ onMounted(loadFiles)
               <span></span>
               {{ tag.name }}
             </button>
-            <button type="button" title="Edit tag" @click="editTag(tag)">
+            <button type="button" :title="t('pages.files.editTag')" @click="editTag(tag)">
               <Pencil :size="14" />
             </button>
           </div>
         </div>
-        <p v-else class="xb-inline-help">No tags yet. Create one below.</p>
+        <p v-else class="xb-inline-help">{{ t('pages.files.noTags') }}</p>
 
         <button
           v-if="tagTargetFiles.length && tags.length"
@@ -994,21 +1025,21 @@ onMounted(loadFiles)
           :disabled="!selectedTagId"
           @click="applyExistingTag"
         >
-          Apply selected tag
+          {{ t('pages.files.applyTag') }}
         </button>
 
         <div class="xb-tag-divider">
-          <span>{{ editingTagId ? 'Edit selected tag' : (tags.length ? 'Or create a new tag' : 'Create your first tag') }}</span>
+          <span>{{ editingTagId ? t('pages.files.editTagTitle') : (tags.length ? t('pages.files.createTagFallback') : t('pages.files.createTag')) }}</span>
         </div>
         <p v-if="tagError" class="xb-form-error">{{ tagError }}</p>
 
         <label>
-          Tag name
-          <input v-model="tagDraft.name" placeholder="Important" autocomplete="off" />
+          {{ t('pages.files.tagNameLabel') }}
+          <input v-model="tagDraft.name" :placeholder="t('pages.files.tagNamePlaceholder')" autocomplete="off" />
         </label>
 
         <div class="xb-color-field">
-          <span>Color</span>
+          <span>{{ t('pages.files.color') }}</span>
           <div class="xb-color-picker">
             <button
               v-for="color in tagPalette"
@@ -1019,16 +1050,16 @@ onMounted(loadFiles)
               :title="color"
               @click="tagDraft.color = color"
             ></button>
-            <input v-model="tagDraft.color" type="color" title="Custom color" />
+            <input v-model="tagDraft.color" type="color" :title="t('pages.files.customColor')" />
           </div>
         </div>
 
         <div class="xb-row-actions">
           <button class="xb-primary-button" type="submit">
-            {{ editingTagId ? 'Save tag' : (tagTargetFiles.length ? 'Create and apply' : 'Create tag') }}
+            {{ editingTagId ? t('pages.files.saveTag') : (tagTargetFiles.length ? t('pages.files.createAndApply') : t('pages.files.createTagTitle')) }}
           </button>
-          <button v-if="editingTagId" class="xb-secondary-button" type="button" @click="resetTagEdit">Cancel edit</button>
-          <button class="xb-secondary-button" type="button" @click="closeTagModal">Cancel</button>
+          <button v-if="editingTagId" class="xb-secondary-button" type="button" @click="resetTagEdit">{{ t('pages.files.cancelEditTag') }}</button>
+          <button class="xb-secondary-button" type="button" @click="closeTagModal">{{ t('common.actions.cancel') }}</button>
         </div>
       </form>
     </section>
@@ -1038,12 +1069,12 @@ onMounted(loadFiles)
     <section v-if="moveModalOpen" class="xb-modal-backdrop" @click.self="closeMoveModal">
       <form class="xb-modal xb-move-modal" @submit.prevent="applyMoveFolder">
         <MoveRight :size="24" />
-        <h3>Move {{ moveTargetFiles.length > 1 ? 'files' : 'file' }}</h3>
-        <p>Choose a folder, move to All files, or create a new folder.</p>
+        <h3>{{ moveTargetFiles.length > 1 ? t('pages.files.moveFilesTitle') : t('pages.files.moveFileTitle') }}</h3>
+        <p>{{ t('pages.files.moveHint') }}</p>
 
         <label>
-          Search folders
-          <input v-model="moveFolderQuery" placeholder="Type a folder name" autocomplete="off" />
+          {{ t('pages.files.searchFolders') }}
+          <input v-model="moveFolderQuery" :placeholder="t('pages.files.searchFoldersPlaceholder')" autocomplete="off" />
         </label>
 
         <div class="xb-folder-select">
@@ -1051,11 +1082,11 @@ onMounted(loadFiles)
           <div class="xb-folder-combobox">
             <button type="button" @click="moveFolderMenuOpen = !moveFolderMenuOpen">
               <span>{{ selectedMoveFolderLabel }}</span>
-              <span aria-hidden="true">v</span>
+              <span aria-hidden="true">▾</span>
             </button>
             <div v-if="moveFolderMenuOpen" class="xb-folder-menu">
               <button type="button" :class="{ 'is-active': moveFolderId === null }" @click="chooseMoveFolder(null)">
-                All files
+                {{ t('pages.files.allFiles') }}
               </button>
               <button
                 v-for="folder in filteredMoveFolders"
@@ -1068,27 +1099,27 @@ onMounted(loadFiles)
               </button>
             </div>
           </div>
-          <p v-if="!filteredMoveFolders.length" class="xb-inline-help">No matching folders.</p>
+          <p v-if="!filteredMoveFolders.length" class="xb-inline-help">{{ t('pages.files.noMatchingFolder') }}</p>
         </div>
 
         <div class="xb-tag-divider">
-          <span>Create and move</span>
+          <span>{{ t('pages.files.createNewFolder') }}</span>
         </div>
 
         <label>
-          New folder name
-          <input v-model="moveNewFolderName" placeholder="Project files" autocomplete="off" />
+          {{ t('pages.files.renameFolderLabel') }}
+          <input v-model="moveNewFolderName" :placeholder="t('pages.files.moveFolderPlaceholder')" autocomplete="off" />
         </label>
         <p v-if="moveError" class="xb-form-error">{{ moveError }}</p>
 
         <div class="xb-row-actions">
-          <button class="xb-primary-button" type="submit">Move here</button>
+          <button class="xb-primary-button" type="submit">{{ t('pages.files.moveHere') }}</button>
           <button class="xb-secondary-button" type="button" @click="moveToImportantDocs">
             <ShieldCheck :size="17" />
             {{ t('pages.vault.addTo') }}
           </button>
-          <button class="xb-secondary-button" type="button" @click="createFolderAndMove">Create folder and move</button>
-          <button class="xb-secondary-button" type="button" @click="closeMoveModal">Cancel</button>
+          <button class="xb-secondary-button" type="button" @click="createFolderAndMove">{{ t('pages.files.createAndMove') }}</button>
+          <button class="xb-secondary-button" type="button" @click="closeMoveModal">{{ t('common.actions.cancel') }}</button>
         </div>
       </form>
     </section>

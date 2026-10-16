@@ -10,6 +10,7 @@
       switchToEnglish: '切换到英文',
       switchToChinese: '切换到中文'
     },
+    accountFallback: '账户',
     actions: {
       add: '添加',
       close: '关闭',
@@ -325,6 +326,7 @@
       userSignIn: '用户登录'
     },
     dashboard: {
+      viewAll: '查看全部',
       title: '总览',
       subtitle: '保险库状态、最近活动、快速上传与设备传输。',
       browseVault: '浏览文件',
@@ -423,6 +425,10 @@
       resolveFailed: '无法处理该上传项。'
     },
     photos: {
+      photoPages: '照片分页',
+      previousPhoto: '上一张',
+      nextPhoto: '下一张',
+      receiptShort: '小票',
       title: '照片',
       subtitle: '上传、浏览、整理、分享和下载你的私人照片时间线。电脑端可直接拖拽照片到本页上传。',
       editModeDone: '完成',
@@ -483,6 +489,7 @@
       photoSavedTo: '照片已保存到{name}。'
     },
     receipts: {
+      receiptActions: '小票操作',
       recognisedItems: "识别出的商品（{count}）",
       recognising: "识别中 · {seconds} 秒（通常 30–60 秒）",
       ocrFinished: "一张小票识别完成了",
@@ -658,7 +665,69 @@
       extractedText: '已提取文本',
       importantDocs: '重要文档',
       vaultPinSet: 'PIN 保护已启用。',
-      vaultPinUnset: '使用重要文档前请先设置 PIN。'
+      vaultPinUnset: '使用重要文档前请先设置 PIN。',
+      tag: '标签',
+      unfavorite: '取消收藏',
+      moreActions: '更多操作',
+      restore: '恢复',
+      purge: '彻底删除',
+      saveAsReceipt: '存为小票',
+      intelligence: '识别',
+      createProfile: '创建资料',
+      retry: '重试',
+      untitled: '未命名',
+      detailsHint: '选择一个文件，查看详情、管理标签、下载或移动。',
+      reviewHint: '修正识别出的字段，确认后会用于搜索和文档展示。',
+      confirmProfile: '确认资料',
+      labelsPlaceholder: '发票, 保修',
+      keywordsPlaceholder: '用逗号分隔',
+      applyTagTitle: '添加标签',
+      tagsTitle: '标签',
+      tagHintApply: '选一个已有标签，或为所选文件新建一个。',
+      tagHintManage: '在这里创建可复用的标签。要给文件加标签，请先选中文件。',
+      editTag: '编辑标签',
+      color: '颜色',
+      customColor: '自定义颜色',
+      moveHint: '选择文件夹、移到"全部文件"，或新建一个文件夹。',
+      searchFolders: '搜索文件夹',
+      searchFoldersPlaceholder: '输入文件夹名',
+      moveFolderPlaceholder: '项目资料',
+      selectFilesFirst: '请先选中要加标签的文件。',
+      chooseTagFirst: '请先选一个标签。',
+      enterTagName: '请先输入标签名。',
+      enterFolderName: '请先输入文件夹名。',
+      imagesGoToPhotos: '图片在"照片"里管理。想决定一张图片存为照片、文件还是小票，请从首页或收件箱上传。',
+      fields: {
+        title: '标题',
+        summary: '摘要',
+        issuer: '开具方',
+        counterparty: '对方',
+        amount: '金额',
+        serial: '序列号',
+        date: '日期',
+        warrantyUntil: '保修截止',
+        currency: '币种',
+        serialNumber: '序列号',
+        labels: '标签',
+        keywords: '关键词'
+      },
+      docTypes: {
+        receipt: '小票',
+        invoice: '发票',
+        contract: '合同',
+        warranty: '保修单',
+        manual: '说明书',
+        statement: '对账单',
+        general: '一般文档',
+        unknown: '未知'
+      },
+      taskStatus: {
+        pending: '排队中',
+        processing: '识别中',
+        completed: '已完成',
+        confirmed: '已确认',
+        failed: '失败'
+      }
     },
     shared: {
       downloadShared: "下载",
@@ -837,6 +906,15 @@
       languageTitle: '显示语言'
     },
     admin: {
+      plan: '套餐',
+      statusLabel: '状态',
+      planFree: '免费版',
+      planPro: 'Pro',
+      storageLimitMb: '存储上限 (MB)',
+      storageLimitPlaceholder: '留空表示不限',
+      auditPages: '审计日志分页',
+      backupPages: '备份分页',
+      workerPages: '任务失败分页',
       title: '管理员控制台',
       systemManagement: '系统管理',
       noDataAvailable: '暂时没有可展示数据。',

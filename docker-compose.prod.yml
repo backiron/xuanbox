@@ -82,6 +82,9 @@ services:
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
         VITE_DROP_PUBLIC_ORIGIN: ${DROP_PUBLIC_ORIGIN:-}
+        # Optional page-view analytics; both empty = no tracking script at all.
+        VITE_ANALYTICS_SRC: ${ANALYTICS_SRC:-}
+        VITE_ANALYTICS_SITE: ${ANALYTICS_SITE:-}
     container_name: xuanbox-web
     restart: unless-stopped
     depends_on:

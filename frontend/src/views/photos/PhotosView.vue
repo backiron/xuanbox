@@ -35,7 +35,7 @@ let cleanupViewportListener = null
 const dialog = useDialogStore()
 const router = useRouter()
 const vault = useVaultStore()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const totalPages = computed(() => Math.max(1, Math.ceil(photos.value.length / pageSize.value)))
 const pageStart = computed(() => (currentPage.value - 1) * pageSize.value)
@@ -49,7 +49,7 @@ const groupedPhotos = computed(() => {
   const groups = new Map()
   for (const photo of activePhotos.value) {
     const date = new Date(photo.taken_at || photo.uploaded_at)
-    const key = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(date)
+    const key = new Intl.DateTimeFormat(locale.value, { month: 'long', year: 'numeric' }).format(date)
     if (!groups.has(key)) groups.set(key, [])
     groups.get(key).push(photo)
   }
@@ -518,7 +518,7 @@ onBeforeUnmount(() => {
             </button>
             <span>{{ photo.width }} x {{ photo.height }}</span>
             <div v-if="editMode" class="xb-photo-actions">
-              <button class="xb-icon-button" type="button" :title="selectedIds.has(photo.id) ? 'Deselect' : 'Select'" @click="toggleSelected(photo)">
+              <button class="xb-icon-button" type="button" :title="selectedIds.has(photo.id) ? t('pages.photos.deselect') : t('pages.photos.select')" @click="toggleSelected(photo)">
                 <component :is="selectedIds.has(photo.id) ? CheckSquare : Square" :size="16" />
               </button>
             </div>
@@ -527,7 +527,7 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <nav v-if="photos.length > pageSize" class="xb-pagination" aria-label="Photo pages">
+    <nav v-if="photos.length > pageSize" class="xb-pagination" :aria-label="t('pages.photos.photoPages')">
       <div class="xb-pagination-meta">
         <span>{{ pageStart + 1 }}-{{ pageEnd }} / {{ photos.length }}</span>
         <strong>{{ t('pages.photos.photoPage', { current: currentPage, total: totalPages }) }}</strong>
@@ -596,26 +596,26 @@ onBeforeUnmount(() => {
     <Teleport to="body">
       <section v-if="activePreview" class="xb-lightbox" @click.self="closePreview" @touchstart="onTouchStart" @touchend="onTouchEnd">
         <div class="xb-lightbox-toolbar">
-          <button class="xb-icon-button" type="button" title="Previous photo" @click="stepPreview(-1)">
+          <button class="xb-icon-button" type="button" :title="t('pages.photos.previousPhoto')" @click="stepPreview(-1)">
             <ChevronLeft :size="20" />
           </button>
           <strong>{{ activePreview.width }} x {{ activePreview.height }}</strong>
-          <button class="xb-icon-button" type="button" title="Download original" @click="downloadOriginal(activePreview)">
+          <button class="xb-icon-button" type="button" :title="t('pages.photos.downloadOriginal')" @click="downloadOriginal(activePreview)">
             <Download :size="19" />
           </button>
-          <button class="xb-icon-button" type="button" title="Save as receipt" @click="savePhotoAsReceipt(activePreview)">
+          <button class="xb-icon-button" type="button" :title="t('pages.photos.saveAsReceipt')" @click="savePhotoAsReceipt(activePreview)">
             <ReceiptText :size="19" />
           </button>
           <button class="xb-icon-button" type="button" :title="t('pages.vault.addTo')" @click="addPhotoToImportantDocs(activePreview)">
             <ShieldCheck :size="19" />
           </button>
-          <button class="xb-icon-button xb-danger-button" type="button" title="Delete photo" @click="deletePhotos([activePreview])">
+          <button class="xb-icon-button xb-danger-button" type="button" :title="t('pages.photos.deletePhoto')" @click="deletePhotos([activePreview])">
             <Trash2 :size="19" />
           </button>
-          <button class="xb-icon-button" type="button" title="Next photo" @click="stepPreview(1)">
+          <button class="xb-icon-button" type="button" :title="t('pages.photos.nextPhoto')" @click="stepPreview(1)">
             <ChevronRight :size="20" />
           </button>
-          <button class="xb-icon-button xb-lightbox-close-button" type="button" title="Close preview" @click="closePreview">
+          <button class="xb-icon-button xb-lightbox-close-button" type="button" :title="t('pages.photos.closePreview')" @click="closePreview">
             <X :size="20" />
             <span class="xb-lightbox-close-label">{{ t('common.actions.close') }}</span>
           </button>
@@ -635,7 +635,7 @@ onBeforeUnmount(() => {
           </button>
           <button class="xb-secondary-button" type="button" @click="savePhotoAsReceipt(activePreview)">
             <ReceiptText :size="18" />
-            Receipt
+            {{ t('pages.photos.receiptShort') }}
           </button>
           <button class="xb-secondary-button" type="button" @click="addPhotoToImportantDocs(activePreview)">
             <ShieldCheck :size="18" />
@@ -646,10 +646,10 @@ onBeforeUnmount(() => {
           </button>
           <button class="xb-secondary-button" type="button" @click="stepPreview(-1)">
             <ChevronLeft :size="18" />
-            Prev
+            {{ t('pages.photos.prev') }}
           </button>
           <button class="xb-secondary-button" type="button" @click="stepPreview(1)">
-            Next
+            {{ t('pages.photos.next') }}
             <ChevronRight :size="18" />
           </button>
         </div>

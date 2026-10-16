@@ -10,6 +10,7 @@
       switchToEnglish: 'Switch to English',
       switchToChinese: 'Switch to Chinese'
     },
+    accountFallback: 'Account',
     actions: {
       add: 'Add',
       close: 'Close',
@@ -233,7 +234,7 @@
       noMatches: "No matching notes",
       untitled: "Empty note",
       imageNote: "Image note",
-      imageCount: "{count} images",
+      imageCount: "{count} image | {count} images",
       pickOrCreate: "Pick a note on the left or start a new one",
       placeholder: "Jot something down... paste or drop images right here",
       emptyNote: "This note is empty. Tap Edit to start writing.",
@@ -325,6 +326,7 @@
       userSignIn: 'User sign in'
     },
     dashboard: {
+      viewAll: 'View all',
       title: 'Overview',
       subtitle: 'Private vault status, recent activity, quick upload, and device transfer.',
       browseVault: 'Browse files',
@@ -423,6 +425,10 @@
       resolveFailed: 'Could not resolve item.'
     },
     photos: {
+      photoPages: 'Photo pages',
+      previousPhoto: 'Previous photo',
+      nextPhoto: 'Next photo',
+      receiptShort: 'Receipt',
       title: 'Photos',
       subtitle: 'Upload, browse, organize, share, and download your private photo timeline. On desktop, you can drag photos onto this page.',
       editModeDone: 'Done',
@@ -483,6 +489,7 @@
       photoSavedTo: 'Photo saved to {name}.'
     },
     receipts: {
+      receiptActions: 'Receipt actions',
       recognisedItems: "Recognised items ({count})",
       recognising: "Recognising · {seconds}s (usually 30–60s)",
       ocrFinished: "A receipt has been recognised",
@@ -658,7 +665,69 @@
       extractedText: 'Extracted text',
       importantDocs: 'Important docs',
       vaultPinSet: 'PIN protection is enabled.',
-      vaultPinUnset: 'Set a PIN before using important docs.'
+      vaultPinUnset: 'Set a PIN before using important docs.',
+      tag: 'Tag',
+      unfavorite: 'Unfavorite',
+      moreActions: 'More actions',
+      restore: 'Restore',
+      purge: 'Delete forever',
+      saveAsReceipt: 'Save as receipt',
+      intelligence: 'Recognition',
+      createProfile: 'Create profile',
+      retry: 'Retry',
+      untitled: 'Untitled',
+      detailsHint: 'Select a file to view details, manage tags, download it, or move it.',
+      reviewHint: 'Correct the extracted fields, then confirm this profile for search and future document views.',
+      confirmProfile: 'Confirm profile',
+      labelsPlaceholder: 'invoice, warranty',
+      keywordsPlaceholder: 'comma separated',
+      applyTagTitle: 'Apply tag',
+      tagsTitle: 'Tags',
+      tagHintApply: 'Choose an existing tag, or create a new one for the selected files.',
+      tagHintManage: 'Create reusable labels here. Select files first when you want to apply a tag.',
+      editTag: 'Edit tag',
+      color: 'Color',
+      customColor: 'Custom color',
+      moveHint: 'Choose a folder, move to All files, or create a new folder.',
+      searchFolders: 'Search folders',
+      searchFoldersPlaceholder: 'Type a folder name',
+      moveFolderPlaceholder: 'Project files',
+      selectFilesFirst: 'Select one or more files before applying a tag.',
+      chooseTagFirst: 'Choose a tag first.',
+      enterTagName: 'Enter a tag name first.',
+      enterFolderName: 'Enter a folder name first.',
+      imagesGoToPhotos: 'Images are managed in Photos. Use Dashboard or Inbox if you want to decide whether an image should become a Photo, File, or Receipt.',
+      fields: {
+        title: 'Title',
+        summary: 'Summary',
+        issuer: 'Issuer',
+        counterparty: 'Counterparty',
+        amount: 'Amount',
+        serial: 'Serial',
+        date: 'Date',
+        warrantyUntil: 'Warranty until',
+        currency: 'Currency',
+        serialNumber: 'Serial number',
+        labels: 'Labels',
+        keywords: 'Keywords'
+      },
+      docTypes: {
+        receipt: 'Receipt',
+        invoice: 'Invoice',
+        contract: 'Contract',
+        warranty: 'Warranty',
+        manual: 'Manual',
+        statement: 'Statement',
+        general: 'General',
+        unknown: 'Unknown'
+      },
+      taskStatus: {
+        pending: 'Waiting',
+        processing: 'Processing',
+        completed: 'Done',
+        confirmed: 'Confirmed',
+        failed: 'Failed'
+      }
     },
     shared: {
       downloadShared: "Download",
@@ -837,6 +906,15 @@
       languageTitle: 'Language'
     },
     admin: {
+      plan: 'Plan',
+      statusLabel: 'Status',
+      planFree: 'Free',
+      planPro: 'Pro',
+      storageLimitMb: 'Storage limit (MB)',
+      storageLimitPlaceholder: 'empty for unlimited',
+      auditPages: 'Audit pages',
+      backupPages: 'Backup pages',
+      workerPages: 'Worker failure pages',
       title: 'Admin Console',
       systemManagement: 'System management',
       noDataAvailable: 'No data available.',

@@ -26,7 +26,7 @@ import { photoApi } from '../../api/photoApi'
 import { findUploadLimitError } from '../../utils/uploadLimits'
 
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const summary = ref(null)
 const recentFiles = ref([])
 const recentPhotos = ref([])
@@ -63,7 +63,7 @@ function pluralSuffix(count) {
 }
 
 function formatNumber(value = 0) {
-  return new Intl.NumberFormat(undefined).format(value || 0)
+  return new Intl.NumberFormat(locale.value).format(value || 0)
 }
 
 function formatBytes(value) {
@@ -80,7 +80,7 @@ function formatBytes(value) {
 
 function formatDate(value) {
   if (!value) return 'No date'
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value))
+  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(value))
 }
 
 function formatFileSize(bytes) {
@@ -290,7 +290,7 @@ onBeforeUnmount(() => {
       <article class="xb-dashboard-panel xb-recent-panel">
         <div class="xb-panel-title">
           <h3>{{ t('pages.dashboard.files') }}</h3>
-          <router-link to="/files">View all</router-link>
+          <router-link to="/files">{{ t('pages.dashboard.viewAll') }}</router-link>
         </div>
         <div v-if="recentFiles.length" class="xb-dashboard-list">
           <router-link v-for="file in recentFiles" :key="file.id" to="/files" class="xb-dashboard-file">
@@ -308,7 +308,7 @@ onBeforeUnmount(() => {
       <article class="xb-dashboard-panel">
         <div class="xb-panel-title">
           <h3>{{ t('pages.dashboard.photos') }}</h3>
-          <router-link to="/photos">View all</router-link>
+          <router-link to="/photos">{{ t('pages.dashboard.viewAll') }}</router-link>
         </div>
         <div v-if="recentPhotos.length" class="xb-dashboard-photos">
           <router-link v-for="photo in recentPhotos" :key="photo.id" to="/photos" class="xb-dashboard-photo">

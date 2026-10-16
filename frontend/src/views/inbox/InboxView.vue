@@ -19,7 +19,7 @@ const uploadProgress = ref(0)
 const draggingFiles = ref(false)
 const message = ref('')
 const error = ref('')
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const dialog = useDialogStore()
 const router = useRouter()
 const vault = useVaultStore()
@@ -36,7 +36,7 @@ function formatBytes(value) {
 
 function formatDate(value) {
   if (!value) return ''
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
 function iconFor(item) {

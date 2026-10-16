@@ -8,7 +8,7 @@ import { noteApi } from '../../api/noteApi'
 import { useDialogStore } from '../../stores/dialogStore'
 import '../../styles/notes.css'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const dialog = useDialogStore()
@@ -83,7 +83,7 @@ function formatDate(value) {
   if (!value) return ''
   const date = new Date(value)
   const sameDay = date.toDateString() === new Date().toDateString()
-  return new Intl.DateTimeFormat(undefined, sameDay ? { timeStyle: 'short' } : { dateStyle: 'medium' }).format(date)
+  return new Intl.DateTimeFormat(locale.value, sameDay ? { timeStyle: 'short' } : { dateStyle: 'medium' }).format(date)
 }
 
 function errorText(err, fallback) {
@@ -477,7 +477,7 @@ const saveLabel = computed(() => ({
                 {{ note.title || (note.image_count ? t('pages.notes.imageNote') : t('pages.notes.untitled')) }}
               </strong>
               <span v-if="note.snippet">{{ note.snippet }}</span>
-              <small>{{ formatDate(note.updated_at) }}<template v-if="note.image_count"> · {{ t('pages.notes.imageCount', { count: note.image_count }) }}</template></small>
+              <small>{{ formatDate(note.updated_at) }}<template v-if="note.image_count"> · {{ t('pages.notes.imageCount', note.image_count) }}</template></small>
             </div>
             <img v-if="note.cover_image_id && !['', 'error'].includes(imageUrl(note.id, note.cover_image_id))" :src="imageUrl(note.id, note.cover_image_id)" alt="" />
           </button>

@@ -15,7 +15,7 @@ import DropQrDialog from '../../components/drop/DropQrDialog.vue'
 const RETENTION_DAYS = 7
 const PAGE_SIZE = 50
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const dialog = useDialogStore()
 
 const me = ref(null)
@@ -108,7 +108,7 @@ function dayLabel(value) {
   const yesterday = new Date(Date.now() - 86400000)
   if (date.toDateString() === today.toDateString()) return t('pages.xuandrop.today')
   if (date.toDateString() === yesterday.toDateString()) return t('pages.xuandrop.yesterday')
-  return date.toLocaleDateString()
+  return date.toLocaleDateString(locale.value)
 }
 
 function errorMessage(error) {

@@ -41,7 +41,7 @@ const messageDraft = reactive({ title: '', body: '', level: 'info', recipient_us
 const systemDraft = reactive({ registration_mode: 'invite_only', default_free_storage_mb: 500, auto_backup_enabled: false })
 const passwordDraft = reactive({ old_password: '', new_password: '', confirm_password: '' })
 const currentLocaleLabel = computed(() => locale.value === 'zh-CN' ? '中' : 'EN')
-const localeTitle = computed(() => locale.value === 'zh-CN' ? '切换到英文' : 'Switch to Chinese')
+const localeTitle = computed(() => locale.value === 'zh-CN' ? t('common.language.switchToEnglish') : t('common.language.switchToChinese'))
 const ADMIN_PAGE_SIZE = 10
 const auditPage = ref(1)
 const backupPage = ref(1)
@@ -123,7 +123,7 @@ function bytesToMb(value) {
 
 function formatDate(value) {
   if (!value) return t('common.states.never')
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
 function quotaLabel(user) {
@@ -584,7 +584,7 @@ onMounted(loadAdmin)
           </article>
           <p v-if="!auditLogs.length" class="xb-muted">{{ t('pages.admin.noAuditLogs') }}</p>
         </div>
-        <nav v-if="auditLogs.length > ADMIN_PAGE_SIZE" class="xb-pagination" aria-label="Audit pages">
+        <nav v-if="auditLogs.length > ADMIN_PAGE_SIZE" class="xb-pagination" :aria-label="t('pages.admin.auditPages')">
           <button class="xb-secondary-button" type="button" :disabled="auditPage <= 1" @click="changeAuditPage(-1)">
             {{ t('pages.admin.pagePrev') }}
           </button>
@@ -619,7 +619,7 @@ onMounted(loadAdmin)
           </article>
           <p v-if="!backupRows.length" class="xb-muted">{{ t('pages.admin.noBackupsYet') }}</p>
         </div>
-        <nav v-if="backupRows.length > ADMIN_PAGE_SIZE" class="xb-pagination" aria-label="Backup pages">
+        <nav v-if="backupRows.length > ADMIN_PAGE_SIZE" class="xb-pagination" :aria-label="t('pages.admin.backupPages')">
           <button class="xb-secondary-button" type="button" :disabled="backupPage <= 1" @click="changeBackupPage(-1)">
             {{ t('pages.admin.pagePrev') }}
           </button>
@@ -669,7 +669,7 @@ onMounted(loadAdmin)
           </article>
           <p v-if="!workerFailures.length" class="xb-muted">{{ t('pages.admin.noWorkers') }}</p>
         </div>
-        <nav v-if="workerFailures.length > ADMIN_PAGE_SIZE" class="xb-pagination" aria-label="Worker failure pages">
+        <nav v-if="workerFailures.length > ADMIN_PAGE_SIZE" class="xb-pagination" :aria-label="t('pages.admin.workerPages')">
           <button class="xb-secondary-button" type="button" :disabled="workerPage <= 1" @click="changeWorkerPage(-1)">
             {{ t('pages.admin.pagePrev') }}
           </button>
@@ -685,35 +685,35 @@ onMounted(loadAdmin)
       <form class="xb-modal" @submit.prevent="saveUserEdit">
         <h3>{{ t('pages.admin.editUser') }}</h3>
         <label>
-          Role
+          {{ t('pages.admin.role') }}
           <select v-model="editingUser.role">
-            <option value="owner">Owner</option>
-            <option value="admin">Admin</option>
-            <option value="user">User</option>
-            <option value="guest">Guest</option>
+            <option value="owner">{{ t('pages.admin.status.owner') }}</option>
+            <option value="admin">{{ t('pages.admin.status.admin') }}</option>
+            <option value="user">{{ t('pages.admin.status.user') }}</option>
+            <option value="guest">{{ t('pages.admin.status.guest') }}</option>
           </select>
         </label>
         <label>
-          Plan
+          {{ t('pages.admin.plan') }}
           <select v-model="editingUser.plan">
-            <option value="free">Free</option>
-            <option value="pro">Pro</option>
+            <option value="free">{{ t('pages.admin.planFree') }}</option>
+            <option value="pro">{{ t('pages.admin.planPro') }}</option>
           </select>
         </label>
         <label>
-          Status
+          {{ t('pages.admin.statusLabel') }}
           <select v-model="editingUser.status">
-            <option value="active">Active</option>
-            <option value="disabled">Disabled</option>
+            <option value="active">{{ t('pages.admin.status.active') }}</option>
+            <option value="disabled">{{ t('pages.admin.status.disabled') }}</option>
           </select>
         </label>
-        <label>Storage limit (MB) <input v-model="editingUser.storage_limit_mb" type="number" min="0" step="1" placeholder="empty for unlimited" /></label>
+        <label>{{ t('pages.admin.storageLimitMb') }} <input v-model="editingUser.storage_limit_mb" type="number" min="0" step="1" :placeholder="t('pages.admin.storageLimitPlaceholder')" /></label>
         <div class="xb-row-actions">
           <button class="xb-primary-button" type="submit">
             <Save :size="16" />
-            Save
+            {{ t('pages.admin.save') }}
           </button>
-          <button class="xb-secondary-button" type="button" @click="editingUser = null">Cancel</button>
+          <button class="xb-secondary-button" type="button" @click="editingUser = null">{{ t('pages.admin.cancel') }}</button>
         </div>
       </form>
     </section>

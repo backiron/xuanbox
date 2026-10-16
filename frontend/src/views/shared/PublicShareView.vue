@@ -7,7 +7,7 @@ import { useI18n } from 'vue-i18n'
 import { shareApi } from '../../api/shareApi'
 
 const route = useRoute()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const token = computed(() => route.params.token)
 const metadata = ref(null)
 const password = ref('')
@@ -59,7 +59,7 @@ async function downloadShare() {
 
 function formatDate(value) {
   if (!value) return t('common.file.noExpiry')
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
 onMounted(loadMetadata)

@@ -27,6 +27,17 @@ import './styles/mobile.css'
 import './styles/drop.css'
 import './styles/vault.css'
 
+// Page-view analytics stay off unless whoever builds this install turns them on.
+const analyticsSrc = import.meta.env.VITE_ANALYTICS_SRC
+const analyticsSite = import.meta.env.VITE_ANALYTICS_SITE
+if (analyticsSrc && analyticsSite) {
+  const script = document.createElement('script')
+  script.async = true
+  script.src = analyticsSrc
+  script.dataset.site = analyticsSite
+  document.head.appendChild(script)
+}
+
 const naive = create({
   components: [
     NButton,

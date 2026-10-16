@@ -445,7 +445,7 @@ onBeforeUnmount(() => {
             <Search :size="16" />
             <input v-model="filters.q" :placeholder="t('pages.receipts.searchPlaceholder')" @keyup.enter="loadReceipts" />
           </div>
-          <button class="xb-secondary-button xb-filter-submit" type="button" aria-label="Search receipts" @click="loadReceipts">
+          <button class="xb-secondary-button xb-filter-submit" type="button" :aria-label="t('common.actions.search')" @click="loadReceipts">
             <Search :size="16" />
           </button>
         </div>
@@ -464,7 +464,7 @@ onBeforeUnmount(() => {
               <span v-else>{{ receiptStatusLabel(receipt) }}</span>
               <span>{{ receipt.warranty_until ? t('pages.receipts.rowWarranty', { date: receipt.warranty_until }) : t('pages.receipts.noWarranty') }}</span>
             </div>
-            <button class="xb-icon-button xb-receipt-more-button" type="button" title="Receipt actions" @click.stop="openReceiptSheet(receipt)">
+            <button class="xb-icon-button xb-receipt-more-button" type="button" :title="t('pages.receipts.receiptActions')" @click.stop="openReceiptSheet(receipt)">
               <MoreHorizontal :size="18" />
             </button>
             <div class="xb-row-actions xb-receipt-inline-actions">

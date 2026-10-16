@@ -77,7 +77,7 @@ onBeforeUnmount(clearAvatarObjectUrl)
           <img v-if="avatarObjectUrl" :src="avatarObjectUrl" alt="" />
           <span v-else>{{ userInitial }}</span>
         </span>
-        {{ authStore.user?.display_name || authStore.user?.username || 'Morning' }}
+        {{ authStore.user?.display_name || authStore.user?.username || t('common.accountFallback') }}
         <span v-if="authStore.user?.plan === 'pro'" class="xb-plan-badge">Pro</span>
       </router-link>
     </div>

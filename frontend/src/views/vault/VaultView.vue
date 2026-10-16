@@ -8,7 +8,7 @@ import { vaultApi } from '../../api/vaultApi'
 import { useDialogStore } from '../../stores/dialogStore'
 import { useVaultStore } from '../../stores/vaultStore'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const vault = useVaultStore()
 const dialog = useDialogStore()
 
@@ -31,7 +31,7 @@ function formatBytes(value) {
 }
 
 function formatDate(value) {
-  return value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value)) : ''
+  return value ? new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(value)) : ''
 }
 
 function failure(err, fallbackKey) {

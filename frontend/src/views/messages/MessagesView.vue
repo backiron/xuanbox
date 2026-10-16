@@ -9,11 +9,11 @@ import { messageApi } from '../../api/messageApi'
 const messages = ref([])
 const loading = ref(false)
 const error = ref('')
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 function formatDate(value) {
   if (!value) return ''
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
 async function loadMessages() {
