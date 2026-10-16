@@ -14,6 +14,7 @@ export const useDialogStore = defineStore('dialog', {
     confirmText: 'Confirm',
     cancelText: 'Cancel',
     danger: false,
+    onConfirm: null,
     resolver: null
   }),
   actions: {
@@ -51,11 +52,14 @@ export const useDialogStore = defineStore('dialog', {
           confirmText: options.confirmText || t('common.actions.confirm'),
           cancelText: options.cancelText || t('common.actions.cancel'),
           danger: Boolean(options.danger),
+          // Runs synchronously inside the tap, for things a browser only allows from a user gesture.
+          onConfirm: options.onConfirm || null,
           resolver: resolve
         })
       })
     },
     submit() {
+      if (this.mode === 'confirm') this.onConfirm?.()
       const result = this.mode === 'confirm' ? true : this.value
       this.resolver?.(result)
       this.close()
@@ -66,6 +70,7 @@ export const useDialogStore = defineStore('dialog', {
     },
     close() {
       this.visible = false
+      this.onConfirm = null
       this.resolver = null
     }
   }

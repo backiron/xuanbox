@@ -1,22 +1,28 @@
-import { canShareFile, downloadFile } from './dropMedia'
+import { downloadFile, isAppleMobile } from './dropMedia'
 
 /**
  * Hand a downloaded blob to the person.
  *
- * On iPhone/iPad a page can only put a video or photo into Photos (or a file into Files) through the
- * share sheet, and the share sheet only opens from a fresh tap. The download itself takes a while, so
- * `askToSave` shows a "ready" prompt whose button supplies that tap. Elsewhere the file is just saved.
+ * iPhone/iPad Safari ignores a save that does not happen during a tap, and the download itself takes a
+ * while, so there `askToSave(file, deliver)` shows a "ready" prompt and its button calls `deliver`
+ * synchronously: the share sheet (Save Video / Save Image into Photos, or Save to Files) when it can take
+ * the file, otherwise a regular download. Elsewhere the file is just saved.
  */
-export async function saveBlobToDevice(blob, filename, askToSave) {
+export function saveBlobToDevice(blob, filename, askToSave) {
   const file = new File([blob], filename || 'download', { type: blob.type || 'application/octet-stream' })
-  if (canShareFile(file)) {
-    if (!(await askToSave(file))) return
-    try {
-      await navigator.share({ files: [file] })
-      return
-    } catch (error) {
-      if (error?.name === 'AbortError') return
-    }
+  if (!isAppleMobile) {
+    downloadFile(file)
+    return Promise.resolve()
+  }
+  return askToSave(file, () => deliverDuringTap(file))
+}
+
+function deliverDuringTap(file) {
+  if (navigator.canShare?.({ files: [file] })) {
+    navigator.share({ files: [file] }).catch((error) => {
+      if (error?.name !== 'AbortError') downloadFile(file)
+    })
+    return
   }
   downloadFile(file)
 }

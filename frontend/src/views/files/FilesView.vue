@@ -425,12 +425,13 @@ async function moveFile(file) {
   openMoveModal([file])
 }
 
-function askToSave(file) {
+function askToSave(file, onConfirm) {
   return dialog.confirm({
     title: t('common.saveFile.readyTitle'),
     message: t('common.saveFile.readyMessage', { name: file.name }),
     confirmText: t('common.saveFile.save'),
-    cancelText: t('common.actions.cancel')
+    cancelText: t('common.actions.cancel'),
+    onConfirm
   })
 }
 
