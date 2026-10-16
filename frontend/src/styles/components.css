@@ -3843,3 +3843,45 @@ body.xb-lightbox-open {
     animation: none;
   }
 }
+
+/* Download progress that stays visible wherever the page is scrolled (and above the photo viewer). */
+.xb-download-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  z-index: 1200;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 6px 8px;
+  width: min(320px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border: 1px solid var(--xb-border-strong);
+  border-radius: var(--xb-radius-lg);
+  background: var(--xb-bg-card-strong);
+  box-shadow: var(--xb-shadow-card);
+  color: var(--xb-text-main);
+  font-size: 14px;
+  transform: translateX(-50%);
+}
+
+.xb-download-toast i {
+  grid-column: 1 / -1;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--xb-border);
+}
+
+.xb-download-toast b {
+  display: block;
+  height: 100%;
+  background: var(--xb-color-primary);
+  transition: width 0.2s ease;
+}
+
+@media (max-width: 840px) {
+  .xb-download-toast {
+    bottom: calc(84px + env(safe-area-inset-bottom));
+  }
+}

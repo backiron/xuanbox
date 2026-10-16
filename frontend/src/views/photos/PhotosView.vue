@@ -12,6 +12,7 @@ import { receiptApi } from '../../api/receiptApi'
 import { useDialogStore } from '../../stores/dialogStore'
 import { findUploadLimitError } from '../../utils/uploadLimits'
 import { downloadPercent, saveBlobToDevice, withExtension } from '../../utils/saveFile'
+import DownloadToast from '../../components/common/DownloadToast.vue'
 
 const photos = ref([])
 const albums = ref([])
@@ -460,7 +461,7 @@ onBeforeUnmount(() => {
     <div v-if="uploadProgress" class="xb-progress">
       <span :style="{ width: `${uploadProgress}%` }"></span>
     </div>
-    <p v-if="downloadProgress && !activePreview" class="xb-status-note">{{ t('common.saveFile.downloading', { percent: downloadProgress }) }}</p>
+    <DownloadToast :percent="downloadProgress" />
 
     <section class="xb-photo-drop-hint" :class="{ 'is-visible': draggingPhotos }">
       <Upload :size="18" />
@@ -615,7 +616,7 @@ onBeforeUnmount(() => {
           <button class="xb-icon-button" type="button" :title="t('pages.photos.previousPhoto')" @click="stepPreview(-1)">
             <ChevronLeft :size="20" />
           </button>
-          <strong>{{ downloadProgress ? t('common.saveFile.downloading', { percent: downloadProgress }) : `${activePreview.width} x ${activePreview.height}` }}</strong>
+          <strong>{{ activePreview.width }} x {{ activePreview.height }}</strong>
           <button class="xb-icon-button" type="button" :title="t('pages.photos.downloadOriginal')" @click="downloadOriginal(activePreview)">
             <Download :size="19" />
           </button>

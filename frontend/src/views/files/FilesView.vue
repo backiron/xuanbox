@@ -21,6 +21,7 @@ import {
 } from 'lucide-vue-next'
 import PageHeader from '../../components/common/PageHeader.vue'
 import EmptyState from '../../components/common/EmptyState.vue'
+import DownloadToast from '../../components/common/DownloadToast.vue'
 import { fileApi, folderApi, intelligenceApi, tagApi } from '../../api/fileApi'
 import { vaultApi } from '../../api/vaultApi'
 import { useVaultStore } from '../../stores/vaultStore'
@@ -670,10 +671,7 @@ onMounted(loadFiles)
   <div v-if="uploadProgress" class="xb-progress">
     <span :style="{ width: `${uploadProgress}%` }"></span>
   </div>
-  <template v-if="downloadProgress">
-    <p class="xb-status-note">{{ t('common.saveFile.downloading', { percent: downloadProgress }) }}</p>
-    <div class="xb-progress"><span :style="{ width: `${downloadProgress}%` }"></span></div>
-  </template>
+  <DownloadToast :percent="downloadProgress" />
 
   <section class="xb-upload-drop-hint" :class="{ 'is-visible': draggingFiles }">
     <Upload :size="18" />

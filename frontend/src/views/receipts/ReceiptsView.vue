@@ -9,11 +9,13 @@ import { fileApi } from '../../api/fileApi'
 import { receiptApi } from '../../api/receiptApi'
 import { useDialogStore } from '../../stores/dialogStore'
 import { findUploadLimitError } from '../../utils/uploadLimits'
-import { saveBlobToDevice, withExtension } from '../../utils/saveFile'
+import { downloadPercent, saveBlobToDevice, withExtension } from '../../utils/saveFile'
+import DownloadToast from '../../components/common/DownloadToast.vue'
 
 const receipts = ref([])
 const loading = ref(false)
 const uploadProgress = ref(0)
+const downloadProgress = ref(0)
 const draggingReceipts = ref(false)
 const filters = ref({ q: '', category: '', merchant: '', year: '' })
 const draft = ref({ merchant: '', category: '', amount: '', currency: 'USD', purchase_date: '', warranty_until: '', notes: '' })
@@ -360,11 +362,15 @@ function askToSave(file, onConfirm) {
 
 async function downloadOriginal(receipt) {
   closeReceiptSheet()
+  if (downloadProgress.value) return
+  downloadProgress.value = 1
   try {
-    const response = await fileApi.download(receipt.file_id)
+    const response = await fileApi.download(receipt.file_id, (event) => { downloadProgress.value = downloadPercent(event) })
+    downloadProgress.value = 0
     const name = withExtension(`${receipt.merchant || 'receipt'}-${receipt.purchase_date || receipt.id}`, response.data.type)
     await saveBlobToDevice(response.data, name, askToSave)
   } catch {
+    downloadProgress.value = 0
     await dialog.confirm({ title: t('common.saveFile.failed'), message: '', confirmText: t('common.actions.close') })
   }
 }
@@ -400,6 +406,7 @@ onBeforeUnmount(() => {
     @dragleave="onDragLeave"
     @drop.prevent="onReceiptDrop"
   >
+    <DownloadToast :percent="downloadProgress" />
     <PageHeader :title="t('pages.receipts.title')" :subtitle="t('pages.receipts.subtitle')">
       <label class="xb-secondary-button">
         <Camera :size="18" />
