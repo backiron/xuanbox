@@ -14,6 +14,7 @@ from app.models.photo_asset import PhotoAsset
 from app.models.receipt import Receipt
 from app.models.user import User
 from app.services.audit_service import write_audit_log
+from app.services.vault_scope import vault_photo_ids
 from app.services.file_service import create_encrypted_asset_from_bytes, decrypt_owned_file
 from app.services.file_service import soft_delete_file
 from app.services.upload_limits import MAX_IMAGE_UPLOAD_BYTES, read_upload_bytes
@@ -135,14 +136,16 @@ async def create_photo_from_file(db: AsyncSession, owner: User, file_id: UUID) -
 async def list_photos(db: AsyncSession, owner: User) -> list[PhotoAsset]:
     result = await db.scalars(
         select(PhotoAsset)
-        .where(PhotoAsset.owner_id == owner.id)
+        .where(PhotoAsset.owner_id == owner.id, PhotoAsset.id.not_in(vault_photo_ids(owner.id)))
         .order_by(PhotoAsset.taken_at.desc().nullslast(), PhotoAsset.uploaded_at.desc())
     )
     return list(result)
 
 
 async def get_owned_photo(db: AsyncSession, owner: User, photo_id: UUID) -> PhotoAsset:
-    photo = await db.scalar(select(PhotoAsset).where(PhotoAsset.id == photo_id, PhotoAsset.owner_id == owner.id))
+    photo = await db.scalar(
+        select(PhotoAsset).where(PhotoAsset.id == photo_id, PhotoAsset.owner_id == owner.id, PhotoAsset.id.not_in(vault_photo_ids(owner.id)))
+    )
     if photo is None:
         raise AppError("photo_not_found", "Photo not found", 404)
     return photo

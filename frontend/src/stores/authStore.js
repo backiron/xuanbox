@@ -1,3 +1,4 @@
+import { forgetVaultUnlock } from './vaultStore'
 import { defineStore } from 'pinia'
 import { authApi } from '../api/authApi'
 
@@ -42,6 +43,7 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem('xb_access_token')
       localStorage.removeItem('xb_refresh_token')
       localStorage.removeItem('xb_client_type')
+      forgetVaultUnlock()
     }
   }
 })

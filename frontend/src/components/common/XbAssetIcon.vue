@@ -11,6 +11,7 @@ import xuandrop from '../../assets/xuanbox-icons/icon_13_xuandrop.svg'
 import upload from '../../assets/xuanbox-icons/icon_14_upload.svg'
 import download from '../../assets/xuanbox-icons/icon_15_download.svg'
 import trash from '../../assets/xuanbox-icons/icon_16_trash.svg'
+import encrypt from '../../assets/xuanbox-icons/icon_19_encrypt.svg'
 import settings from '../../assets/xuanbox-icons/icon_21_settings.svg'
 import users from '../../assets/xuanbox-icons/icon_22_users.svg'
 import admin from '../../assets/xuanbox-icons/icon_23_admin.svg'
@@ -32,6 +33,7 @@ const icons = {
   upload,
   download,
   trash,
+  encrypt,
   settings,
   users,
   admin,

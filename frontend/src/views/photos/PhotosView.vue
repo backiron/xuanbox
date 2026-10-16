@@ -1,11 +1,12 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Album, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, Download, Edit3, FileCheck2, FolderInput, ImagePlus, ReceiptText, Share2, ShieldCheck, Square, Trash2, Upload, X } from 'lucide-vue-next'
+import { Album, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, Download, Edit3, FolderInput, ImagePlus, ReceiptText, Share2, ShieldCheck, Square, Trash2, Upload, X } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import PageHeader from '../../components/common/PageHeader.vue'
 import EmptyState from '../../components/common/EmptyState.vue'
-import { importantDocApi } from '../../api/fileApi'
+import { vaultApi } from '../../api/vaultApi'
+import { useVaultStore } from '../../stores/vaultStore'
 import { albumApi, photoApi } from '../../api/photoApi'
 import { receiptApi } from '../../api/receiptApi'
 import { useDialogStore } from '../../stores/dialogStore'
@@ -24,8 +25,6 @@ const editMode = ref(false)
 const moveModalOpen = ref(false)
 const moveAlbumId = ref('')
 const mobileAlbumDrawerOpen = ref(false)
-const vaultStatus = ref({ pin_set: false, locked_until: null })
-const importantUnlockToken = ref('')
 const currentPage = ref(1)
 const isMobileViewport = ref(window.matchMedia?.('(max-width: 840px)').matches ?? false)
 const pageSize = computed(() => isMobileViewport.value ? 24 : 48)
@@ -35,6 +34,7 @@ let thumbHydrateTimer = 0
 let cleanupViewportListener = null
 const dialog = useDialogStore()
 const router = useRouter()
+const vault = useVaultStore()
 const { t } = useI18n()
 
 const totalPages = computed(() => Math.max(1, Math.ceil(photos.value.length / pageSize.value)))
@@ -354,38 +354,21 @@ async function savePhotoAsReceipt(photo = activePreview.value) {
 }
 
 async function addPhotoToImportantDocs(photo = activePreview.value) {
-  if (!photo?.file_id) return
-  if (!vaultStatus.value.pin_set) {
-    const pin = await dialog.prompt({ title: t('pages.files.importantVaultPinTitleSetup'), label: t('pages.files.importantVaultPinLabel'), placeholder: '123456' })
-    if (!pin) return
-    const response = await importantDocApi.setup(pin)
-    importantUnlockToken.value = response.data.data.unlock_token
-    await loadVaultStatus()
-  } else if (!importantUnlockToken.value) {
-    const pin = await dialog.prompt({ title: t('pages.files.importantVaultPinTitleUnlock'), label: t('pages.files.importantVaultPinLabel'), placeholder: t('common.placeholders.importantDocPin') })
-    if (!pin) return
-    const response = await importantDocApi.unlock(pin)
-    importantUnlockToken.value = response.data.data.unlock_token
-  }
-  await importantDocApi.createFromFile(photo.file_id, {
-    title: t('pages.photos.photoDocumentTitle', { date: new Date(photo.uploaded_at || Date.now()).toLocaleDateString() }),
-    document_type: 'photo_document',
-    security_level: 'vault_locked',
-    note: t('pages.photos.createdFromPhotos')
-  }, importantUnlockToken.value)
-  await dialog.confirm({
-    title: t('pages.photos.addImportantTitle'),
-    message: t('pages.photos.addImportantMsg'),
-    confirmText: t('pages.files.dialogOk')
-  })
-}
-
-async function loadVaultStatus() {
+  if (!photo?.id) return
   try {
-    const response = await importantDocApi.status()
-    vaultStatus.value = response.data.data
-  } catch {
-    vaultStatus.value = { pin_set: false, locked_until: null }
+    const done = await vault.run((token) => vaultApi.addPhoto(token, photo.id))
+    if (!done) return
+    closePreview()
+    await loadPhotos()
+    const open = await dialog.confirm({
+      title: t('pages.vault.added'),
+      message: t('pages.vault.addedCount', { count: 1 }),
+      confirmText: t('pages.vault.openVault'),
+      cancelText: t('common.actions.close')
+    })
+    if (open) await router.push('/vault')
+  } catch (err) {
+    await dialog.confirm({ title: t('pages.vault.addFailed'), message: err.response?.data?.message || '', confirmText: t('pages.files.dialogOk') })
   }
 }
 
@@ -419,7 +402,7 @@ onMounted(async () => {
   }
   mediaQuery?.addEventListener?.('change', updateViewportMode)
   cleanupViewportListener = () => mediaQuery?.removeEventListener?.('change', updateViewportMode)
-  await Promise.all([loadPhotos(), loadVaultStatus()])
+  await loadPhotos()
 })
 watch(currentPage, scheduleHydrateVisibleThumbs)
 watch(activePreview, (photo) => {
@@ -623,7 +606,7 @@ onBeforeUnmount(() => {
           <button class="xb-icon-button" type="button" title="Save as receipt" @click="savePhotoAsReceipt(activePreview)">
             <ReceiptText :size="19" />
           </button>
-          <button class="xb-icon-button" type="button" title="Add to Important docs" @click="addPhotoToImportantDocs(activePreview)">
+          <button class="xb-icon-button" type="button" :title="t('pages.vault.addTo')" @click="addPhotoToImportantDocs(activePreview)">
             <ShieldCheck :size="19" />
           </button>
           <button class="xb-icon-button xb-danger-button" type="button" title="Delete photo" @click="deletePhotos([activePreview])">
@@ -655,8 +638,8 @@ onBeforeUnmount(() => {
             Receipt
           </button>
           <button class="xb-secondary-button" type="button" @click="addPhotoToImportantDocs(activePreview)">
-            <FileCheck2 :size="18" />
-            Important
+            <ShieldCheck :size="18" />
+            {{ t('pages.vault.addTo') }}
           </button>
           <button class="xb-secondary-button xb-danger-button" type="button" @click="deletePhotos([activePreview])">
             <Trash2 :size="18" />

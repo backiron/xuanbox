@@ -7,7 +7,7 @@ from app.schemas.file_asset import FileAssetPublic
 
 
 class InboxResolveRequest(BaseModel):
-    action: str = Field(pattern="^(photo|file|receipt|dismiss)$")
+    action: str = Field(pattern="^(photo|file|receipt|vault|dismiss)$")
 
 
 class InboxItemPublic(BaseModel):

@@ -1,11 +1,13 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { CheckCircle2, FileText, Image, Inbox, ReceiptText, RotateCcw, Trash2, Upload } from 'lucide-vue-next'
+import { CheckCircle2, FileText, Image, Inbox, ReceiptText, RotateCcw, ShieldCheck, Trash2, Upload } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import PageHeader from '../../components/common/PageHeader.vue'
 import { inboxApi } from '../../api/inboxApi'
+import { vaultApi } from '../../api/vaultApi'
+import { useVaultStore } from '../../stores/vaultStore'
 import { useDialogStore } from '../../stores/dialogStore'
 import { useAuthStore } from '../../stores/authStore'
 import { findUploadLimitError } from '../../utils/uploadLimits'
@@ -20,6 +22,7 @@ const error = ref('')
 const { t } = useI18n()
 const dialog = useDialogStore()
 const router = useRouter()
+const vault = useVaultStore()
 const authStore = useAuthStore()
 
 const pendingCount = computed(() => items.value.length)
@@ -124,8 +127,17 @@ async function resolveItem(item, action) {
   message.value = ''
   error.value = ''
   try {
-    const resolved = (await inboxApi.resolve(item.id, action)).data.data
-    const label = action === 'photo'
+    let resolved
+    if (action === 'vault') {
+      const response = await vault.run((token) => vaultApi.resolveInbox(token, item.id))
+      if (!response) return
+      resolved = response.data.data
+    } else {
+      resolved = (await inboxApi.resolve(item.id, action)).data.data
+    }
+    const label = action === 'vault'
+      ? t('routes.vault')
+      : action === 'photo'
       ? t('pages.dashboard.photos')
       : action === 'receipt'
         ? t('routes.receipts')
@@ -251,6 +263,10 @@ onMounted(async () => {
             <button class="xb-secondary-button" type="button" :disabled="resolvingId === item.id" @click="resolveItem(item, 'receipt')">
               <ReceiptText :size="16" />
               {{ t('pages.inbox.saveAsReceipt') }}
+            </button>
+            <button class="xb-secondary-button" type="button" :disabled="resolvingId === item.id" @click="resolveItem(item, 'vault')">
+              <ShieldCheck :size="16" />
+              {{ t('pages.vault.addTo') }}
             </button>
             <button class="xb-secondary-button xb-danger-button" type="button" :disabled="resolvingId === item.id" @click="resolveItem(item, 'dismiss')">
               <Trash2 :size="16" />

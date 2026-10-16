@@ -17,6 +17,7 @@ const navItems = [
   { to: '/files', label: () => t('routes.files'), icon: 'files' },
   { to: '/receipts', label: () => t('routes.receipts'), icon: 'receipts' },
   { to: '/notes', label: () => t('routes.notes'), icon: 'documents' },
+  { to: '/vault', label: () => t('routes.vault'), icon: 'encrypt' },
   { to: '/drop', label: () => t('routes.drop'), icon: 'xuandrop' },
   { to: '/shared', label: () => t('routes.shared'), icon: 'share' },
   { to: '/messages', label: () => t('routes.messages'), icon: 'notifications' },

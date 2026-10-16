@@ -23,7 +23,8 @@ import {
 import PageHeader from '../../components/common/PageHeader.vue'
 import { authApi } from '../../api/authApi'
 import { deviceApi } from '../../api/deviceApi'
-import { importantDocApi } from '../../api/fileApi'
+import { vaultApi } from '../../api/vaultApi'
+import { useVaultStore } from '../../stores/vaultStore'
 import { settingsApi } from '../../api/settingsApi'
 import { http } from '../../api/http'
 import { useAuthStore } from '../../stores/authStore'
@@ -49,7 +50,7 @@ const message = ref('')
 const error = ref('')
 const profileForm = reactive({ display_name: '', email: '' })
 const passwordForm = reactive({ old_password: '', new_password: '' })
-const vaultForm = reactive({ pin: '' })
+const vault = useVaultStore()
 const DEVICE_PAGE_SIZE = 6
 const devicesPage = ref(1)
 
@@ -121,7 +122,7 @@ async function loadStorage() {
 }
 
 async function loadVaultStatus() {
-  const response = await importantDocApi.status()
+  const response = await vaultApi.status()
   vaultStatus.value = response.data.data
 }
 
@@ -245,17 +246,12 @@ async function changePassword() {
   }
 }
 
-async function setupVaultPin() {
+async function vaultDialog(mode) {
   message.value = ''
-  error.value = ''
-  try {
-    await importantDocApi.setup(vaultForm.pin)
-    vaultForm.pin = ''
-    await loadVaultStatus()
-    message.value = t('pages.settings.pinEnabled')
-  } catch (err) {
-    error.value = err.response?.data?.error?.message || t('pages.settings.pinError')
-  }
+  const token = await vault.openDialog(mode)
+  if (!token) return
+  await loadVaultStatus()
+  message.value = mode === 'setup' ? t('pages.settings.pinEnabled') : t('pages.vault.pinChanged')
 }
 
 async function revokeDevice(device) {
@@ -386,20 +382,23 @@ onMounted(loadAll)
           <button class="xb-primary-button" type="submit">{{ t('pages.settings.changePassword') }}</button>
         </form>
 
-        <form class="xb-panel xb-settings-card xb-settings-form" @submit.prevent="setupVaultPin">
+        <div class="xb-panel xb-settings-card xb-settings-form">
           <div class="xb-settings-card-header">
             <div>
-              <h3>{{ t('pages.settings.importantDocsPin') }}</h3>
-              <p>{{ vaultStatus.pin_set ? t('pages.settings.pinEnabled') : t('pages.settings.pinSetupHint') }}</p>
+              <h3>{{ t('pages.vault.title') }}</h3>
+              <p>{{ vaultStatus.pin_set ? t('pages.settings.vaultPinSet') : t('pages.vault.setupHint') }}</p>
             </div>
             <Lock :size="22" />
           </div>
-          <label>
-            {{ vaultStatus.pin_set ? t('pages.settings.pinLabelNew') : t('pages.settings.pinLabel') }}
-            <input v-model="vaultForm.pin" type="password" minlength="4" maxlength="32" required />
-          </label>
-          <button class="xb-secondary-button" type="submit">{{ vaultStatus.pin_set ? t('common.buttons.resetPin') : t('common.buttons.setPin') }}</button>
-        </form>
+          <div class="xb-row-actions">
+            <button v-if="!vaultStatus.pin_set" class="xb-secondary-button" type="button" @click="vaultDialog('setup')">{{ t('pages.vault.setupButton') }}</button>
+            <template v-else>
+              <button class="xb-secondary-button" type="button" @click="vaultDialog('change')">{{ t('pages.vault.changePin') }}</button>
+              <button class="xb-text-button" type="button" @click="vaultDialog('reset')">{{ t('pages.vault.dialog.forgot') }}</button>
+            </template>
+            <router-link class="xb-text-button" to="/vault">{{ t('pages.vault.openVault') }}</router-link>
+          </div>
+        </div>
 
         <div class="xb-panel xb-settings-card">
           <h3>{{ t('pages.settings.sessions') }}</h3>

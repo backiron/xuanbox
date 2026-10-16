@@ -60,33 +60,6 @@ export const tagApi = {
   }
 }
 
-export const importantDocApi = {
-  status() {
-    return http.get('/important-docs/status')
-  },
-  setup(pin) {
-    return http.post('/important-docs/setup', { pin })
-  },
-  unlock(pin) {
-    return http.post('/important-docs/unlock', { pin })
-  },
-  list(unlockToken) {
-    return http.get('/important-docs', { headers: { 'X-Vault-Unlock': unlockToken } })
-  },
-  createFromFile(fileId, payload, unlockToken) {
-    return http.post(`/important-docs/from-file/${fileId}`, payload, { headers: { 'X-Vault-Unlock': unlockToken } })
-  },
-  download(id, unlockToken) {
-    return http.get(`/important-docs/${id}/download`, {
-      responseType: 'blob',
-      headers: { 'X-Vault-Unlock': unlockToken }
-    })
-  },
-  remove(id, unlockToken) {
-    return http.delete(`/important-docs/${id}`, { headers: { 'X-Vault-Unlock': unlockToken } })
-  }
-}
-
 export const intelligenceApi = {
   file(fileId) {
     return http.get(`/intelligence/files/${fileId}`)

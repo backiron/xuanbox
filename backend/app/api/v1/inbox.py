@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, Header, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +12,7 @@ from app.models.user import User
 from app.models.receipt import Receipt
 from app.schemas.file_asset import FileAssetPublic
 from app.schemas.inbox import InboxItemPublic, InboxResolveRequest
+from app.services.important_doc_service import verify_vault_unlock_token
 from app.services.inbox_service import list_inbox_items, resolve_inbox_item, upload_inbox_item
 
 router = APIRouter()
@@ -49,9 +50,12 @@ async def list_inbox_endpoint(
 async def resolve_inbox_endpoint(
     item_id: UUID,
     payload: InboxResolveRequest,
+    x_vault_unlock: str | None = Header(default=None, alias="X-Vault-Unlock"),
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_user_app),
 ) -> dict:
+    if payload.action == "vault":
+        await verify_vault_unlock_token(current_user, x_vault_unlock)
     item = await resolve_inbox_item(session, current_user, item_id, payload.action)
     file_asset = await session.get(FileAsset, item.file_id)
     data = _serialize(item, file_asset)

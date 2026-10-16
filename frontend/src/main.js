@@ -25,6 +25,7 @@ import './styles/layout.css'
 import './styles/components.css'
 import './styles/mobile.css'
 import './styles/drop.css'
+import './styles/vault.css'
 
 const naive = create({
   components: [

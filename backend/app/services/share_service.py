@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
 from app.core.security import create_access_token, decode_token, hash_password, verify_password
-from app.models.document_asset import DocumentAsset
 from app.models.album import Album
 from app.models.file_asset import FileAsset
 from app.models.photo_asset import PhotoAsset
@@ -16,6 +15,7 @@ from app.models.share import Share, ShareAccessLog
 from app.models.user import User
 from app.schemas.share import ShareCreateRequest, ShareUpdateRequest
 from app.services.file_service import decrypt_file_asset
+from app.services.vault_scope import is_vault_file, vault_photo_ids
 
 ALLOWED_TARGET_TYPES = {"file", "photo", "receipt", "document", "album"}
 ALLOWED_PERMISSIONS = {"read", "download", "upload", "comment"}
@@ -52,24 +52,10 @@ async def _target_exists(db: AsyncSession, owner: User, target_type: str, target
 
 
 async def _is_vault_locked_target(db: AsyncSession, owner: User, target_type: str, target_id: UUID) -> bool:
-    if target_type == "document":
-        document = await db.scalar(
-            select(DocumentAsset).where(
-                DocumentAsset.file_id == target_id,
-                DocumentAsset.owner_id == owner.id,
-                DocumentAsset.security_level == "vault_locked",
-            )
-        )
-        return document is not None
-    if target_type == "file":
-        document = await db.scalar(
-            select(DocumentAsset).where(
-                DocumentAsset.file_id == target_id,
-                DocumentAsset.owner_id == owner.id,
-                DocumentAsset.security_level == "vault_locked",
-            )
-        )
-        return document is not None
+    if target_type in {"file", "document"}:
+        return await is_vault_file(db, owner.id, target_id)
+    if target_type == "photo":
+        return await db.scalar(select(PhotoAsset.id).where(PhotoAsset.id == target_id, PhotoAsset.id.in_(vault_photo_ids(owner.id)))) is not None
     return False
 
 
@@ -98,6 +84,14 @@ async def _target_file(db: AsyncSession, share: Share) -> FileAsset:
             raise AppError("share_target_not_found", "Shared receipt file is no longer available", 404)
         return file_asset
     raise AppError("share_not_downloadable", "This share cannot be downloaded", 400)
+
+
+async def _shared_file(db: AsyncSession, share: Share) -> FileAsset:
+    """The shared file, unless it has since been moved into the owner's vault."""
+    file_asset = await _target_file(db, share)
+    if await is_vault_file(db, share.owner_id, file_asset.id):
+        raise AppError("share_target_not_found", "Shared file is no longer available", 404)
+    return file_asset
 
 
 async def target_name(db: AsyncSession, share: Share) -> str | None:
@@ -146,8 +140,8 @@ async def create_share(db: AsyncSession, owner: User, payload: ShareCreateReques
     shared_user = await _find_shared_user(db, payload.shared_with_username)
     if payload.shared_with_username and shared_user is None:
         raise AppError("shared_user_not_found", "Shared user not found", 404)
-    if shared_user is None and await _is_vault_locked_target(db, owner, target_type, payload.target_id):
-        raise AppError("public_share_denied_for_vault", "Important docs cannot be shared through a public link", 403)
+    if await _is_vault_locked_target(db, owner, target_type, payload.target_id):
+        raise AppError("share_denied_for_vault", "Items in the vault cannot be shared", 403)
     if shared_user is not None and shared_user.id == owner.id:
         raise AppError("share_with_self", "You cannot share with yourself", 400)
     expires_at = payload.expires_at
@@ -333,7 +327,7 @@ async def public_share_metadata(db: AsyncSession, share: Share) -> tuple[str, Fi
     name = await target_name(db, share)
     file_asset = None
     if share.target_type in DOWNLOADABLE_TARGET_TYPES:
-        file_asset = await _target_file(db, share)
+        file_asset = await _shared_file(db, share)
     return name or "Shared item", file_asset
 
 
@@ -351,7 +345,7 @@ async def download_public_share(
         raise AppError("share_download_denied", "This share does not allow downloads", 403)
     # Passwords are checked once by verify-password, which hands out a short-lived access token.
     verify_share_access_token(share, access_token)
-    file_asset = await _target_file(db, share)
+    file_asset = await _shared_file(db, share)
     plain_bytes = decrypt_file_asset(file_asset)
     share.download_count += 1
     await write_share_access_log(db, share, action="share.download", success=True, ip_address=ip_address, user_agent=user_agent)
@@ -367,7 +361,7 @@ async def download_received_share(db: AsyncSession, user: User, share_id: UUID, 
     await _check_share_available(db, share, action="share.download", ip_address=ip_address, user_agent=user_agent, actor_user_id=user.id)
     if share.permission not in {"download", "read"}:
         raise AppError("share_download_denied", "This share does not allow downloads", 403)
-    file_asset = await _target_file(db, share)
+    file_asset = await _shared_file(db, share)
     plain_bytes = decrypt_file_asset(file_asset)
     share.download_count += 1
     await write_share_access_log(db, share, action="share.download", success=True, ip_address=ip_address, user_agent=user_agent, actor_user_id=user.id)

@@ -69,17 +69,17 @@ class Device:
     def headers(self) -> dict:
         return {"Authorization": f"Bearer {self.tokens['access_token']}"}
 
-    def get(self, path: str, **kwargs) -> httpx.Response:
-        return httpx.get(f"{BASE_URL}{path}", headers=self.headers, **kwargs)
+    def get(self, path: str, headers: dict | None = None, **kwargs) -> httpx.Response:
+        return httpx.get(f"{BASE_URL}{path}", headers={**self.headers, **(headers or {})}, **kwargs)
 
-    def post(self, path: str, **kwargs) -> httpx.Response:
-        return httpx.post(f"{BASE_URL}{path}", headers=self.headers, **kwargs)
+    def post(self, path: str, headers: dict | None = None, **kwargs) -> httpx.Response:
+        return httpx.post(f"{BASE_URL}{path}", headers={**self.headers, **(headers or {})}, **kwargs)
 
-    def patch(self, path: str, **kwargs) -> httpx.Response:
-        return httpx.patch(f"{BASE_URL}{path}", headers=self.headers, **kwargs)
+    def patch(self, path: str, headers: dict | None = None, **kwargs) -> httpx.Response:
+        return httpx.patch(f"{BASE_URL}{path}", headers={**self.headers, **(headers or {})}, **kwargs)
 
-    def delete(self, path: str, **kwargs) -> httpx.Response:
-        return httpx.delete(f"{BASE_URL}{path}", headers=self.headers, **kwargs)
+    def delete(self, path: str, headers: dict | None = None, **kwargs) -> httpx.Response:
+        return httpx.delete(f"{BASE_URL}{path}", headers={**self.headers, **(headers or {})}, **kwargs)
 
     def login(self, device_name: str | None = None) -> "Device":
         response = httpx.post(

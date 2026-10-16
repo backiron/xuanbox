@@ -18,6 +18,7 @@ import SettingsView from '../views/settings/SettingsView.vue'
 import SearchView from '../views/search/SearchView.vue'
 import MessagesView from '../views/messages/MessagesView.vue'
 import NotesView from '../views/notes/NotesView.vue'
+import VaultView from '../views/vault/VaultView.vue'
 
 const adminLoginMeta = { adminPublic: true, titleKey: 'pages.adminAuth.title' }
 
@@ -40,6 +41,7 @@ const router = createRouter({
         { path: 'photos', name: 'photos', component: PhotosView, meta: { titleKey: 'routes.photos' } },
         { path: 'files', name: 'files', component: FilesView, meta: { titleKey: 'routes.files' } },
         { path: 'receipts', name: 'receipts', component: ReceiptsView, meta: { titleKey: 'routes.receipts' } },
+        { path: 'vault', name: 'vault', component: VaultView, meta: { titleKey: 'routes.vault' } },
         { path: 'notes', name: 'notes', component: NotesView, meta: { titleKey: 'routes.notes' } },
         { path: 'drop', name: 'drop', component: XuanDropView, meta: { titleKey: 'routes.drop' } },
         { path: 'shared', name: 'shared', component: SharedView, meta: { titleKey: 'routes.shared' } },

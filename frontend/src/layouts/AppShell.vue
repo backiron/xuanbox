@@ -8,6 +8,7 @@ import DesktopSidebar from '../components/layout/DesktopSidebar.vue'
 import DesktopTopbar from '../components/layout/DesktopTopbar.vue'
 import MobileTabbar from '../components/layout/MobileTabbar.vue'
 import MobileTopbar from '../components/layout/MobileTopbar.vue'
+import VaultPinDialog from '../components/vault/VaultPinDialog.vue'
 
 const route = useRoute()
 const { t } = useI18n()
@@ -32,5 +33,6 @@ onMounted(async () => {
       </section>
     </main>
     <MobileTabbar class="mobile-only" />
+    <VaultPinDialog />
   </div>
 </template>

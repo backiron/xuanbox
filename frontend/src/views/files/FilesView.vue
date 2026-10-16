@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import {
   ArrowLeft,
   Download,
@@ -20,7 +21,9 @@ import {
 } from 'lucide-vue-next'
 import PageHeader from '../../components/common/PageHeader.vue'
 import EmptyState from '../../components/common/EmptyState.vue'
-import { fileApi, folderApi, importantDocApi, intelligenceApi, tagApi } from '../../api/fileApi'
+import { fileApi, folderApi, intelligenceApi, tagApi } from '../../api/fileApi'
+import { vaultApi } from '../../api/vaultApi'
+import { useVaultStore } from '../../stores/vaultStore'
 import { receiptApi } from '../../api/receiptApi'
 import { useDialogStore } from '../../stores/dialogStore'
 import { findUploadLimitError } from '../../utils/uploadLimits'
@@ -29,10 +32,6 @@ const files = ref([])
 const { t } = useI18n()
 const folders = ref([])
 const allFolders = ref([])
-const importantDocs = ref([])
-const importantDocsLoading = ref(false)
-const importantStatus = ref({ pin_set: false, locked_until: null })
-const importantUnlockToken = ref('')
 const activeFileScope = ref('all')
 const trash = ref([])
 const tags = ref([])
@@ -48,7 +47,6 @@ const intelligenceEditorOpen = ref(false)
 const intelligenceForm = ref({})
 const intelligenceLoading = ref(false)
 const actionFile = ref(null)
-const importantActionDoc = ref(null)
 const uploadProgress = ref(0)
 const draggingFiles = ref(false)
 const tagModalOpen = ref(false)
@@ -64,19 +62,13 @@ const moveFolderQuery = ref('')
 const moveNewFolderName = ref('')
 const moveError = ref('')
 const moveFolderMenuOpen = ref(false)
-const vaultModalMode = ref('')
-const vaultPin = ref('')
-const vaultPinConfirm = ref('')
-const vaultPinError = ref('')
-const pendingImportantFile = ref(null)
-const pendingImportantFiles = ref([])
 const dialog = useDialogStore()
+const router = useRouter()
+const vault = useVaultStore()
 const tagPalette = ['#4e83ff', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#f97316', '#e879f9']
 
-const pageTitle = computed(() => activeFileScope.value === 'important' ? t('pages.files.importantDocs') : currentFolderName.value)
-const pageSubtitle = computed(() => activeFileScope.value === 'important'
-  ? t('pages.files.pageSubtitleImportant')
-  : t('pages.files.pageSubtitleAll'))
+const pageTitle = computed(() => currentFolderName.value)
+const pageSubtitle = computed(() => t('pages.files.pageSubtitleAll'))
 const currentFolderName = computed(() => folderStack.value.at(-1)?.name || t('pages.files.allFiles'))
 const selectedFiles = computed(() => files.value.filter((file) => selectedIds.value.has(file.id)))
 const mobileFolderPills = computed(() => uniqueFolders([...folderStack.value, ...folders.value]))
@@ -314,38 +306,6 @@ async function saveIntelligenceProfile() {
   await loadFileIntelligence(activeFile.value)
 }
 
-async function refreshImportantStatus() {
-  const response = await importantDocApi.status()
-  importantStatus.value = response.data.data
-}
-
-async function loadImportantDocs() {
-  if (!importantUnlockToken.value) return
-  importantDocsLoading.value = true
-  try {
-    const response = await importantDocApi.list(importantUnlockToken.value)
-    importantDocs.value = response.data.data
-  } catch (err) {
-    importantUnlockToken.value = ''
-    openVaultModal(importantStatus.value.pin_set ? 'unlock' : 'setup')
-  } finally {
-    importantDocsLoading.value = false
-  }
-}
-
-async function openImportantDocs() {
-  activeFileScope.value = 'important'
-  selectedIds.value = new Set()
-  activeFile.value = null
-  showTrash.value = false
-  await refreshImportantStatus()
-  if (!importantStatus.value.pin_set || !importantUnlockToken.value) {
-    openVaultModal(importantStatus.value.pin_set ? 'unlock' : 'setup')
-    return
-  }
-  await loadImportantDocs()
-}
-
 function openAllFiles() {
   activeFileScope.value = 'all'
   currentFolderId.value = null
@@ -360,190 +320,33 @@ function toggleTrashPanel() {
   showTrash.value = !showTrash.value
 }
 
-function openVaultModal(mode) {
-  vaultModalMode.value = mode
-  vaultPin.value = ''
-  vaultPinConfirm.value = ''
-  vaultPinError.value = ''
-}
-
-function closeVaultModal() {
-  vaultModalMode.value = ''
-  vaultPin.value = ''
-  vaultPinConfirm.value = ''
-  vaultPinError.value = ''
-  pendingImportantFile.value = null
-  pendingImportantFiles.value = []
-}
-
-async function submitVaultPin() {
-  const pin = vaultPin.value.trim()
-  if (!/^\d{6}$/.test(pin)) {
-    vaultPinError.value = 'Enter a 6 digit PIN.'
-    return
-  }
-  if (vaultModalMode.value === 'setup' && pin !== vaultPinConfirm.value.trim()) {
-    vaultPinError.value = 'PIN confirmation does not match.'
-    return
-  }
+async function addToVault(targetFiles) {
+  const list = targetFiles.filter((file) => file?.id)
+  if (!list.length) return
   try {
-    const response = vaultModalMode.value === 'setup'
-      ? await importantDocApi.setup(pin)
-      : await importantDocApi.unlock(pin)
-    importantUnlockToken.value = response.data.data.unlock_token
-    vaultModalMode.value = ''
-    await refreshImportantStatus()
-    if (pendingImportantFiles.value.length) {
-      const files = [...pendingImportantFiles.value]
-      pendingImportantFiles.value = []
-      await addImportantDocs(files)
-      return
-    }
-    if (pendingImportantFile.value) {
-      const file = pendingImportantFile.value
-      pendingImportantFile.value = null
-      await addImportantDoc(file)
-      return
-    }
-    if (activeFileScope.value === 'important') await loadImportantDocs()
-  } catch (err) {
-    vaultPinError.value = err.response?.data?.error?.message || 'Unable to unlock Important docs.'
-  }
-}
-
-async function requestAddImportantDocs(targetFiles) {
-  if (!targetFiles.length) return
-  pendingImportantFiles.value = targetFiles
-  await refreshImportantStatus()
-  if (!importantStatus.value.pin_set || !importantUnlockToken.value) {
-    openVaultModal(importantStatus.value.pin_set ? 'unlock' : 'setup')
-    return
-  }
-  const files = [...pendingImportantFiles.value]
-  pendingImportantFiles.value = []
-  await addImportantDocs(files)
-}
-
-async function requestAddImportantDoc(file) {
-  pendingImportantFile.value = file
-  await refreshImportantStatus()
-  if (!importantStatus.value.pin_set || !importantUnlockToken.value) {
-    openVaultModal(importantStatus.value.pin_set ? 'unlock' : 'setup')
-    return
-  }
-  await addImportantDoc(file)
-}
-
-async function addImportantDocs(targetFiles) {
-  const files = targetFiles.filter((file) => file?.id)
-  if (!files.length) return
-  try {
-    await Promise.all(files.map((file) => importantDocApi.createFromFile(file.id, {
-      title: file.display_name,
-      document_type: 'other',
-      note: `Original file: ${file.original_filename || file.display_name}`
-    }, importantUnlockToken.value)))
+    const done = await vault.run(async (token) => {
+      for (const file of list) await vaultApi.addFile(token, file.id)
+      return true
+    })
+    if (!done) return
     selectedIds.value = new Set()
     moveModalOpen.value = false
-    activeFileScope.value = 'important'
     activeFile.value = null
     await loadFiles()
-    await loadImportantDocs()
+    const open = await dialog.confirm({
+      title: t('pages.vault.added'),
+      message: t('pages.vault.addedCount', { count: list.length }),
+      confirmText: t('pages.vault.openVault'),
+      cancelText: t('common.actions.close')
+    })
+    if (open) await router.push('/vault')
   } catch (err) {
-    if (err.response?.status === 401) {
-      importantUnlockToken.value = ''
-      pendingImportantFiles.value = files
-      openVaultModal('unlock')
-      return
-    }
     await dialog.confirm({
-      title: 'Unable to add files',
-      message: err.response?.data?.error?.message || 'Some files could not be added to Important docs.',
-      confirmText: 'OK'
+      title: t('pages.vault.addFailed'),
+      message: err.response?.data?.message || '',
+      confirmText: t('pages.files.dialogOk')
     })
   }
-}
-
-async function addImportantDoc(file) {
-  try {
-    await importantDocApi.createFromFile(file.id, {
-      title: file.display_name,
-      document_type: 'other',
-      note: `Original file: ${file.original_filename || file.display_name}`
-    }, importantUnlockToken.value)
-    activeFileScope.value = 'important'
-    activeFile.value = null
-    await loadFiles()
-    await loadImportantDocs()
-  } catch (err) {
-    if (err.response?.data?.error?.code === 'document_exists') {
-      await dialog.confirm({
-        title: 'Already in Important docs',
-        message: 'This file is already protected there.',
-        confirmText: 'OK'
-      })
-      return
-    }
-    if (err.response?.status === 401) {
-      importantUnlockToken.value = ''
-      pendingImportantFile.value = file
-      openVaultModal('unlock')
-      return
-    }
-    await dialog.confirm({
-      title: 'Unable to add file',
-      message: err.response?.data?.error?.message || 'Please try again.',
-      confirmText: 'OK'
-    })
-  }
-}
-
-async function downloadImportantDoc(importantDoc) {
-  try {
-    const response = await importantDocApi.download(importantDoc.id, importantUnlockToken.value)
-    const url = URL.createObjectURL(response.data)
-    const link = window.document.createElement('a')
-    link.href = url
-    link.download = importantDoc.title
-    link.click()
-    URL.revokeObjectURL(url)
-  } catch (err) {
-    importantUnlockToken.value = ''
-    openVaultModal('unlock')
-  }
-}
-
-function openImportantActions(importantDoc) {
-  importantActionDoc.value = importantDoc
-}
-
-function closeImportantActions() {
-  importantActionDoc.value = null
-}
-
-async function removeImportantDoc(importantDoc) {
-  const confirmed = await dialog.confirm({
-    title: 'Remove from Important docs',
-    message: `${importantDoc.title} will return to normal Files.`,
-    confirmText: 'Remove'
-  })
-  if (!confirmed) return
-  try {
-    await importantDocApi.remove(importantDoc.id, importantUnlockToken.value)
-    await loadImportantDocs()
-    await loadFiles()
-  } catch (err) {
-    importantUnlockToken.value = ''
-    openVaultModal('unlock')
-  }
-}
-
-async function runImportantAction(action) {
-  const importantDoc = importantActionDoc.value
-  if (!importantDoc) return
-  closeImportantActions()
-  if (action === 'download') await downloadImportantDoc(importantDoc)
-  if (action === 'remove') await removeImportantDoc(importantDoc)
 }
 
 function openFileActions(file) {
@@ -564,7 +367,7 @@ async function runFileAction(action) {
   if (action === 'move') moveFile(file)
   if (action === 'rename') await renameFile(file)
   if (action === 'tag') attachTag(file)
-  if (action === 'important') await requestAddImportantDoc(file)
+  if (action === 'important') await addToVault([file])
   if (action === 'delete') await deleteFile(file)
 }
 
@@ -642,7 +445,7 @@ async function applyMoveFolder() {
 }
 
 async function moveToImportantDocs() {
-  await requestAddImportantDocs(moveTargetFiles.value)
+  await addToVault(moveTargetFiles.value)
 }
 
 async function createFolderAndMove() {
@@ -833,10 +636,10 @@ onMounted(loadFiles)
       <Folder :size="16" />
       {{ t('pages.files.allFiles') }}
     </button>
-    <button class="xb-album-pill" :class="{ 'is-active': activeFileScope === 'important' }" type="button" @click="openImportantDocs">
+    <router-link class="xb-album-pill" to="/vault">
       <ShieldCheck :size="16" />
-      {{ t('pages.files.importantDocs') }}
-    </button>
+      {{ t('routes.vault') }}
+    </router-link>
   </section>
 
   <section v-if="activeFileScope === 'all' && selectedFiles.length" class="xb-action-bar">
@@ -938,7 +741,7 @@ onMounted(loadFiles)
             <button class="xb-icon-button" type="button" title="Tag" @click="attachTag(file)">
               <Tag :size="17" />
             </button>
-            <button class="xb-icon-button" type="button" title="Add to Important docs" @click="requestAddImportantDoc(file)">
+            <button class="xb-icon-button" type="button" :title="t('pages.vault.addTo')" @click="addToVault([file])">
               <ShieldCheck :size="17" />
             </button>
             <button class="xb-icon-button xb-danger-button" type="button" title="Delete" @click="deleteFile(file)">
@@ -952,46 +755,6 @@ onMounted(loadFiles)
       </div>
       </template>
 
-      <section v-else class="xb-important-docs-panel">
-        <div v-if="!importantStatus.pin_set" class="xb-vault-lock-panel">
-          <ShieldCheck :size="34" />
-          <h3>Set a 6 digit Vault PIN</h3>
-          <p>Important docs stays inside Files, but opening or adding items requires this separate PIN.</p>
-          <button class="xb-primary-button" type="button" @click="openVaultModal('setup')">Set PIN</button>
-        </div>
-        <div v-else-if="!importantUnlockToken" class="xb-vault-lock-panel">
-          <ShieldCheck :size="34" />
-          <h3>Important docs is locked</h3>
-          <p>Unlock with your 6 digit Vault PIN to view protected documents.</p>
-          <button class="xb-primary-button" type="button" @click="openVaultModal('unlock')">Unlock</button>
-        </div>
-        <EmptyState v-else-if="!importantDocsLoading && importantDocs.length === 0" title="No important docs yet" description="Use a file's more menu to add IDs, contracts, licenses or other important documents." />
-        <div v-else class="xb-file-list">
-          <article v-for="document in importantDocs" :key="document.id" class="xb-file-row xb-important-row">
-            <ShieldCheck :size="20" />
-            <div class="xb-file-main">
-              <strong>{{ document.title }}</strong>
-              <span>{{ document.document_type }} &middot; {{ document.security_level }}</span>
-              <div class="xb-tag-list">
-                <span>PIN protected</span>
-                <span v-if="document.expires_at">Expires {{ document.expires_at }}</span>
-              </div>
-            </div>
-            <span class="xb-file-date">{{ formatDate(document.updated_at) }}</span>
-            <div class="xb-row-actions">
-              <button class="xb-icon-button" type="button" title="Download" @click="downloadImportantDoc(document)">
-                <Download :size="17" />
-              </button>
-              <button class="xb-icon-button xb-danger-button" type="button" title="Remove from Important docs" @click="removeImportantDoc(document)">
-                <Trash2 :size="17" />
-              </button>
-              <button class="xb-icon-button xb-file-more-button" type="button" title="More actions" @click="openImportantActions(document)">
-                <MoreHorizontal :size="18" />
-              </button>
-            </div>
-          </article>
-        </div>
-      </section>
     </section>
 
     <aside class="xb-detail-drawer" :class="{ 'is-open': activeFile }">
@@ -1111,7 +874,7 @@ onMounted(loadFiles)
           </button>
           <button type="button" @click="runFileAction('important')">
             <ShieldCheck :size="18" />
-            Important docs
+            {{ t('pages.vault.addTo') }}
           </button>
           <button class="is-danger" type="button" @click="runFileAction('delete')">
             <Trash2 :size="18" />
@@ -1122,52 +885,6 @@ onMounted(loadFiles)
     </section>
   </Teleport>
 
-  <Teleport to="body">
-    <section v-if="importantActionDoc" class="xb-mobile-action-backdrop" @click.self="closeImportantActions">
-      <div class="xb-mobile-action-sheet">
-        <header>
-          <div>
-            <strong>{{ importantActionDoc.title }}</strong>
-            <span>{{ importantActionDoc.document_type }} &middot; PIN protected</span>
-          </div>
-          <button class="xb-icon-button" type="button" title="Close" @click="closeImportantActions">x</button>
-        </header>
-        <div class="xb-mobile-action-grid">
-          <button type="button" @click="runImportantAction('download')">
-            <Download :size="18" />
-            Download
-          </button>
-          <button class="is-danger" type="button" @click="runImportantAction('remove')">
-            <Trash2 :size="18" />
-            Remove
-          </button>
-        </div>
-      </div>
-    </section>
-  </Teleport>
-
-  <Teleport to="body">
-    <section v-if="vaultModalMode" class="xb-modal-backdrop" @click.self="closeVaultModal">
-      <form class="xb-modal xb-vault-modal" @submit.prevent="submitVaultPin">
-        <ShieldCheck :size="24" />
-        <h3>{{ vaultModalMode === 'setup' ? 'Set Vault PIN' : 'Unlock Important docs' }}</h3>
-        <p>{{ vaultModalMode === 'setup' ? 'Create a separate 6 digit PIN for Important docs.' : 'Enter your 6 digit Vault PIN. The unlock is temporary.' }}</p>
-        <label>
-          Vault PIN
-          <input v-model="vaultPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="6 digits" autocomplete="off" />
-        </label>
-        <label v-if="vaultModalMode === 'setup'">
-          Confirm PIN
-          <input v-model="vaultPinConfirm" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="Repeat PIN" autocomplete="off" />
-        </label>
-        <p v-if="vaultPinError" class="xb-form-error">{{ vaultPinError }}</p>
-        <div class="xb-row-actions">
-          <button class="xb-primary-button" type="submit">{{ vaultModalMode === 'setup' ? 'Set PIN' : 'Unlock' }}</button>
-          <button class="xb-secondary-button" type="button" @click="closeVaultModal">Cancel</button>
-        </div>
-      </form>
-    </section>
-  </Teleport>
 
   <Teleport to="body">
     <section v-if="intelligenceEditorOpen" class="xb-modal-backdrop" @click.self="closeIntelligenceEditor">
@@ -1368,7 +1085,7 @@ onMounted(loadFiles)
           <button class="xb-primary-button" type="submit">Move here</button>
           <button class="xb-secondary-button" type="button" @click="moveToImportantDocs">
             <ShieldCheck :size="17" />
-            Important docs
+            {{ t('pages.vault.addTo') }}
           </button>
           <button class="xb-secondary-button" type="button" @click="createFolderAndMove">Create folder and move</button>
           <button class="xb-secondary-button" type="button" @click="closeMoveModal">Cancel</button>

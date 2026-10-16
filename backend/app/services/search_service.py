@@ -10,6 +10,7 @@ from app.models.ocr_task import OcrTask
 from app.models.photo_asset import PhotoAsset
 from app.models.receipt import Receipt
 from app.models.user import User
+from app.services.vault_scope import vault_file_ids as hidden_file_ids, vault_photo_ids
 from app.schemas.search import SearchResult, SearchResponse
 
 
@@ -40,10 +41,7 @@ async def search_all(db: AsyncSession, owner: User, query: str, *, limit: int = 
         return SearchResponse(query=q, results=[])
     like = f"%{q}%"
     results: dict[tuple[str, UUID, str], SearchResult] = {}
-    vault_file_ids = select(DocumentAsset.file_id).where(
-        DocumentAsset.owner_id == owner.id,
-        DocumentAsset.security_level == "vault_locked",
-    )
+    vault_file_ids = hidden_file_ids(owner.id)
 
     file_rows = await db.scalars(
         select(FileAsset)
@@ -84,6 +82,7 @@ async def search_all(db: AsyncSession, owner: User, query: str, *, limit: int = 
         .join(FileAsset, FileAsset.id == PhotoAsset.file_id)
         .where(
             PhotoAsset.owner_id == owner.id,
+            PhotoAsset.id.not_in(vault_photo_ids(owner.id)),
             FileAsset.is_deleted.is_(False),
             FileAsset.source != "inbox_upload",
             or_(FileAsset.display_name.ilike(like), FileAsset.original_filename.ilike(like)),
@@ -189,6 +188,7 @@ async def search_all(db: AsyncSession, owner: User, query: str, *, limit: int = 
         .join(FileAsset, FileAsset.id == DocumentProfile.file_id)
         .where(
             DocumentProfile.owner_id == owner.id,
+            FileAsset.id.not_in(vault_file_ids),
             FileAsset.source != "inbox_upload",
             FileAsset.is_deleted.is_(False),
             or_(
@@ -224,6 +224,7 @@ async def search_all(db: AsyncSession, owner: User, query: str, *, limit: int = 
         .join(FileAsset, FileAsset.id == DocumentFieldValue.file_id)
         .where(
             DocumentFieldValue.owner_id == owner.id,
+            FileAsset.id.not_in(vault_file_ids),
             FileAsset.source != "inbox_upload",
             FileAsset.is_deleted.is_(False),
             or_(DocumentFieldValue.field_label.ilike(like), DocumentFieldValue.field_value.ilike(like)),
@@ -251,6 +252,7 @@ async def search_all(db: AsyncSession, owner: User, query: str, *, limit: int = 
         .join(FileAsset, FileAsset.id == DocumentTextChunk.file_id)
         .where(
             DocumentTextChunk.owner_id == owner.id,
+            FileAsset.id.not_in(vault_file_ids),
             FileAsset.source != "inbox_upload",
             FileAsset.is_deleted.is_(False),
             DocumentTextChunk.text.ilike(like),

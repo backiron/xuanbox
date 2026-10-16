@@ -130,6 +130,13 @@ async def resolve_inbox_item(db: AsyncSession, owner: User, item_id: UUID, actio
         receipt = await create_receipt_for_file(db, owner, file_asset.id)
         await create_receipt_ocr_task(db, owner, receipt.id)
         resolved_as = "receipt"
+    elif action == "vault":
+        from app.services.important_doc_service import place_file_in_vault
+
+        # Kept out of Photos and Files; it only ever shows up inside the vault.
+        file_asset.source = "vault_upload"
+        await place_file_in_vault(db, owner, file_asset)
+        resolved_as = "vault"
     else:
         raise AppError("invalid_inbox_action", "Unsupported inbox action", 400)
 

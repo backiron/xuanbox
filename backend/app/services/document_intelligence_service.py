@@ -249,6 +249,13 @@ async def process_document_extract_task(db: AsyncSession, worker_task: WorkerTas
     file_asset = await db.get(FileAsset, task.file_id)
     if file_asset is None or file_asset.is_deleted:
         raise AppError("document_intelligence_file_not_found", "File is no longer available", 404)
+    from app.services.vault_scope import is_vault_file
+
+    if await is_vault_file(db, task.owner_id, file_asset.id):
+        # Moved into the vault after the task was queued: vault files are never read or indexed.
+        await db.delete(task)
+        await db.commit()
+        return
     try:
         task.status = "processing"
         raw_text = await _extract_text_for_document_task(db, task, file_asset)

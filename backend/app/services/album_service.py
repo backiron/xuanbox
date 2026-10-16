@@ -10,6 +10,7 @@ from app.models.user import User
 from app.schemas.photo import AlbumCreateRequest, AlbumUpdateRequest
 from app.services.audit_service import write_audit_log
 from app.services.photo_service import delete_photo
+from app.services.vault_scope import vault_photo_ids
 
 
 async def list_albums(db: AsyncSession, owner: User) -> list[Album]:
@@ -24,7 +25,7 @@ async def list_album_photos(db: AsyncSession, owner: User, album_id: UUID) -> li
     result = await db.scalars(
         select(PhotoAsset)
         .join(AlbumPhoto, AlbumPhoto.photo_id == PhotoAsset.id)
-        .where(AlbumPhoto.album_id == album_id, PhotoAsset.owner_id == owner.id)
+        .where(AlbumPhoto.album_id == album_id, PhotoAsset.owner_id == owner.id, PhotoAsset.id.not_in(vault_photo_ids(owner.id)))
         .order_by(AlbumPhoto.sort_order.asc(), PhotoAsset.uploaded_at.desc())
     )
     return list(result)
@@ -59,7 +60,9 @@ async def update_album(db: AsyncSession, owner: User, album_id: UUID, payload: A
 
 async def add_photo_to_album(db: AsyncSession, owner: User, album_id: UUID, photo_id: UUID) -> None:
     album = await db.scalar(select(Album).where(Album.id == album_id, Album.owner_id == owner.id))
-    photo = await db.scalar(select(PhotoAsset).where(PhotoAsset.id == photo_id, PhotoAsset.owner_id == owner.id))
+    photo = await db.scalar(
+        select(PhotoAsset).where(PhotoAsset.id == photo_id, PhotoAsset.owner_id == owner.id, PhotoAsset.id.not_in(vault_photo_ids(owner.id)))
+    )
     if album is None:
         raise AppError("album_not_found", "Album not found", 404)
     if photo is None:

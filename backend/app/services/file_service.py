@@ -22,6 +22,7 @@ from app.services.encryption_service import (
     unwrap_file_key,
     wrap_file_key,
 )
+from app.services.vault_scope import is_vault_file, vault_file_ids
 from app.services.storage_service import (
     delete_physical_file,
     encrypted_derivative_path,
@@ -174,11 +175,7 @@ async def list_files(
     root_only: bool = False,
 ) -> list[FileAsset]:
     statement = select(FileAsset).where(FileAsset.owner_id == owner.id)
-    vault_file_ids = select(DocumentAsset.file_id).where(
-        DocumentAsset.owner_id == owner.id,
-        DocumentAsset.security_level == "vault_locked",
-    )
-    statement = statement.where(FileAsset.id.not_in(vault_file_ids))
+    statement = statement.where(FileAsset.id.not_in(vault_file_ids(owner.id)))
     if not include_deleted:
         statement = statement.where(FileAsset.is_deleted.is_(False))
     if folder_id is not None:
@@ -203,16 +200,8 @@ async def get_owned_file(
     )
     if file_asset is None or (file_asset.is_deleted and not allow_deleted):
         raise AppError("file_not_found", "File not found", 404)
-    if not allow_vault_locked:
-        vault_document = await db.scalar(
-            select(DocumentAsset.id).where(
-                DocumentAsset.file_id == file_id,
-                DocumentAsset.owner_id == owner.id,
-                DocumentAsset.security_level == "vault_locked",
-            )
-        )
-        if vault_document:
-            raise AppError("file_not_found", "File not found", 404)
+    if not allow_vault_locked and await is_vault_file(db, owner.id, file_id):
+        raise AppError("file_not_found", "File not found", 404)
     return file_asset
 
 
