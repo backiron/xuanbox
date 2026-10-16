@@ -157,6 +157,11 @@
 .xb-note-save {
   color: var(--xb-text-muted);
   font-size: 12px;
+  white-space: nowrap;
+}
+
+.xb-note-tools .xb-secondary-button {
+  white-space: nowrap;
 }
 
 .xb-note-save.is-error,
@@ -316,7 +321,28 @@
     padding: 14px 16px 32px;
   }
 
+  .xb-note-toolbar {
+    gap: 6px;
+    padding: 8px 10px;
+  }
+
+  .xb-note-tools {
+    gap: 6px;
+  }
+
   .xb-note-tools .xb-secondary-button {
     padding: 0 10px;
   }
+}
+
+/* Narrow phones: keep the row on one line by showing icons only, except the Edit / Done toggle. */
+@media (max-width: 420px) {
+  .xb-note-tools .xb-note-copy span {
+    display: none;
+  }
+}
+
+.xb-note-copy.is-done {
+  border-color: var(--xb-color-success, #22c55e);
+  color: var(--xb-color-success, #22c55e);
 }

@@ -11,7 +11,7 @@ const tabs = [
   { to: '/files', label: () => t('routes.files'), icon: 'files' },
   { to: '/receipts', label: () => t('routes.receipts'), icon: 'receipts' },
   { to: '/drop', label: () => t('routes.drop'), icon: 'xuandrop' },
-  { to: '/settings', label: () => t('routes.settings'), icon: 'users' }
+  { to: '/notes', label: () => t('routes.notes'), icon: 'documents' }
 ]
 </script>
 

@@ -233,6 +233,9 @@
       }
     },
     notes: {
+      copy: "Copy",
+      copied: "Copied",
+      copyHint: "Copy the text of this note",
       title: "Notes",
       new: "New",
       back: "Back to list",

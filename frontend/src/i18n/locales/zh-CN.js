@@ -233,6 +233,9 @@
       }
     },
     notes: {
+      copy: "复制",
+      copied: "已复制",
+      copyHint: "复制这条记事的文字",
       title: "记事板",
       new: "新建",
       back: "返回列表",

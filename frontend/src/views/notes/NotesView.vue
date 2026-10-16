@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowLeft, Check, ImagePlus, Pencil, Pin, PinOff, Plus, Search, StickyNote, Trash2, X } from 'lucide-vue-next'
+import { ArrowLeft, Check, Copy, ImagePlus, Pencil, Pin, PinOff, Plus, Search, StickyNote, Trash2, X } from 'lucide-vue-next'
 
 import { noteApi } from '../../api/noteApi'
 import { useDialogStore } from '../../stores/dialogStore'
@@ -26,6 +26,7 @@ const editing = ref(false)
 const saveState = ref('saved') // saved | dirty | saving | error | conflict
 const actionError = ref('')
 const viewer = ref('')
+const copied = ref(false)
 const editorRef = ref(null)
 const imageUrls = ref({})
 
@@ -364,6 +365,27 @@ async function toggleEditing() {
   }
 }
 
+// Text only: images stay in XuanBox. Falls back to a hidden textarea where the clipboard API is unavailable.
+async function copyText() {
+  const text = blocks.value.filter((block) => block.type === 'text').map((block) => block.text).join('\n').replace(/\n{3,}/g, '\n\n').trim()
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch {
+    const area = document.createElement('textarea')
+    area.value = text
+    area.setAttribute('readonly', '')
+    area.style.position = 'fixed'
+    area.style.opacity = '0'
+    document.body.appendChild(area)
+    area.select()
+    area.setSelectionRange(0, text.length)
+    document.execCommand('copy')
+    area.remove()
+  }
+  copied.value = true
+  setTimeout(() => { copied.value = false }, 1800)
+}
+
 async function togglePin() {
   const note = current.value
   if (!note) return
@@ -497,6 +519,11 @@ const saveLabel = computed(() => ({
               <ImagePlus :size="18" />
               <input type="file" accept="image/*" multiple hidden @change="onPickImages" />
             </label>
+            <button class="xb-secondary-button xb-note-copy" :class="{ 'is-done': copied }" type="button" :title="copied ? t('pages.notes.copied') : t('pages.notes.copyHint')" @click="copyText">
+              <Check v-if="copied" :size="16" />
+              <Copy v-else :size="16" />
+              <span>{{ copied ? t('pages.notes.copied') : t('pages.notes.copy') }}</span>
+            </button>
             <button class="xb-icon-button" type="button" :title="current.pinned ? t('pages.notes.unpin') : t('pages.notes.pin')" @click="togglePin">
               <PinOff v-if="current.pinned" :size="18" />
               <Pin v-else :size="18" />
