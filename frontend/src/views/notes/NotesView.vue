@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowLeft, Check, Copy, ImagePlus, Pencil, Pin, PinOff, Plus, Search, StickyNote, Trash2, X } from 'lucide-vue-next'
+import { ArrowLeft, Check, Copy, ImagePlus, Pin, PinOff, Plus, Search, StickyNote, Trash2, X } from 'lucide-vue-next'
 
 import { noteApi } from '../../api/noteApi'
 import { useDialogStore } from '../../stores/dialogStore'
@@ -354,15 +354,54 @@ function focusEnd() {
   }
 }
 
-async function toggleEditing() {
-  if (editing.value) {
-    editing.value = false
-    await save()
-  } else {
-    editing.value = true
-    await nextTick()
-    autosizeAll()
+function caretOffsetAt(event, el) {
+  const range = document.caretRangeFromPoint?.(event.clientX, event.clientY)
+  if (range && el.contains(range.startContainer)) return range.startOffset
+  const position = document.caretPositionFromPoint?.(event.clientX, event.clientY)
+  if (position && el.contains(position.offsetNode)) return position.offset
+  return null
+}
+
+function scrollPositions() {
+  const nodes = [editorRef.value, editorRef.value?.closest('.xb-note-pane'), document.scrollingElement].filter(Boolean)
+  return nodes.map((node) => [node, node.scrollTop])
+}
+
+// Tap the text to edit it, with the caret where you tapped. A drag that selects text (to translate it) stays in reading mode.
+async function startEditingAt(event) {
+  if (editing.value || event.target.closest('img, button, a')) return
+  const selection = window.getSelection()
+  if (selection && !selection.isCollapsed && editorRef.value?.contains(selection.anchorNode)) return
+  const textEl = event.target.closest('.xb-note-text')
+  const key = textEl ? Number(textEl.dataset.key) : null
+  const offset = textEl ? caretOffsetAt(event, textEl) : null
+  const scrolls = scrollPositions()
+  editing.value = true
+  await nextTick()
+  autosizeAll()
+  scrolls.forEach(([node, top]) => { node.scrollTop = top })
+  const area = key ? editorRef.value?.querySelector(`textarea[data-key="${key}"]`) : null
+  if (!area) {
+    focusEnd()
+    return
   }
+  const pos = Math.min(offset ?? area.value.length, area.value.length)
+  area.focus({ preventScroll: true })
+  area.setSelectionRange(pos, pos)
+  lastFocus = { key, pos }
+}
+
+// Leaving the text (tapping a button, outside, another app) saves and goes back to reading mode.
+function onEditorFocusOut(event) {
+  if (!editing.value || editorRef.value?.contains(event.relatedTarget)) return
+  setTimeout(() => {
+    if (!editing.value || uploading.value || !serialize()) return
+    if (editorRef.value?.contains(document.activeElement)) return
+    const scrolls = scrollPositions()
+    editing.value = false
+    nextTick(() => scrolls.forEach(([node, top]) => { node.scrollTop = top }))
+    save()
+  }, 150)
 }
 
 // Text only: images stay in XuanBox. Falls back to a hidden textarea where the clipboard API is unavailable.
@@ -515,7 +554,7 @@ const saveLabel = computed(() => ({
           </button>
           <span class="xb-note-save" :class="`is-${saveState}`">{{ saveLabel }}</span>
           <div class="xb-note-tools">
-            <label v-if="editing" class="xb-icon-button" :title="t('pages.notes.insertImage')">
+            <label class="xb-icon-button" :title="t('pages.notes.insertImage')">
               <ImagePlus :size="18" />
               <input type="file" accept="image/*" multiple hidden @change="onPickImages" />
             </label>
@@ -531,11 +570,6 @@ const saveLabel = computed(() => ({
             <button class="xb-icon-button" type="button" :title="t('common.actions.delete')" @click="deleteCurrent">
               <Trash2 :size="18" />
             </button>
-            <button class="xb-secondary-button" type="button" @click="toggleEditing">
-              <Check v-if="editing" :size="16" />
-              <Pencil v-else :size="16" />
-              {{ editing ? t('pages.notes.done') : t('pages.notes.edit') }}
-            </button>
           </div>
         </header>
 
@@ -546,7 +580,7 @@ const saveLabel = computed(() => ({
         </div>
         <p v-if="actionError" class="xb-status-note is-error" @click="actionError = ''">{{ actionError }}</p>
 
-        <div ref="editorRef" class="xb-note-body" :class="{ 'is-editing': editing }">
+        <div ref="editorRef" class="xb-note-body" :class="{ 'is-editing': editing }" @click="startEditingAt" @focusout="onEditorFocusOut">
           <template v-for="block in blocks" :key="block.key">
             <template v-if="block.type === 'text'">
               <textarea
@@ -561,7 +595,7 @@ const saveLabel = computed(() => ({
                 @keyup="rememberCursor($event, block)"
                 @paste="onPaste($event, block)"
               ></textarea>
-              <div v-else-if="block.text" class="xb-note-text">{{ block.text }}</div>
+              <div v-else-if="block.text" class="xb-note-text" :data-key="block.key">{{ block.text }}</div>
             </template>
             <figure v-else class="xb-note-image" :class="{ 'is-uploading': block.uploading }">
               <img

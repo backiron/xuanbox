@@ -196,6 +196,7 @@
 }
 
 .xb-note-body {
+  cursor: text;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -335,12 +336,6 @@
   }
 }
 
-/* Narrow phones: keep the row on one line by showing icons only, except the Edit / Done toggle. */
-@media (max-width: 420px) {
-  .xb-note-tools .xb-note-copy span {
-    display: none;
-  }
-}
 
 .xb-note-copy.is-done {
   border-color: var(--xb-color-success, #22c55e);

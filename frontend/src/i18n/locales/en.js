@@ -247,7 +247,7 @@
       imageCount: "{count} image | {count} images",
       pickOrCreate: "Pick a note on the left or start a new one",
       placeholder: "Jot something down... paste or drop images right here",
-      emptyNote: "This note is empty. Tap Edit to start writing.",
+      emptyNote: "This note is empty. Tap here to start writing.",
       edit: "Edit",
       done: "Done",
       pin: "Pin",

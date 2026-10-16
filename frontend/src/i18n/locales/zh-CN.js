@@ -247,7 +247,7 @@
       imageCount: "{count} 张图",
       pickOrCreate: "从左边选一条记事，或者新建一条",
       placeholder: "随手记点什么… 可以直接粘贴或拖入图片",
-      emptyNote: "这条记事还是空的，点“编辑”开始写",
+      emptyNote: "这条记事还是空的，点这里开始写",
       edit: "编辑",
       done: "完成",
       pin: "置顶",
