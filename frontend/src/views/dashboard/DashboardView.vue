@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onActivated, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   AlertTriangle,
@@ -38,7 +38,7 @@ const draggingFiles = ref(false)
 const uploadMessage = ref('')
 const uploadError = ref('')
 
-const photoUrls = new Set()
+const photoUrls = new Map() // photo id -> thumbnail object URL
 
 const metrics = computed(() => summary.value?.metrics || {})
 const storageUsed = computed(() => metrics.value.storage_bytes || 0)
@@ -97,16 +97,26 @@ function fileIconName(file) {
 
 async function hydratePhotos(rows) {
   const limited = rows.slice(0, 6)
-  return Promise.all(limited.map(async (photo) => {
+  const result = await Promise.all(limited.map(async (photo) => {
+    if (photoUrls.has(photo.id)) return { ...photo, thumbUrl: photoUrls.get(photo.id) }
     try {
       const response = await photoApi.thumbnailBlob(photo.id)
       const url = URL.createObjectURL(response.data)
-      photoUrls.add(url)
+      photoUrls.set(photo.id, url)
       return { ...photo, thumbUrl: url }
     } catch {
       return { ...photo, thumbUrl: '' }
     }
   }))
+  // Thumbnails are reused across refreshes; drop the ones no longer shown.
+  const shown = new Set(limited.map((photo) => photo.id))
+  for (const [id, url] of photoUrls) {
+    if (!shown.has(id)) {
+      URL.revokeObjectURL(url)
+      photoUrls.delete(id)
+    }
+  }
+  return result
 }
 
 async function loadDashboard() {
@@ -199,8 +209,13 @@ async function onFileDrop(event) {
 }
 
 onMounted(loadDashboard)
+let shownOnce = false
+onActivated(() => {
+  if (shownOnce) loadDashboard()
+  shownOnce = true
+})
 onBeforeUnmount(() => {
-  for (const url of photoUrls) URL.revokeObjectURL(url)
+  for (const url of photoUrls.values()) URL.revokeObjectURL(url)
   photoUrls.clear()
 })
 </script>

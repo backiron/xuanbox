@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Camera, Download, FileImage, FileSearch, MoreHorizontal, ReceiptText, RotateCcw, Save, Search, Trash2, Upload, X } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
@@ -380,6 +380,8 @@ watch(hasOpenOverlay, (isOpen) => {
 })
 
 watch(() => [route.query.q, route.query.receipt], async () => {
+  // Kept in memory while another page is open: only react to this page's own links.
+  if (route.path !== '/receipts') return
   applyRouteSearch()
   await loadReceipts()
 })
@@ -387,6 +389,20 @@ watch(() => [route.query.q, route.query.receipt], async () => {
 onMounted(() => {
   applyRouteSearch()
   loadReceipts()
+})
+let shownOnce = false
+onActivated(() => {
+  if (shownOnce) loadReceipts({ silent: true })
+  shownOnce = true
+})
+onDeactivated(() => {
+  // Stop polling OCR while away; coming back refreshes and restarts it if needed.
+  window.clearTimeout(ocrPollTimer)
+  ocrPollTimer = null
+  window.clearInterval(clockTimer)
+  clockTimer = null
+  closeReceiptSheet()
+  document.body.classList.remove('xb-lightbox-open')
 })
 onBeforeUnmount(() => {
   window.clearTimeout(ocrPollTimer)

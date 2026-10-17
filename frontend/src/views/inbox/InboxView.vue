@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onActivated, onMounted, ref } from 'vue'
 import { CheckCircle2, FileText, Image, Inbox, ReceiptText, RotateCcw, ShieldCheck, Trash2, Upload } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -51,8 +51,8 @@ function fileActionLabel(item) {
     : t('pages.inbox.fileActionFile')
 }
 
-async function loadInbox() {
-  loading.value = true
+async function loadInbox({ silent = false } = {}) {
+  if (!silent) loading.value = true
   error.value = ''
   try {
     const response = await inboxApi.list()
@@ -174,6 +174,11 @@ async function resolveItem(item, action) {
 onMounted(async () => {
   if (!authStore.user) await authStore.loadMe()
   await loadInbox()
+})
+let shownOnce = false
+onActivated(() => {
+  if (shownOnce) loadInbox({ silent: true })
+  shownOnce = true
 })
 </script>
 

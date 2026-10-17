@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onActivated, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import {
@@ -633,6 +633,11 @@ function goBack() {
 }
 
 onMounted(loadFiles)
+let shownOnce = false
+onActivated(() => {
+  if (shownOnce) loadFiles()
+  shownOnce = true
+})
 </script>
 
 <template>

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Album, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, Download, Edit3, FolderInput, ImagePlus, ReceiptText, Share2, ShieldCheck, Square, Trash2, Upload, X } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
@@ -115,8 +115,16 @@ async function loadPhotos() {
   try {
     await loadAlbums()
     const response = activeAlbumId.value ? await albumApi.photos(activeAlbumId.value) : await photoApi.list()
-    revokeThumbUrls()
-    photos.value = response.data.data.map((photo) => ({ ...photo, thumbUrl: '', thumbLoading: false }))
+    const rows = response.data.data
+    // Keep thumbnails already downloaded for photos that are still here, so a refresh does not flash.
+    const ids = new Set(rows.map((photo) => photo.id))
+    for (const [id, url] of thumbUrls) {
+      if (!ids.has(id)) {
+        URL.revokeObjectURL(url)
+        thumbUrls.delete(id)
+      }
+    }
+    photos.value = rows.map((photo) => ({ ...photo, thumbUrl: thumbUrls.get(photo.id) || '', thumbLoading: false }))
     currentPage.value = Math.min(currentPage.value, totalPages.value)
     selectedIds.value = new Set([...selectedIds.value].filter((id) => photos.value.some((photo) => photo.id === id)))
     scheduleHydrateVisibleThumbs()
@@ -423,6 +431,15 @@ onMounted(async () => {
 watch(currentPage, scheduleHydrateVisibleThumbs)
 watch(activePreview, (photo) => {
   document.body.classList.toggle('xb-lightbox-open', Boolean(photo))
+})
+let shownOnce = false
+onActivated(() => {
+  if (shownOnce) loadPhotos()
+  shownOnce = true
+})
+onDeactivated(() => {
+  closePreview()
+  document.body.classList.remove('xb-lightbox-open')
 })
 onBeforeUnmount(() => {
   document.body.classList.remove('xb-lightbox-open')

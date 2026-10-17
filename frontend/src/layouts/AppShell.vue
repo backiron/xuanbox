@@ -10,6 +10,10 @@ import MobileTabbar from '../components/layout/MobileTabbar.vue'
 import MobileTopbar from '../components/layout/MobileTopbar.vue'
 import VaultPinDialog from '../components/vault/VaultPinDialog.vue'
 
+// Pages kept in memory between visits, so switching back shows them at once and they refresh quietly
+// (onActivated). Vault (decrypted content), Notes (saves on leave) and XuanDrop (live socket) are rebuilt each time.
+const KEPT_PAGES = ['DashboardView', 'InboxView', 'PhotosView', 'FilesView', 'ReceiptsView']
+
 const route = useRoute()
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -29,7 +33,11 @@ onMounted(async () => {
       <DesktopTopbar class="desktop-only" :title="title" />
       <MobileTopbar class="mobile-only" :title="title" />
       <section class="xb-content">
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <keep-alive :include="KEPT_PAGES">
+            <component :is="Component" />
+          </keep-alive>
+        </router-view>
       </section>
     </main>
     <MobileTabbar class="mobile-only" />
