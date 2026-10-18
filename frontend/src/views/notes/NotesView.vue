@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowLeft, Check, Copy, ImagePlus, Pin, PinOff, Plus, Search, StickyNote, Trash2, X } from 'lucide-vue-next'
+import { AlertTriangle, ArrowLeft, Check, CloudOff, Copy, Loader2, ImagePlus, Pin, PinOff, Plus, Search, StickyNote, Trash2, X } from 'lucide-vue-next'
 
 import { noteApi } from '../../api/noteApi'
 import { useDialogStore } from '../../stores/dialogStore'
@@ -552,7 +552,12 @@ const saveLabel = computed(() => ({
           <button class="xb-icon-button xb-note-back" type="button" :title="t('pages.notes.back')" @click="backToList">
             <ArrowLeft :size="18" />
           </button>
-          <span class="xb-note-save" :class="`is-${saveState}`">{{ saveLabel }}</span>
+          <span class="xb-note-save" :class="`is-${saveState}`" role="status" :title="saveLabel" :aria-label="saveLabel">
+            <Loader2 v-if="saveState === 'saving' || saveState === 'dirty'" :size="16" />
+            <CloudOff v-else-if="saveState === 'error'" :size="16" />
+            <AlertTriangle v-else-if="saveState === 'conflict'" :size="16" />
+            <Check v-else :size="16" />
+          </span>
           <div class="xb-note-tools">
             <label class="xb-icon-button" :title="t('pages.notes.insertImage')">
               <ImagePlus :size="18" />

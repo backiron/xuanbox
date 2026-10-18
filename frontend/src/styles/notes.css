@@ -154,10 +154,25 @@
   display: none;
 }
 
+/* A fixed-size icon, so the row never shifts while autosave flips between saving and saved. */
 .xb-note-save {
+  display: inline-grid;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  place-items: center;
   color: var(--xb-text-muted);
-  font-size: 12px;
-  white-space: nowrap;
+}
+
+.xb-note-save.is-saving svg,
+.xb-note-save.is-dirty svg {
+  animation: xb-note-spin 1s linear infinite;
+}
+
+@keyframes xb-note-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .xb-note-tools .xb-secondary-button {
@@ -323,12 +338,22 @@
   }
 
   .xb-note-toolbar {
-    gap: 6px;
-    padding: 8px 10px;
+    gap: 4px;
+    padding: 8px 6px;
   }
 
   .xb-note-tools {
-    gap: 6px;
+    gap: 4px;
+  }
+
+  .xb-note-toolbar .xb-icon-button {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+  }
+
+  .xb-note-toolbar .xb-secondary-button {
+    min-height: 36px;
   }
 
   .xb-note-tools .xb-secondary-button {
@@ -340,4 +365,18 @@
 .xb-note-copy.is-done {
   border-color: var(--xb-color-success, #22c55e);
   color: var(--xb-color-success, #22c55e);
+}
+
+/* Very narrow phones: the Copy button keeps only its icon so the row still fits. */
+@media (max-width: 379px) {
+  .xb-note-copy span {
+    display: none;
+  }
+
+  .xb-note-toolbar .xb-note-copy {
+    width: 36px;
+    min-width: 36px;
+    padding: 0;
+    justify-content: center;
+  }
 }
