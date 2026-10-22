@@ -2,6 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from fastapi.responses import Response
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_session, require_user_app
@@ -9,6 +10,7 @@ from app.core.http import attachment_headers
 from app.core.responses import success_response
 from app.models.user import User
 from app.schemas.file_asset import FileAssetPublic, FileUpdateRequest
+from app.services import markdown_service
 from app.services.file_service import (
     decrypt_owned_file,
     get_owned_file,
@@ -22,6 +24,50 @@ from app.services.file_service import (
 )
 
 router = APIRouter()
+
+
+class MarkdownCreateRequest(BaseModel):
+    name: str
+    content: str = ""
+    folder_id: UUID | None = None
+
+
+class MarkdownSaveRequest(BaseModel):
+    content: str
+    # Hash of the copy the editor started from; a different server copy means it was saved elsewhere.
+    base_sha256: str | None = None
+
+
+@router.post("/markdown")
+async def create_markdown_endpoint(
+    payload: MarkdownCreateRequest,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_user_app),
+) -> dict:
+    return success_response(
+        await markdown_service.create_markdown(session, current_user, name=payload.name, content=payload.content, folder_id=payload.folder_id)
+    )
+
+
+@router.get("/{file_id}/markdown")
+async def read_markdown_endpoint(
+    file_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_user_app),
+) -> dict:
+    return success_response(await markdown_service.read_markdown(session, current_user, file_id))
+
+
+@router.put("/{file_id}/markdown")
+async def save_markdown_endpoint(
+    file_id: UUID,
+    payload: MarkdownSaveRequest,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_user_app),
+) -> dict:
+    return success_response(
+        await markdown_service.save_markdown(session, current_user, file_id, content=payload.content, base_sha256=payload.base_sha256)
+    )
 
 
 @router.post("/upload")

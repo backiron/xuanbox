@@ -78,6 +78,9 @@ class Device:
     def patch(self, path: str, headers: dict | None = None, **kwargs) -> httpx.Response:
         return httpx.patch(f"{BASE_URL}{path}", headers={**self.headers, **(headers or {})}, **kwargs)
 
+    def put(self, path: str, headers: dict | None = None, **kwargs) -> httpx.Response:
+        return httpx.put(f"{BASE_URL}{path}", headers={**self.headers, **(headers or {})}, **kwargs)
+
     def delete(self, path: str, headers: dict | None = None, **kwargs) -> httpx.Response:
         return httpx.delete(f"{BASE_URL}{path}", headers={**self.headers, **(headers or {})}, **kwargs)
 

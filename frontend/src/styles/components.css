@@ -398,6 +398,15 @@
   white-space: nowrap;
 }
 
+.xb-file-main .xb-file-link {
+  cursor: pointer;
+}
+
+.xb-file-main .xb-file-link:hover {
+  color: var(--xb-color-primary);
+  text-decoration: underline;
+}
+
 .xb-file-row > .xb-file-date {
   flex: 0 0 auto;
   white-space: nowrap;

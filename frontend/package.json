@@ -11,7 +11,9 @@
   "dependencies": {
     "@vitejs/plugin-vue": "latest",
     "axios": "latest",
+    "dompurify": "^3.4.17",
     "lucide-vue-next": "latest",
+    "marked": "^14.1.4",
     "naive-ui": "latest",
     "pinia": "latest",
     "qrcode": "^1.5.4",

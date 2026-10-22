@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import {
   ArrowLeft,
   Download,
+  FilePen,
   Folder,
   FolderPlus,
   Info,
@@ -22,11 +23,12 @@ import {
 import PageHeader from '../../components/common/PageHeader.vue'
 import EmptyState from '../../components/common/EmptyState.vue'
 import DownloadToast from '../../components/common/DownloadToast.vue'
-import { fileApi, folderApi, intelligenceApi, tagApi } from '../../api/fileApi'
+import { fileApi, folderApi, intelligenceApi, isMarkdownFile, tagApi } from '../../api/fileApi'
 import { vaultApi } from '../../api/vaultApi'
 import { useVaultStore } from '../../stores/vaultStore'
 import { receiptApi } from '../../api/receiptApi'
 import { useDialogStore } from '../../stores/dialogStore'
+import { useAuthStore } from '../../stores/authStore'
 import { findUploadLimitError } from '../../utils/uploadLimits'
 import { downloadPercent, saveBlobToDevice } from '../../utils/saveFile'
 
@@ -68,6 +70,8 @@ const moveFolderMenuOpen = ref(false)
 const dialog = useDialogStore()
 const router = useRouter()
 const vault = useVaultStore()
+const authStore = useAuthStore()
+const canEditMarkdown = computed(() => authStore.user?.plan === 'pro')
 const tagPalette = ['#4e83ff', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#f97316', '#e879f9']
 
 const pageTitle = computed(() => currentFolderName.value)
@@ -240,6 +244,27 @@ async function createFolder() {
   await loadFiles()
 }
 
+async function createMarkdown() {
+  const name = await dialog.prompt({
+    title: t('pages.files.newMarkdownTitle'),
+    label: t('pages.files.newMarkdownLabel'),
+    placeholder: t('pages.files.newMarkdownPlaceholder')
+  })
+  if (!name?.trim()) return
+  try {
+    const response = await fileApi.createMarkdown({ name, content: `# ${name.trim().replace(/\.(md|markdown)$/i, '')}
+
+`, folder_id: currentFolderId.value })
+    router.push({ name: 'markdown-editor', params: { id: response.data.data.file.id } })
+  } catch (err) {
+    await dialog.confirm({ title: t('pages.files.markdownCreateFailed'), message: err.response?.data?.message || '', confirmText: t('common.actions.close') })
+  }
+}
+
+function openMarkdown(file) {
+  router.push({ name: 'markdown-editor', params: { id: file.id } })
+}
+
 async function renameFile(file) {
   const displayName = await dialog.prompt({ title: t('pages.files.renameFile'), label: t('pages.files.renameFileLabel'), defaultValue: file.display_name })
   if (!displayName) return
@@ -395,6 +420,7 @@ async function runFileAction(action) {
   const file = actionFile.value
   if (!file) return
   closeFileActions()
+  if (action === 'markdown') openMarkdown(file)
   if (action === 'download') await downloadFile(file)
   if (action === 'favorite') await toggleFavorite(file)
   if (action === 'details') await openFileDetails(file)
@@ -666,6 +692,10 @@ onActivated(() => {
       <FolderPlus :size="18" />
       {{ t('pages.files.newFolder') }}
     </button>
+    <button v-if="canEditMarkdown" class="xb-secondary-button" type="button" @click="createMarkdown">
+      <FilePen :size="18" />
+      {{ t('pages.files.newMarkdown') }}
+    </button>
     <label class="xb-upload-button">
       <Upload :size="18" />
       {{ t('common.actions.upload') }}
@@ -770,7 +800,8 @@ onActivated(() => {
             <input type="checkbox" :checked="selectedIds.has(file.id)" @change="toggleSelected(file)" />
           </label>
           <div class="xb-file-main">
-            <strong>{{ file.display_name }}</strong>
+            <strong v-if="canEditMarkdown && isMarkdownFile(file)" class="xb-file-link" role="button" tabindex="0" @click="openMarkdown(file)" @keydown.enter="openMarkdown(file)">{{ file.display_name }}</strong>
+            <strong v-else>{{ file.display_name }}</strong>
             <span>{{ file.mime_type || 'application/octet-stream' }} · {{ formatSize(file.file_size) }}</span>
             <div v-if="tagsFor(file.id).length" class="xb-tag-list">
               <span v-for="tag in tagsFor(file.id)" :key="tag.id" :style="{ borderColor: tag.color, color: tag.color }">{{ tag.name }}</span>
@@ -826,6 +857,10 @@ onActivated(() => {
         <div class="xb-tag-list">
           <span v-for="tag in tagsFor(activeFile.id)" :key="tag.id" :style="{ borderColor: tag.color, color: tag.color }">{{ tag.name }}</span>
         </div>
+        <button v-if="canEditMarkdown && isMarkdownFile(activeFile)" class="xb-secondary-button" type="button" @click="openMarkdown(activeFile)">
+          <FilePen :size="17" />
+          {{ t('pages.files.openMarkdown') }}
+        </button>
         <button class="xb-secondary-button" type="button" @click="attachTag(activeFile)">
           <Tag :size="17" />
           {{ t('pages.files.addTag') }}
@@ -901,6 +936,10 @@ onActivated(() => {
           <button class="xb-icon-button" type="button" :title="t('common.actions.close')" @click="closeFileActions">×</button>
         </header>
         <div class="xb-mobile-action-grid">
+          <button v-if="canEditMarkdown && isMarkdownFile(actionFile)" type="button" @click="runFileAction('markdown')">
+            <FilePen :size="18" />
+            {{ t('pages.files.openMarkdown') }}
+          </button>
           <button type="button" @click="runFileAction('download')">
             <Download :size="18" />
             {{ t('common.actions.download') }}

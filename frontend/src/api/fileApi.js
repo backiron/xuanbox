@@ -24,7 +24,20 @@ export const fileApi = {
   },
   download(id, onDownloadProgress) {
     return http.get(`/files/${id}/download`, { responseType: 'blob', timeout: 600000, onDownloadProgress })
+  },
+  createMarkdown(payload) {
+    return http.post('/files/markdown', payload)
+  },
+  readMarkdown(id) {
+    return http.get(`/files/${id}/markdown`)
+  },
+  saveMarkdown(id, payload) {
+    return http.put(`/files/${id}/markdown`, payload)
   }
+}
+
+export function isMarkdownFile(file) {
+  return ['md', 'markdown'].includes((file?.file_ext || '').toLowerCase())
 }
 
 export const folderApi = {

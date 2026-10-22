@@ -40,6 +40,7 @@ const router = createRouter({
         { path: 'inbox', name: 'inbox', component: InboxView, meta: { titleKey: 'routes.inbox' } },
         { path: 'photos', name: 'photos', component: PhotosView, meta: { titleKey: 'routes.photos' } },
         { path: 'files', name: 'files', component: FilesView, meta: { titleKey: 'routes.files' } },
+        { path: 'files/md/:id', name: 'markdown-editor', component: () => import('../views/files/MarkdownEditorView.vue'), meta: { titleKey: 'routes.markdown' } },
         { path: 'receipts', name: 'receipts', component: ReceiptsView, meta: { titleKey: 'routes.receipts' } },
         { path: 'vault', name: 'vault', component: VaultView, meta: { titleKey: 'routes.vault' } },
         { path: 'notes', name: 'notes', component: NotesView, meta: { titleKey: 'routes.notes' } },
