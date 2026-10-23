@@ -48,3 +48,16 @@ def test_markdown_editing_rules(make_user):
     assert other.put(f"/files/{created['id']}/markdown", json={"content": "x"}).status_code == 404
     assert me.post("/files/markdown", json={"name": "  ", "content": ""}).status_code == 400
     assert me.put(f"/files/{created['id']}/markdown", json={"content": "a" * (2 * 1024 * 1024 + 1)}).status_code == 413
+
+
+def test_non_utf8_markdown_is_view_only(make_user):
+    me = make_user("md")
+    make_pro(me)
+    original = "# 旅行计划\n- 护照\n".encode("gbk")
+    uploaded = me.data(me.post("/files/upload", files={"file": ("old.md", original, "text/markdown")}))
+    shown = me.data(me.get(f"/files/{uploaded['id']}/markdown"))
+    assert shown["editable"] is False and "护照" in shown["content"]
+    assert me.put(f"/files/{uploaded['id']}/markdown", json={"content": shown["content"]}).status_code == 400
+    assert me.get(f"/files/{uploaded['id']}/download").content == original  # never rewritten
+    bom = me.data(me.post("/files/upload", files={"file": ("bom.md", "﻿# 标题".encode("utf-8"), "text/markdown")}))
+    assert me.data(me.get(f"/files/{bom['id']}/markdown")) | {"file": None} == {"file": None, "content": "# 标题", "editable": True}

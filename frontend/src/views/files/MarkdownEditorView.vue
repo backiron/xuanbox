@@ -36,6 +36,7 @@ const authStore = useAuthStore()
 const dialog = useDialogStore()
 
 const file = ref(null)
+const editable = ref(true)
 const content = ref('')
 const loading = ref(true)
 const loadError = ref('')
@@ -72,6 +73,8 @@ async function load() {
     const response = await fileApi.readMarkdown(route.params.id)
     file.value = response.data.data.file
     content.value = response.data.data.content
+    editable.value = response.data.data.editable !== false
+    if (!editable.value) mode.value = 'preview'
     editVersion = 0
     saveState.value = 'saved'
   } catch (err) {
@@ -82,6 +85,7 @@ async function load() {
 }
 
 function onInput() {
+  if (!editable.value) return
   editVersion += 1
   if (saveState.value !== 'conflict') saveState.value = 'dirty'
   clearTimeout(saveTimer)
@@ -276,7 +280,7 @@ onBeforeUnmount(() => {
           {{ saveLabel }}
         </span>
       </div>
-      <div v-if="file" class="xb-md-modes" role="group" :aria-label="t('pages.markdown.view')">
+      <div v-if="file && editable" class="xb-md-modes" role="group" :aria-label="t('pages.markdown.view')">
         <button type="button" :class="{ 'is-active': mode === 'edit' }" :title="t('pages.markdown.modeEdit')" @click="mode = 'edit'">
           <Pencil :size="16" /><span>{{ t('pages.markdown.modeEdit') }}</span>
         </button>
@@ -301,6 +305,9 @@ onBeforeUnmount(() => {
     <p v-else-if="loadError" class="xb-status-note is-error">{{ loadError }}</p>
 
     <template v-else-if="file">
+      <div v-if="!editable" class="xb-md-conflict">
+        <span>{{ t('pages.markdown.notUtf8') }}</span>
+      </div>
       <div v-if="saveState === 'conflict'" class="xb-md-conflict">
         <span>{{ t('pages.markdown.conflict') }}</span>
         <button class="xb-secondary-button" type="button" @click="reloadLatest">{{ t('pages.markdown.loadLatest') }}</button>

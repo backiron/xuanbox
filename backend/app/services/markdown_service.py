@@ -56,10 +56,23 @@ def _filename(name: str) -> str:
     return name
 
 
-def _payload(file_asset: FileAsset, content: str) -> dict:
+def _payload(file_asset: FileAsset, content: str, *, editable: bool = True) -> dict:
     from app.schemas.file_asset import FileAssetPublic
 
-    return {"file": FileAssetPublic.model_validate(file_asset).model_dump(mode="json"), "content": content}
+    return {"file": FileAssetPublic.model_validate(file_asset).model_dump(mode="json"), "content": content, "editable": editable}
+
+
+def _decode(plain_bytes: bytes) -> tuple[str, bool]:
+    """Text to show and whether it may be edited. Only UTF-8 round-trips safely: saving anything else
+    (e.g. a GBK file from an old Windows editor) would replace the original with garbled text."""
+    try:
+        return plain_bytes.decode("utf-8-sig"), True
+    except UnicodeDecodeError:
+        pass
+    try:
+        return plain_bytes.decode("gb18030"), False
+    except UnicodeDecodeError:
+        return plain_bytes.decode("utf-8", "replace"), False
 
 
 async def _markdown_file(db: AsyncSession, user: User, file_id: UUID) -> FileAsset:
@@ -118,12 +131,15 @@ async def create_markdown(db: AsyncSession, user: User, *, name: str, content: s
 async def read_markdown(db: AsyncSession, user: User, file_id: UUID) -> dict:
     require_pro(user)
     file_asset = await _markdown_file(db, user, file_id)
-    return _payload(file_asset, decrypt_file_asset(file_asset).decode("utf-8", "replace"))
+    content, editable = _decode(decrypt_file_asset(file_asset))
+    return _payload(file_asset, content, editable=editable)
 
 
 async def save_markdown(db: AsyncSession, user: User, file_id: UUID, *, content: str, base_sha256: str | None) -> dict:
     require_pro(user)
     file_asset = await _markdown_file(db, user, file_id)
+    if not _decode(decrypt_file_asset(file_asset))[1]:
+        raise AppError("markdown_not_utf8", "This file is not UTF-8 text, so it can only be viewed online", 400)
     plain_bytes = _encode(content)
     new_hash = hashlib.sha256(plain_bytes).hexdigest()
     if new_hash == file_asset.sha256_hash:

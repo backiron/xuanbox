@@ -580,6 +580,7 @@
       loadLatest: 'Load latest version',
       saveAsCopy: 'Save as a copy',
       keepMine: 'Overwrite with mine',
+      notUtf8: 'This file is not saved as UTF-8 text, so it can only be viewed online. To edit it here, save it as UTF-8 on your computer and upload it again.',
       copySuffix: '(copy)',
       view: 'View',
       modeEdit: 'Edit',

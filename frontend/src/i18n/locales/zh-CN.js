@@ -580,6 +580,7 @@
       loadLatest: '载入最新版本',
       saveAsCopy: '另存为副本',
       keepMine: '用我的覆盖',
+      notUtf8: '这个文件不是 UTF-8 编码（可能是旧版记事本保存的 GBK），在线只能查看。要在线编辑，请先在电脑上另存为 UTF-8 再上传。',
       copySuffix: '(副本)',
       view: '视图',
       modeEdit: '编辑',
