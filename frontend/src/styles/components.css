@@ -3840,6 +3840,10 @@ body.xb-lightbox-open {
   animation: xb-spin 0.8s linear infinite;
 }
 
+.xb-spin-icon {
+  animation: xb-spin 0.8s linear infinite;
+}
+
 @keyframes xb-spin {
   to {
     transform: rotate(360deg);
@@ -3848,7 +3852,8 @@ body.xb-lightbox-open {
 
 @media (prefers-reduced-motion: reduce) {
   .xb-receipt-row.is-recognising::after,
-  .xb-spinner {
+  .xb-spinner,
+  .xb-spin-icon {
     animation: none;
   }
 }

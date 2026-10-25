@@ -8,6 +8,7 @@ from app.core.dependencies import get_session, require_user_app
 from app.core.responses import success_response
 from app.models.user import User
 from app.schemas.photo import PhotoPublic
+from app.services.photo_note_service import create_photo_note_task, get_photo_note_task
 from app.services.photo_service import delete_photo, decrypt_photo_variant, list_photos, toggle_photo_favorite, upload_photo
 
 router = APIRouter()
@@ -30,6 +31,24 @@ async def upload_photo_endpoint(
 ) -> dict:
     photo = await upload_photo(session, current_user, file)
     return success_response(PhotoPublic.model_validate(photo).model_dump(mode="json"))
+
+
+@router.post("/{photo_id}/note")
+async def photo_to_note_endpoint(
+    photo_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_user_app),
+) -> dict:
+    return success_response(await create_photo_note_task(session, current_user, photo_id))
+
+
+@router.get("/note-tasks/{task_id}")
+async def photo_note_task_endpoint(
+    task_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_user_app),
+) -> dict:
+    return success_response(await get_photo_note_task(session, current_user, task_id))
 
 
 @router.get("/{photo_id}/thumbnail")

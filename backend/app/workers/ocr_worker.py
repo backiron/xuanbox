@@ -12,6 +12,7 @@ from app.services.backup_service import create_backup
 from app.services.drop_service import cleanup_expired_messages
 from app.services.document_intelligence_service import DOCUMENT_EXTRACT_TASK_TYPE, process_document_extract_task
 from app.services.ocr_service import OCR_TASK_TYPE, process_receipt_ocr_task
+from app.services.photo_note_service import PHOTO_NOTE_TASK_TYPE, process_photo_note_task
 from app.services.search_index_service import SEARCH_INDEX_TASK_TYPE, process_search_index_task
 from app.services.system_settings_service import get_auto_backup_enabled
 from app.services.worker_service import claim_next_worker_task, mark_task_failed
@@ -30,6 +31,8 @@ async def process_once() -> bool:
                 await process_receipt_ocr_task(session, task)
             elif task.task_type == DOCUMENT_EXTRACT_TASK_TYPE:
                 await process_document_extract_task(session, task)
+            elif task.task_type == PHOTO_NOTE_TASK_TYPE:
+                await process_photo_note_task(session, task)
             elif task.task_type == SEARCH_INDEX_TASK_TYPE:
                 await process_search_index_task(session, task)
             else:

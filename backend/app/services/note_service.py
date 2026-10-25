@@ -199,6 +199,13 @@ async def add_image(db: AsyncSession, user: User, note_id: UUID, upload: UploadF
     if (count or 0) >= MAX_IMAGES_PER_NOTE:
         raise AppError("note_image_limit", f"A note can hold up to {MAX_IMAGES_PER_NOTE} images", 413)
     raw = await read_upload_bytes(upload, max_bytes=MAX_IMAGE_UPLOAD_BYTES)
+    image = await store_image(db, user, note, raw)
+    await db.commit()
+    return {"id": str(image.id), "width": image.width, "height": image.height, "marker": f"[[img:{image.id}]]"}
+
+
+async def store_image(db: AsyncSession, user: User, note: Note, raw: bytes) -> NoteImage:
+    """Encrypt and save one image for ``note``; the caller commits and places its marker in the body."""
     content, mime, width, height = _prepare_image(raw)
     image_id = uuid4()
     key = generate_file_key()
@@ -219,8 +226,8 @@ async def add_image(db: AsyncSession, user: User, note_id: UUID, upload: UploadF
         auth_tag=auth_tag,
     )
     db.add(image)
-    await db.commit()
-    return {"id": str(image.id), "width": width, "height": height, "marker": f"[[img:{image.id}]]"}
+    await db.flush()
+    return image
 
 
 async def read_image(db: AsyncSession, user: User, note_id: UUID, image_id: UUID) -> tuple[bytes, str]:

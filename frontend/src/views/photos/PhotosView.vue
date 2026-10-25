@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Album, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, Download, Edit3, FolderInput, ImagePlus, ReceiptText, Share2, ShieldCheck, Square, Trash2, Upload, X } from 'lucide-vue-next'
+import { Album, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, Download, Edit3, FolderInput, ImagePlus, Loader2, ReceiptText, ScanText, Share2, ShieldCheck, Square, Trash2, Upload, X } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import PageHeader from '../../components/common/PageHeader.vue'
 import EmptyState from '../../components/common/EmptyState.vue'
@@ -28,6 +28,7 @@ const editMode = ref(false)
 const moveModalOpen = ref(false)
 const moveAlbumId = ref('')
 const mobileAlbumDrawerOpen = ref(false)
+const noteTaskPhotoId = ref('')
 const currentPage = ref(1)
 const isMobileViewport = ref(window.matchMedia?.('(max-width: 840px)').matches ?? false)
 const pageSize = computed(() => isMobileViewport.value ? 24 : 48)
@@ -377,6 +378,41 @@ async function savePhotoAsReceipt(photo = activePreview.value) {
   return receipt
 }
 
+async function savePhotoAsNote(photo = activePreview.value) {
+  if (!photo?.id || noteTaskPhotoId.value) return
+  noteTaskPhotoId.value = photo.id
+  try {
+    let task = (await photoApi.toNote(photo.id)).data.data
+    // OCR plus the local model can take a minute on the server; give up waiting after five.
+    const deadline = Date.now() + 5 * 60 * 1000
+    while (['pending', 'processing'].includes(task.status) && Date.now() < deadline) {
+      await new Promise((resolve) => window.setTimeout(resolve, 2000))
+      task = (await photoApi.noteTask(task.id)).data.data
+    }
+    if (task.status === 'completed' && task.note_id) {
+      const open = await dialog.confirm({
+        title: t('pages.photos.noteReadyTitle'),
+        message: t(task.ai_assisted ? 'pages.photos.noteReadyTidied' : 'pages.photos.noteReadyRaw'),
+        confirmText: t('pages.photos.openNote'),
+        cancelText: t('common.actions.close')
+      })
+      if (open) {
+        closePreview()
+        await router.push({ path: '/notes', query: { note: task.note_id } })
+      }
+      return
+    }
+    const message = task.status === 'failed'
+      ? t(task.error === 'no_text' ? 'pages.photos.noteNoText' : 'pages.photos.noteFailed')
+      : t('pages.photos.noteStillWorking')
+    await dialog.confirm({ title: t('pages.photos.toNote'), message, confirmText: t('pages.files.dialogOk') })
+  } catch (err) {
+    await dialog.confirm({ title: t('pages.photos.noteFailed'), message: err.response?.data?.message || '', confirmText: t('pages.files.dialogOk') })
+  } finally {
+    noteTaskPhotoId.value = ''
+  }
+}
+
 async function addPhotoToImportantDocs(photo = activePreview.value) {
   if (!photo?.id) return
   try {
@@ -640,6 +676,10 @@ onBeforeUnmount(() => {
           <button class="xb-icon-button" type="button" :title="t('pages.photos.saveAsReceipt')" @click="savePhotoAsReceipt(activePreview)">
             <ReceiptText :size="19" />
           </button>
+          <button class="xb-icon-button" type="button" :title="noteTaskPhotoId ? t('pages.photos.toNoteBusy') : t('pages.photos.toNote')" :disabled="Boolean(noteTaskPhotoId)" @click="savePhotoAsNote(activePreview)">
+            <Loader2 v-if="noteTaskPhotoId" :size="19" class="xb-spin-icon" />
+            <ScanText v-else :size="19" />
+          </button>
           <button class="xb-icon-button" type="button" :title="t('pages.vault.addTo')" @click="addPhotoToImportantDocs(activePreview)">
             <ShieldCheck :size="19" />
           </button>
@@ -670,6 +710,11 @@ onBeforeUnmount(() => {
           <button class="xb-secondary-button" type="button" @click="savePhotoAsReceipt(activePreview)">
             <ReceiptText :size="18" />
             {{ t('pages.photos.receiptShort') }}
+          </button>
+          <button class="xb-secondary-button" type="button" :disabled="Boolean(noteTaskPhotoId)" @click="savePhotoAsNote(activePreview)">
+            <Loader2 v-if="noteTaskPhotoId" :size="18" class="xb-spin-icon" />
+            <ScanText v-else :size="18" />
+            {{ t('pages.photos.noteShort') }}
           </button>
           <button class="xb-secondary-button" type="button" @click="addPhotoToImportantDocs(activePreview)">
             <ShieldCheck :size="18" />

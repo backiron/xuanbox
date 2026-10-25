@@ -27,6 +27,12 @@ export const photoApi = {
   },
   remove(photoId) {
     return http.delete(`/photos/${photoId}`)
+  },
+  toNote(photoId) {
+    return http.post(`/photos/${photoId}/note`)
+  },
+  noteTask(taskId) {
+    return http.get(`/photos/note-tasks/${taskId}`)
   }
 }
 

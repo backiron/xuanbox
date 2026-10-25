@@ -436,6 +436,16 @@
       resolveFailed: '无法处理该上传项。'
     },
     photos: {
+      noteShort: '笔记',
+      toNote: '识别为笔记',
+      toNoteBusy: '正在识别文字…',
+      noteReadyTitle: '已生成笔记',
+      noteReadyTidied: '照片里的文字已识别并整理成笔记，原图附在笔记末尾，方便对照修改。',
+      noteReadyRaw: '照片里的文字已识别并存为笔记（未经 AI 整理），原图附在笔记末尾，方便对照修改。',
+      openNote: '打开笔记',
+      noteNoText: '这张照片里没有识别到文字。',
+      noteFailed: '识别失败，请稍后再试。',
+      noteStillWorking: '服务器仍在识别，完成后笔记会出现在记事板里。',
       photoPages: '照片分页',
       previousPhoto: '上一张',
       nextPhoto: '下一张',

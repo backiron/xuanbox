@@ -436,6 +436,16 @@
       resolveFailed: 'Could not resolve item.'
     },
     photos: {
+      noteShort: 'Note',
+      toNote: 'Turn text into a note',
+      toNoteBusy: 'Reading the text…',
+      noteReadyTitle: 'Note created',
+      noteReadyTidied: 'The text in this photo was read and tidied into a note. The photo is attached at the end so you can check it.',
+      noteReadyRaw: 'The text in this photo was read and saved as a note (not tidied by AI). The photo is attached at the end so you can check it.',
+      openNote: 'Open note',
+      noteNoText: 'No text was found in this photo.',
+      noteFailed: 'Could not read this photo. Please try again later.',
+      noteStillWorking: 'The server is still reading it. The note will appear in Notes when it is done.',
       photoPages: 'Photo pages',
       previousPhoto: 'Previous photo',
       nextPhoto: 'Next photo',
