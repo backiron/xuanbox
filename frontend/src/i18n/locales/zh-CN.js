@@ -234,6 +234,24 @@
       }
     },
     notes: {
+      ink: {
+        title: '手写',
+        pen: '笔',
+        eraser: '橡皮擦（按住笔侧键也能擦）',
+        color: '颜色',
+        size: '粗细',
+        undo: '撤销',
+        redo: '重做',
+        clear: '清空这一页',
+        fingerOn: '手指也能写（点一下只用笔，防止手掌误触）',
+        fingerOff: '只用笔写，手指和手掌不会留下笔迹（点一下让手指也能写）',
+        done: '完成',
+        edit: '继续手写',
+        discardTitle: '放弃这次手写？',
+        discardMessage: '还没点“完成”，这次写的内容不会保存。',
+        discard: '放弃',
+        openFailed: '无法打开这页手写'
+      },
       copy: "复制",
       copied: "已复制",
       copyHint: "复制这条记事的文字",

@@ -2,11 +2,13 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { AlertTriangle, ArrowLeft, Check, CloudOff, Copy, Loader2, ImagePlus, Pin, PinOff, Plus, Search, StickyNote, Trash2, X } from 'lucide-vue-next'
+import { AlertTriangle, ArrowLeft, Check, CloudOff, Copy, Loader2, ImagePlus, PenLine, Pencil, Pin, PinOff, Plus, Search, StickyNote, Trash2, X } from 'lucide-vue-next'
 
 import { noteApi } from '../../api/noteApi'
 import { useDialogStore } from '../../stores/dialogStore'
 import '../../styles/notes.css'
+import InkBoard from '../../components/notes/InkBoard.vue'
+import { readInk } from '../../utils/inkPng'
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -29,6 +31,8 @@ const viewer = ref('')
 const copied = ref(false)
 const editorRef = ref(null)
 const imageUrls = ref({})
+const inkImages = ref({}) // `${noteId}/${imageId}` -> true for handwriting pages
+const inkBoard = ref(null) // { ink, blockKey, at } while the handwriting board is open
 
 let saveTimer = null
 let searchTimer = null
@@ -100,6 +104,9 @@ function ensureImage(noteId, imageId) {
   noteApi.image(noteId, imageId)
     .then((response) => {
       imageUrls.value = { ...imageUrls.value, [cacheKey]: URL.createObjectURL(response.data) }
+      readInk(response.data).then((ink) => {
+        if (ink) inkImages.value = { ...inkImages.value, [cacheKey]: true }
+      })
     })
     .catch(() => {
       imageUrls.value = { ...imageUrls.value, [cacheKey]: 'error' }
@@ -122,7 +129,7 @@ watch(blocks, (list) => {
   list.forEach((block) => block.type === 'image' && block.id && !block.localUrl && ensureImage(current.value.id, block.id))
 }, { deep: true })
 
-async function insertImages(files, at = lastFocus) {
+async function insertImages(files, at = lastFocus, extra = {}) {
   const images = [...files].filter((file) => file.type.startsWith('image/'))
   if (!images.length || !current.value) return
   if (!editing.value) editing.value = true
@@ -135,7 +142,7 @@ async function insertImages(files, at = lastFocus) {
   const inserted = [textBlock(before)]
   const pending = []
   images.forEach((file, i) => {
-    const block = imageBlock(null, { uploading: true, localUrl: URL.createObjectURL(file) })
+    const block = imageBlock(null, { uploading: true, localUrl: URL.createObjectURL(file), ...extra })
     inserted.push(block)
     pending.push([block, file])
     inserted.push(textBlock(i === images.length - 1 ? after : ''))
@@ -158,6 +165,55 @@ async function insertImages(files, at = lastFocus) {
   }
   await nextTick()
   autosizeAll()
+}
+
+// ---------------------------------------------------------------- handwriting
+
+function isInkBlock(block) {
+  return Boolean(block.ink || (current.value && block.id && inkImages.value[`${current.value.id}/${block.id}`]))
+}
+
+function openInkBoard() {
+  if (!current.value) return
+  inkBoard.value = { ink: null, blockKey: null, at: lastFocus }
+}
+
+async function editInk(block) {
+  try {
+    const blob = await (await fetch(blockImageSrc(block))).blob()
+    const ink = await readInk(blob)
+    if (ink) inkBoard.value = { ink, blockKey: block.key, at: null }
+  } catch {
+    actionError.value = t('pages.notes.ink.openFailed')
+  }
+}
+
+async function onInkSave(file) {
+  const board = inkBoard.value
+  inkBoard.value = null
+  if (!board || !current.value) return
+  if (!board.blockKey) {
+    await insertImages([file], board.at, { ink: true })
+    return
+  }
+  const block = blocks.value.find((item) => item.key === board.blockKey)
+  if (!block) return
+  const previousUrl = block.localUrl
+  block.localUrl = URL.createObjectURL(file)
+  block.uploading = true
+  block.ink = true
+  try {
+    const response = await noteApi.addImage(current.value.id, file)
+    block.id = response.data.data.id // the old page is dropped by the server once no note uses it
+    if (previousUrl) URL.revokeObjectURL(previousUrl)
+    markDirty()
+  } catch (err) {
+    actionError.value = errorText(err, t('pages.notes.imageFailed'))
+    URL.revokeObjectURL(block.localUrl)
+    block.localUrl = previousUrl
+  } finally {
+    block.uploading = false
+  }
 }
 
 function removeImage(key, { save = true } = {}) {
@@ -559,6 +615,9 @@ const saveLabel = computed(() => ({
             <Check v-else :size="16" />
           </span>
           <div class="xb-note-tools">
+            <button class="xb-icon-button" type="button" :title="t('pages.notes.ink.title')" @click="openInkBoard">
+              <PenLine :size="18" />
+            </button>
             <label class="xb-icon-button" :title="t('pages.notes.insertImage')">
               <ImagePlus :size="18" />
               <input type="file" accept="image/*" multiple hidden @change="onPickImages" />
@@ -611,6 +670,9 @@ const saveLabel = computed(() => ({
               />
               <span v-else-if="blockImageSrc(block) === 'error'" class="xb-note-image-missing">{{ t('pages.notes.imageMissing') }}</span>
               <span v-else class="xb-note-image-missing">…</span>
+              <button v-if="editing && !block.uploading && isInkBlock(block)" class="xb-icon-button xb-note-ink-edit" type="button" :title="t('pages.notes.ink.edit')" @click="editInk(block)">
+                <Pencil :size="16" />
+              </button>
               <button v-if="editing && !block.uploading" class="xb-icon-button" type="button" :title="t('pages.notes.removeImage')" @click="removeImage(block.key)">
                 <X :size="16" />
               </button>
@@ -625,6 +687,8 @@ const saveLabel = computed(() => ({
         <p v-if="actionError" class="xb-status-note is-error">{{ actionError }}</p>
       </div>
     </article>
+
+    <InkBoard v-if="inkBoard" :ink="inkBoard.ink" @close="inkBoard = null" @save="onInkSave" />
 
     <div v-if="viewer" class="xb-note-viewer" @click="viewer = ''">
       <img :src="viewer" alt="" />

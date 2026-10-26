@@ -234,6 +234,24 @@
       }
     },
     notes: {
+      ink: {
+        title: 'Handwriting',
+        pen: 'Pen',
+        eraser: 'Eraser (or hold the pen button)',
+        color: 'Colour',
+        size: 'Thickness',
+        undo: 'Undo',
+        redo: 'Redo',
+        clear: 'Clear this page',
+        fingerOn: 'Fingers draw too (tap to use the pen only and ignore your palm)',
+        fingerOff: 'Pen only: fingers and palms leave no marks (tap to let fingers draw)',
+        done: 'Done',
+        edit: 'Keep writing',
+        discardTitle: 'Discard this handwriting?',
+        discardMessage: 'You have not tapped Done, so what you wrote will not be saved.',
+        discard: 'Discard',
+        openFailed: 'Could not open this handwriting page'
+      },
       copy: "Copy",
       copied: "Copied",
       copyHint: "Copy the text of this note",

@@ -380,3 +380,185 @@
     justify-content: center;
   }
 }
+
+/* Handwriting board */
+html.xb-ink-open,
+html.xb-ink-open body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.xb-ink {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background: var(--xb-bg-page);
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.xb-ink-bar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--xb-border);
+  background: var(--xb-bg-card-strong);
+}
+
+.xb-ink-tools {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.xb-ink-tools::-webkit-scrollbar {
+  display: none;
+}
+
+.xb-ink-btn {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--xb-radius-md);
+  background: transparent;
+  color: var(--xb-text-soft);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.xb-ink-btn.is-active {
+  border-color: var(--xb-border-strong);
+  background: var(--xb-color-primary-soft);
+  color: var(--xb-text-main);
+}
+
+.xb-ink-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.xb-ink-done {
+  background: var(--xb-color-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.xb-ink-size span {
+  display: block;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.xb-ink-color {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  margin: 0 3px;
+  border: 2px solid var(--xb-border-strong);
+  border-radius: 50%;
+  background: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.xb-ink-color.is-active {
+  box-shadow: 0 0 0 3px var(--xb-bg-card-strong), 0 0 0 5px var(--xb-color-primary);
+}
+
+.xb-ink-sep {
+  flex: 0 0 1px;
+  align-self: stretch;
+  margin: 6px 4px;
+  background: var(--xb-border);
+}
+
+.xb-ink-stage {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 10px;
+  overflow: hidden;
+}
+
+.xb-ink-canvas {
+  display: block;
+  border-radius: 4px;
+  box-shadow: 0 6px 30px rgba(0, 0, 0, 0.35);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.xb-ink-canvas.is-erasing {
+  cursor: cell;
+}
+
+.xb-note-image .xb-note-ink-edit {
+  right: 44px;
+}
+
+@media (max-width: 860px) {
+  .xb-ink-bar {
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  /* Tools get a full row of their own under Cancel / Done so nothing hides off screen. */
+  .xb-ink-tools {
+    flex-wrap: wrap;
+    flex-basis: 100%;
+    justify-content: center;
+    order: 3;
+  }
+}
+
+@media (max-width: 520px) {
+  .xb-ink-bar {
+    padding: 6px;
+    gap: 4px;
+  }
+
+  .xb-ink-sep {
+    display: none;
+  }
+
+  .xb-ink-btn {
+    min-width: 38px;
+    height: 38px;
+    padding: 0 6px;
+  }
+
+  .xb-ink-color {
+    width: 28px;
+    height: 28px;
+  }
+
+  .xb-ink-done span {
+    display: none;
+  }
+
+  .xb-ink-stage {
+    padding: 6px;
+  }
+}
