@@ -2,10 +2,12 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { AlertTriangle, ArrowLeft, Check, CloudOff, Copy, Loader2, ImagePlus, PenLine, Pencil, Pin, PinOff, Plus, Search, StickyNote, Trash2, X } from 'lucide-vue-next'
+import { AlertTriangle, ArrowLeft, Check, CloudOff, Copy, Loader2, ImagePlus, PenLine, Pencil, Pin, PinOff, Plus, Search, ShieldCheck, StickyNote, Trash2, X } from 'lucide-vue-next'
 
 import { noteApi } from '../../api/noteApi'
 import { useDialogStore } from '../../stores/dialogStore'
+import { useVaultStore } from '../../stores/vaultStore'
+import { vaultApi } from '../../api/vaultApi'
 import '../../styles/notes.css'
 import InkBoard from '../../components/notes/InkBoard.vue'
 import { readInk } from '../../utils/inkPng'
@@ -14,6 +16,7 @@ const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const dialog = useDialogStore()
+const vault = useVaultStore()
 
 const IMAGE_LINE = /^\[\[img:([0-9a-fA-F-]{36})\]\]$/
 let keySeq = 0
@@ -495,6 +498,34 @@ async function togglePin() {
   }
 }
 
+async function moveToVault() {
+  const note = current.value
+  if (!note) return
+  await save()
+  if (saveState.value !== 'saved' || uploading.value) {
+    actionError.value = t('pages.notes.vaultSaveFirst')
+    return
+  }
+  try {
+    const done = await vault.run((token) => vaultApi.addNote(token, note.id))
+    if (!done) return
+    notes.value = notes.value.filter((item) => item.id !== note.id)
+    current.value = null
+    blocks.value = []
+    editing.value = false
+    router.replace({ query: { ...route.query, note: undefined } })
+    const open = await dialog.confirm({
+      title: t('pages.vault.added'),
+      message: t('pages.notes.vaulted'),
+      confirmText: t('pages.vault.openVault'),
+      cancelText: t('common.actions.close')
+    })
+    if (open) router.push('/vault')
+  } catch (err) {
+    actionError.value = errorText(err, t('pages.vault.addFailed'))
+  }
+}
+
 async function deleteCurrent() {
   const note = current.value
   if (!note) return
@@ -630,6 +661,9 @@ const saveLabel = computed(() => ({
             <button class="xb-icon-button" type="button" :title="current.pinned ? t('pages.notes.unpin') : t('pages.notes.pin')" @click="togglePin">
               <PinOff v-if="current.pinned" :size="18" />
               <Pin v-else :size="18" />
+            </button>
+            <button class="xb-icon-button" type="button" :title="t('pages.vault.addTo')" @click="moveToVault">
+              <ShieldCheck :size="18" />
             </button>
             <button class="xb-icon-button" type="button" :title="t('common.actions.delete')" @click="deleteCurrent">
               <Trash2 :size="18" />

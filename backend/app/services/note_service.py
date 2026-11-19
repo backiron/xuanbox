@@ -13,7 +13,7 @@ from uuid import UUID, uuid4
 
 from fastapi import UploadFile
 from PIL import Image, ImageOps
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -72,15 +72,16 @@ def _detail(note: Note) -> dict[str, Any]:
     }
 
 
-async def _get_note(db: AsyncSession, user: User, note_id: UUID) -> Note:
+async def _get_note(db: AsyncSession, user: User, note_id: UUID, *, in_vault: bool = False) -> Note:
+    """A note of ``user``; vault notes only exist for the vault (``in_vault=True``) and vice versa."""
     note = await db.get(Note, note_id)
-    if note is None or note.owner_id != user.id:
+    if note is None or note.owner_id != user.id or note.in_vault != in_vault:
         raise AppError("note_not_found", "Note not found", 404)
     return note
 
 
 async def list_notes(db: AsyncSession, user: User, query: str | None = None) -> list[dict[str, Any]]:
-    statement = select(Note).where(Note.owner_id == user.id)
+    statement = select(Note).where(Note.owner_id == user.id, Note.in_vault.is_(False))
     words = (query or "").split()
     for word in words[:8]:
         escaped = word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
@@ -160,8 +161,8 @@ async def _drop_unplaced_images(db: AsyncSession, note: Note, placed: set[UUID])
         await db.delete(image)
 
 
-async def delete_note(db: AsyncSession, user: User, note_id: UUID) -> None:
-    note = await _get_note(db, user, note_id)
+async def delete_note(db: AsyncSession, user: User, note_id: UUID, *, in_vault: bool = False) -> None:
+    note = await _get_note(db, user, note_id, in_vault=in_vault)
     paths = list(await db.scalars(select(NoteImage.encrypted_path).where(NoteImage.note_id == note.id)))
     await db.delete(note)
     await db.commit()
@@ -230,9 +231,42 @@ async def store_image(db: AsyncSession, user: User, note: Note, raw: bytes) -> N
     return image
 
 
-async def read_image(db: AsyncSession, user: User, note_id: UUID, image_id: UUID) -> tuple[bytes, str]:
+async def read_image(db: AsyncSession, user: User, note_id: UUID, image_id: UUID, *, in_vault: bool = False) -> tuple[bytes, str]:
+    await _get_note(db, user, note_id, in_vault=in_vault)
     image = await db.get(NoteImage, image_id)
     if image is None or image.note_id != note_id or image.owner_id != user.id:
         raise AppError("note_image_not_found", "Image not found", 404)
     content = decrypt_bytes(read_encrypted_file(image.encrypted_path), unwrap_file_key(image.encrypted_file_key), image.nonce, image.auth_tag)
     return content, image.mime_type
+
+
+# ---------------------------------------------------------------- vault
+
+
+async def _set_vault(db: AsyncSession, note: Note, in_vault: bool) -> None:
+    # A plain UPDATE keeps updated_at as it was, so the note goes back to the same place in the list.
+    await db.execute(
+        update(Note)
+        .where(Note.id == note.id)
+        .values(in_vault=in_vault, vaulted_at=datetime.now(UTC) if in_vault else None, updated_at=Note.updated_at)
+        .execution_options(synchronize_session=False)
+    )
+
+
+async def move_to_vault(db: AsyncSession, user: User, note_id: UUID) -> None:
+    """Hide the note in the vault. Does not commit."""
+    await _set_vault(db, await _get_note(db, user, note_id), True)
+
+
+async def move_out_of_vault(db: AsyncSession, user: User, note_id: UUID) -> None:
+    """Back to Notes exactly as it was: same text, images, pin and position. Does not commit."""
+    await _set_vault(db, await _get_note(db, user, note_id, in_vault=True), False)
+
+
+async def list_vault_notes(db: AsyncSession, user: User) -> list[dict[str, Any]]:
+    notes = await db.scalars(select(Note).where(Note.owner_id == user.id, Note.in_vault.is_(True)))
+    return [{**_summary(note, _ordered_image_ids(note.body)), "vaulted_at": note.vaulted_at.isoformat() if note.vaulted_at else None} for note in notes]
+
+
+async def get_vault_note(db: AsyncSession, user: User, note_id: UUID) -> dict[str, Any]:
+    return _detail(await _get_note(db, user, note_id, in_vault=True))

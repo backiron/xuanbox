@@ -106,3 +106,78 @@ def test_inbox_can_send_to_vault_only_when_unlocked_and_delete_is_final(make_use
     me.data(me.delete(f"/important-docs/{vault_items[0]['id']}", headers=unlock))
     assert me.data(me.get("/important-docs", headers=unlock)) == []
     assert all(f["display_name"] != "tax-return.pdf" for f in me.data(me.get("/trash")))
+
+
+def test_note_moves_into_the_vault_and_back_unchanged(make_user):
+    me, other = make_user("vault"), make_user("vault")
+    note = me.data(me.post("/notes", json={"body": "Bank PIN hint: quokkaberry"}))
+    image = me.data(me.post(f"/notes/{note['id']}/images", files={"file": ("a.jpg", _jpeg(), "image/jpeg")}))
+    body = f"Bank PIN hint: quokkaberry\n{image['marker']}"
+    note = me.data(me.patch(f"/notes/{note['id']}", json={"body": body, "pinned": True}))
+
+    # Adding needs an unlocked vault.
+    assert me.post(f"/important-docs/from-note/{note['id']}").status_code in (400, 401)
+    assert [n["id"] for n in me.data(me.get("/notes"))] == [note["id"]]
+    unlock = _unlock(me)
+    me.data(me.post(f"/important-docs/from-note/{note['id']}", headers=unlock))
+
+    # Gone from Notes in every way, including its images and search.
+    assert me.data(me.get("/notes")) == []
+    assert me.data(me.get("/notes", params={"q": "quokkaberry"})) == []
+    assert me.get(f"/notes/{note['id']}").status_code == 404
+    assert me.get(f"/notes/{note['id']}/images/{image['id']}").status_code == 404
+    assert me.patch(f"/notes/{note['id']}", json={"body": "x"}).status_code == 404
+    assert me.delete(f"/notes/{note['id']}").status_code == 404
+
+    # Readable in the vault only, and only when unlocked.
+    listed = me.data(me.get("/important-docs", headers=unlock))
+    assert [(i["kind"], i["id"], i["title"]) for i in listed] == [("note", note["id"], "Bank PIN hint: quokkaberry")]
+    assert me.get(f"/important-docs/notes/{note['id']}").status_code in (400, 401)
+    assert me.data(me.get(f"/important-docs/notes/{note['id']}", headers=unlock))["body"] == body
+    assert me.get(f"/important-docs/notes/{note['id']}/images/{image['id']}", headers=unlock).status_code == 200
+    other_unlock = _unlock(other)
+    assert other.get(f"/important-docs/notes/{note['id']}", headers=other_unlock).status_code == 404
+    assert other.post(f"/important-docs/notes/{note['id']}/restore", headers=other_unlock).status_code == 404
+
+    # Back out: same text, image, pin and edit time.
+    assert me.data(me.post(f"/important-docs/notes/{note['id']}/restore", headers=unlock))["destination"] == "notes"
+    back = me.data(me.get(f"/notes/{note['id']}"))
+    assert (back["body"], back["pinned"], back["updated_at"]) == (body, True, note["updated_at"])
+    assert me.get(f"/notes/{note['id']}/images/{image['id']}").status_code == 200
+    assert me.data(me.get("/important-docs", headers=unlock)) == []
+
+    # Deleting from the vault is final.
+    me.data(me.post(f"/important-docs/from-note/{note['id']}", headers=unlock))
+    me.data(me.delete(f"/important-docs/notes/{note['id']}", headers=unlock))
+    assert me.get(f"/important-docs/notes/{note['id']}", headers=unlock).status_code == 404
+    assert me.get(f"/notes/{note['id']}").status_code == 404
+
+
+def test_items_return_to_their_folder_and_albums(make_user):
+    me = make_user("vault")
+    unlock = _unlock(me)
+
+    folder = me.data(me.post("/folders", json={"name": "Contracts"}))
+    lease = me.data(me.post("/files/upload", data={"folder_id": folder["id"]}, files={"file": ("lease.pdf", b"%PDF-1.4 lease", "application/pdf")}))
+    item = me.data(me.post(f"/important-docs/from-file/{lease['id']}", headers=unlock))
+    restored = me.data(me.post(f"/important-docs/{item['id']}/restore", headers=unlock))
+    assert (restored["destination"], restored["folder_name"]) == ("files", "Contracts")
+    assert [f["id"] for f in me.data(me.get("/files", params={"folder_id": folder["id"]}))] == [lease["id"]]
+
+    # Its folder was deleted while it was in the vault: it comes back to the top of Files, not nowhere.
+    item = me.data(me.post(f"/important-docs/from-file/{lease['id']}", headers=unlock))
+    me.data(me.delete(f"/folders/{folder['id']}"))
+    restored = me.data(me.post(f"/important-docs/{item['id']}/restore", headers=unlock))
+    assert restored["folder_name"] is None
+    assert lease["id"] in [f["id"] for f in me.data(me.get("/files", params={"root_only": True}))]
+
+    photo = me.data(me.post("/photos/upload", files={"file": ("trip.jpg", _jpeg((10, 200, 90)), "image/jpeg")}))
+    album = me.data(me.post("/albums", json={"title": "Trip"}))
+    me.data(me.post(f"/albums/{album['id']}/photos/{photo['id']}"))
+    item = me.data(me.post(f"/important-docs/from-photo/{photo['id']}", headers=unlock))
+    assert me.data(me.get(f"/albums/{album['id']}/photos")) == []
+    restored = me.data(me.post(f"/important-docs/{item['id']}/restore", headers=unlock))
+    assert (restored["destination"], restored["albums"]) == ("photos", ["Trip"])
+    assert [p["id"] for p in me.data(me.get(f"/albums/{album['id']}/photos"))] == [photo["id"]]
+    cover = [a for a in me.data(me.get("/albums")) if a["id"] == album["id"]][0]
+    assert cover["cover_file_id"] == photo["file_id"]

@@ -2,7 +2,7 @@ from datetime import date, datetime
 from uuid import UUID
 
 from sqlalchemy import Date, DateTime, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import UUID as PgUUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -22,3 +22,5 @@ class DocumentAsset(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     security_level: Mapped[str] = mapped_column(String(32), default="normal", index=True, nullable=False)
     last_viewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Where a vault item came from (e.g. a photo's albums), so moving it out puts it back.
+    restore_info: Mapped[dict | None] = mapped_column(JSONB, nullable=True)

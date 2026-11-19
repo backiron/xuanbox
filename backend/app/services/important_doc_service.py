@@ -1,9 +1,10 @@
-"""The vault: files and photos kept behind a separate 6-digit PIN.
+"""The vault: files, photos and notes kept behind a separate 6-digit PIN.
 
 The PIN is an access gate on top of the normal per-file encryption, not a separate encryption key, so a
 forgotten PIN can be reset with the account password without losing anything. Everything placed in the
 vault disappears from the rest of the app (see vault_scope.py); its shares are revoked, it is removed from
-albums, and text recognised from it is dropped so it cannot surface in search.
+albums, and text recognised from it is dropped so it cannot surface in search. Moving an item back out
+returns it to where it was: its folder, a photo's albums, a note's place in Notes.
 """
 
 import time
@@ -25,11 +26,13 @@ from app.models.album import Album, AlbumPhoto
 from app.models.document_asset import DocumentAsset
 from app.models.document_intelligence import DocumentFieldValue, DocumentIntelligenceTask, DocumentProfile, DocumentTextChunk
 from app.models.file_asset import FileAsset
+from app.models.folder import Folder
 from app.models.photo_asset import PhotoAsset
 from app.models.receipt import Receipt
 from app.models.search_embedding import SearchEmbedding
 from app.models.share import Share
 from app.models.user import User
+from app.services import note_service
 from app.services.audit_service import write_audit_log
 from app.services.file_service import create_encrypted_asset_from_bytes, decrypt_file_asset, get_owned_file
 from app.services.storage_service import delete_physical_file
@@ -168,6 +171,7 @@ async def _item(db: AsyncSession, document: DocumentAsset, file_asset: FileAsset
     file_asset = file_asset or await db.get(FileAsset, document.file_id)
     photo_id = await db.scalar(select(PhotoAsset.id).where(PhotoAsset.file_id == document.file_id).limit(1))
     return {
+        "kind": "file",
         "id": str(document.id),
         "file_id": str(document.file_id),
         "title": document.title,
@@ -185,13 +189,16 @@ async def _item(db: AsyncSession, document: DocumentAsset, file_asset: FileAsset
 
 
 async def list_vault_items(db: AsyncSession, owner: User) -> list[dict[str, Any]]:
+    """Files and notes together, most recently added first."""
     rows = await db.execute(
         select(DocumentAsset, FileAsset)
         .join(FileAsset, FileAsset.id == DocumentAsset.file_id)
         .where(DocumentAsset.owner_id == owner.id, DocumentAsset.security_level == VAULT_LEVEL)
-        .order_by(DocumentAsset.created_at.desc())
     )
-    return [await _item(db, document, file_asset) for document, file_asset in rows.all()]
+    items = [await _item(db, document, file_asset) for document, file_asset in rows.all()]
+    for note in await note_service.list_vault_notes(db, owner):
+        items.append({**note, "kind": "note", "added_at": note["vaulted_at"] or note["updated_at"]})
+    return sorted(items, key=lambda item: item.get("added_at") or item["created_at"], reverse=True)
 
 
 async def _get_vault_document(db: AsyncSession, owner: User, document_id: UUID) -> DocumentAsset:
@@ -203,8 +210,8 @@ async def _get_vault_document(db: AsyncSession, owner: User, document_id: UUID) 
     return document
 
 
-async def _seal(db: AsyncSession, owner: User, file_id: UUID) -> None:
-    """Cut every way the file could still be reached outside the vault."""
+async def _seal(db: AsyncSession, owner: User, file_id: UUID, document: DocumentAsset) -> None:
+    """Cut every way the file could still be reached outside the vault, noting what moving it out restores."""
     photo = await db.scalar(select(PhotoAsset).where(PhotoAsset.owner_id == owner.id, PhotoAsset.file_id == file_id))
     share_targets = [file_id] + ([photo.id] if photo else [])
     await db.execute(
@@ -213,11 +220,21 @@ async def _seal(db: AsyncSession, owner: User, file_id: UUID) -> None:
         .values(is_active=False)
     )
     if photo:
-        album_ids = list(await db.scalars(select(AlbumPhoto.album_id).where(AlbumPhoto.photo_id == photo.id)))
+        memberships = list(await db.scalars(select(AlbumPhoto).where(AlbumPhoto.photo_id == photo.id)))
+        album_ids = [item.album_id for item in memberships]
         await db.execute(delete(AlbumPhoto).where(AlbumPhoto.photo_id == photo.id))
         hidden = [item for item in (photo.file_id, photo.thumbnail_file_id, photo.preview_file_id) if item]
+        covers = {}
         for album in await db.scalars(select(Album).where(Album.id.in_(album_ids), Album.cover_file_id.in_(hidden))):
+            covers[str(album.id)] = str(album.cover_file_id)
             album.cover_file_id = None
+        if memberships:
+            document.restore_info = {
+                "albums": [
+                    {"album_id": str(item.album_id), "sort_order": item.sort_order, "cover_file_id": covers.get(str(item.album_id))}
+                    for item in memberships
+                ]
+            }
     # Recognised text and fields would otherwise still be searchable.
     await db.execute(delete(SearchEmbedding).where(SearchEmbedding.owner_id == owner.id, SearchEmbedding.file_id == file_id))
     await db.execute(delete(DocumentTextChunk).where(DocumentTextChunk.owner_id == owner.id, DocumentTextChunk.file_id == file_id))
@@ -236,7 +253,7 @@ async def place_file_in_vault(db: AsyncSession, owner: User, file_asset: FileAss
         db.add(document)
     document.security_level = VAULT_LEVEL
     await db.flush()
-    await _seal(db, owner, file_asset.id)
+    await _seal(db, owner, file_asset.id, document)
     await write_audit_log(db, action="vault.add", actor_user_id=owner.id, target_type="file", target_id=str(file_asset.id))
     return document
 
@@ -309,14 +326,50 @@ async def vault_thumbnail(db: AsyncSession, owner: User, document_id: UUID) -> b
         raise AppError("vault_no_thumbnail", "No preview for this file", 404) from exc
 
 
+async def _restore_albums(db: AsyncSession, owner: User, photo: PhotoAsset, restore_info: dict | None) -> list[str]:
+    """Put a photo back into the albums it was in; albums deleted meanwhile are skipped."""
+    entries = (restore_info or {}).get("albums") or []
+    wanted = {}
+    for entry in entries:
+        try:
+            wanted[UUID(entry["album_id"])] = entry
+        except (KeyError, TypeError, ValueError):
+            continue
+    if not wanted:
+        return []
+    names = []
+    for album in await db.scalars(select(Album).where(Album.owner_id == owner.id, Album.id.in_(wanted))):
+        entry = wanted[album.id]
+        already = await db.scalar(select(AlbumPhoto.id).where(AlbumPhoto.album_id == album.id, AlbumPhoto.photo_id == photo.id))
+        if already is None:
+            db.add(AlbumPhoto(album_id=album.id, photo_id=photo.id, sort_order=int(entry.get("sort_order") or 0)))
+        cover = entry.get("cover_file_id")
+        if cover and album.cover_file_id is None:
+            album.cover_file_id = UUID(cover)
+        names.append(album.title)
+    return names
+
+
 async def remove_from_vault(db: AsyncSession, owner: User, document_id: UUID) -> dict[str, Any]:
-    """Back to the library: a photo returns to Photos, anything else to Files."""
+    """Back where it came from: a photo to Photos and its albums, anything else to its folder in Files."""
     document = await _get_vault_document(db, owner, document_id)
     file_asset = await get_owned_file(db, owner, document.file_id, allow_vault_locked=True)
+    restore_info = document.restore_info
     await db.delete(document)
     await db.flush()
     photo = await db.scalar(select(PhotoAsset).where(PhotoAsset.owner_id == owner.id, PhotoAsset.file_id == file_asset.id))
     destination = "photos" if photo else "files"
+    albums = await _restore_albums(db, owner, photo, restore_info) if photo else []
+    folder_name = None
+    if file_asset.folder_id is not None:
+        folder = await db.scalar(
+            select(Folder).where(Folder.id == file_asset.folder_id, Folder.owner_id == owner.id, Folder.is_deleted.is_(False))
+        )
+        if folder is None:
+            # The folder was deleted while the file was in the vault: the top of Files instead of nowhere.
+            file_asset.folder_id = None
+        else:
+            folder_name = folder.name
     if file_asset.source == "vault_upload":
         file_asset.source = "manual_upload"
         if file_asset.file_category == "photo" and photo is None:
@@ -330,7 +383,40 @@ async def remove_from_vault(db: AsyncSession, owner: User, document_id: UUID) ->
         await enqueue_document_intelligence_task(db, owner=owner, file_asset=file_asset, source_type=file_asset.file_category)
     await write_audit_log(db, action="vault.remove", actor_user_id=owner.id, target_type="file", target_id=str(file_asset.id))
     await db.commit()
-    return {"destination": destination}
+    return {"destination": destination, "folder_name": folder_name if destination == "files" else None, "albums": albums}
+
+
+# ---------------------------------------------------------------- notes
+
+
+async def add_note_to_vault(db: AsyncSession, owner: User, note_id: UUID) -> dict[str, Any]:
+    await note_service.move_to_vault(db, owner, note_id)
+    await write_audit_log(db, action="vault.add", actor_user_id=owner.id, target_type="note", target_id=str(note_id))
+    await db.commit()
+    return {"id": str(note_id), "kind": "note"}
+
+
+async def read_vault_note(db: AsyncSession, owner: User, note_id: UUID) -> dict[str, Any]:
+    note = await note_service.get_vault_note(db, owner, note_id)
+    await write_audit_log(db, action="vault.open", actor_user_id=owner.id, target_type="note", target_id=str(note_id))
+    await db.commit()
+    return note
+
+
+async def read_vault_note_image(db: AsyncSession, owner: User, note_id: UUID, image_id: UUID) -> tuple[bytes, str]:
+    return await note_service.read_image(db, owner, note_id, image_id, in_vault=True)
+
+
+async def remove_note_from_vault(db: AsyncSession, owner: User, note_id: UUID) -> dict[str, Any]:
+    await note_service.move_out_of_vault(db, owner, note_id)
+    await write_audit_log(db, action="vault.remove", actor_user_id=owner.id, target_type="note", target_id=str(note_id))
+    await db.commit()
+    return {"destination": "notes", "note_id": str(note_id)}
+
+
+async def delete_vault_note(db: AsyncSession, owner: User, note_id: UUID) -> None:
+    await write_audit_log(db, action="vault.delete", actor_user_id=owner.id, target_type="note", target_id=str(note_id))
+    await note_service.delete_note(db, owner, note_id, in_vault=True)
 
 
 async def delete_vault_item(db: AsyncSession, owner: User, document_id: UUID) -> None:

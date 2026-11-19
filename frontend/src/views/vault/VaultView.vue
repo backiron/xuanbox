@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Download, FileText, KeyRound, Lock, LockKeyhole, Pencil, Trash2, Undo2, Upload, X } from 'lucide-vue-next'
+import { Download, FileText, KeyRound, Lock, LockKeyhole, Pencil, StickyNote, Trash2, Undo2, Upload, X } from 'lucide-vue-next'
 
 import PageHeader from '../../components/common/PageHeader.vue'
 import { vaultApi } from '../../api/vaultApi'
@@ -19,7 +19,7 @@ const error = ref('')
 const uploadProgress = ref(0)
 const dragging = ref(false)
 const thumbs = ref({})
-const viewer = ref(null) // { item, url, kind }
+const viewer = ref(null) // { item, url, kind } — for a note: { item, kind: 'note', blocks: [{ text } | { imageId, url }] }
 let clock = null
 
 const minutesLeft = computed(() => Math.max(1, Math.ceil(vault.secondsLeft / 60)))
@@ -39,12 +39,19 @@ function failure(err, fallbackKey) {
   error.value = err?.response?.data?.message && err.response.status !== 401 ? err.response.data.message : t(fallbackKey)
 }
 
+function forgetViewer() {
+  if (viewer.value?.url) URL.revokeObjectURL(viewer.value.url)
+  viewer.value?.blocks?.forEach((block) => block.url && URL.revokeObjectURL(block.url))
+  viewer.value = null
+}
+
 function forgetBlobs() {
   Object.values(thumbs.value).forEach((url) => url && URL.revokeObjectURL(url))
   thumbs.value = {}
-  if (viewer.value?.url) URL.revokeObjectURL(viewer.value.url)
-  viewer.value = null
+  forgetViewer()
 }
+
+const isNote = (item) => item.kind === 'note'
 
 async function loadItems() {
   if (!vault.unlocked) return
@@ -52,7 +59,7 @@ async function loadItems() {
   try {
     const response = await vaultApi.list(vault.token)
     items.value = response.data.data
-    items.value.filter((item) => item.is_image && !(item.id in thumbs.value)).forEach(loadThumb)
+    items.value.filter((item) => (item.is_image || (isNote(item) && item.cover_image_id)) && !(item.id in thumbs.value)).forEach(loadThumb)
   } catch (err) {
     failure(err, 'pages.vault.loadFailed')
   } finally {
@@ -63,7 +70,9 @@ async function loadItems() {
 async function loadThumb(item) {
   thumbs.value = { ...thumbs.value, [item.id]: '' }
   try {
-    const response = await vaultApi.thumbnail(vault.token, item.id)
+    const response = isNote(item)
+      ? await vaultApi.noteImage(vault.token, item.id, item.cover_image_id)
+      : await vaultApi.thumbnail(vault.token, item.id)
     thumbs.value = { ...thumbs.value, [item.id]: URL.createObjectURL(response.data) }
   } catch {
     // shown with a file icon instead
@@ -130,7 +139,35 @@ function kindOf(item) {
   return 'other'
 }
 
+const NOTE_IMAGE = /^\[\[img:([0-9a-fA-F-]{36})\]\]$/
+
+async function openNote(item) {
+  viewer.value = { item, kind: 'note', loading: true, blocks: [] }
+  try {
+    const response = await vault.run((token) => vaultApi.note(token, item.id))
+    if (!response || viewer.value?.item.id !== item.id) return
+    const blocks = []
+    for (const line of response.data.data.body.split('\n')) {
+      const match = line.match(NOTE_IMAGE)
+      if (match) blocks.push({ imageId: match[1], url: '' })
+      else if (blocks.length && 'text' in blocks.at(-1)) blocks.at(-1).text += `\n${line}`
+      else blocks.push({ text: line })
+    }
+    viewer.value = { item, kind: 'note', loading: false, blocks }
+    // Through viewer.value so each image shows as soon as it arrives.
+    for (const block of viewer.value.blocks.filter((entry) => entry.imageId)) {
+      const image = await vault.run((token) => vaultApi.noteImage(token, item.id, block.imageId))
+      if (!image || viewer.value?.item.id !== item.id) return
+      block.url = URL.createObjectURL(image.data)
+    }
+  } catch (err) {
+    forgetViewer()
+    failure(err, 'pages.vault.openFailed')
+  }
+}
+
 async function openItem(item) {
+  if (isNote(item)) return openNote(item)
   const kind = kindOf(item)
   viewer.value = { item, url: '', kind, loading: kind !== 'other' }
   if (kind === 'other') return
@@ -145,8 +182,7 @@ async function openItem(item) {
 }
 
 function closeViewer() {
-  if (viewer.value?.url) URL.revokeObjectURL(viewer.value.url)
-  viewer.value = null
+  forgetViewer()
 }
 
 async function download(item) {
@@ -179,18 +215,32 @@ async function rename(item) {
   }
 }
 
+function restoreHint(item) {
+  if (isNote(item)) return t('pages.vault.restoreToNotes')
+  return item.from_photos ? t('pages.vault.restoreToPhotos') : t('pages.vault.restoreToFiles')
+}
+
+// Says exactly where the item went back to.
+function restoredMessage(result) {
+  if (result.destination === 'notes') return t('pages.vault.restoredNotes')
+  if (result.destination === 'photos') {
+    return result.albums?.length ? t('pages.vault.restoredAlbums', { albums: result.albums.join(locale.value.startsWith('zh') ? '、' : ', ') }) : t('pages.vault.restoredPhotos')
+  }
+  return result.folder_name ? t('pages.vault.restoredFolder', { folder: result.folder_name }) : t('pages.vault.restoredFiles')
+}
+
 async function restore(item) {
   const ok = await dialog.confirm({
     title: t('pages.vault.restoreTitle'),
-    message: item.is_image ? t('pages.vault.restoreToPhotos') : t('pages.vault.restoreToFiles'),
+    message: restoreHint(item),
     confirmText: t('pages.vault.restore')
   })
   if (!ok) return
   try {
-    const response = await vault.run((token) => vaultApi.restore(token, item.id))
+    const response = await vault.run((token) => (isNote(item) ? vaultApi.restoreNote(token, item.id) : vaultApi.restore(token, item.id)))
     if (!response) return
     closeViewer()
-    message.value = response.data.data.destination === 'photos' ? t('pages.vault.restoredPhotos') : t('pages.vault.restoredFiles')
+    message.value = restoredMessage(response.data.data)
     await loadItems()
   } catch (err) {
     failure(err, 'pages.vault.actionFailed')
@@ -200,13 +250,13 @@ async function restore(item) {
 async function remove(item) {
   const ok = await dialog.confirm({
     title: t('pages.vault.deleteTitle'),
-    message: t('pages.vault.deleteMessage', { name: item.title }),
+    message: t('pages.vault.deleteMessage', { name: item.title || t('pages.notes.untitled') }),
     confirmText: t('common.actions.delete'),
     danger: true
   })
   if (!ok) return
   try {
-    const response = await vault.run((token) => vaultApi.remove(token, item.id))
+    const response = await vault.run((token) => (isNote(item) ? vaultApi.removeNote(token, item.id) : vaultApi.remove(token, item.id)))
     if (!response) return
     closeViewer()
     message.value = t('pages.vault.deleted')
@@ -298,10 +348,12 @@ onBeforeUnmount(() => {
         <button v-for="item in items" :key="item.id" type="button" class="xb-vault-card" @click="openItem(item)">
           <div class="xb-vault-thumb">
             <img v-if="thumbs[item.id]" :src="thumbs[item.id]" alt="" />
+            <StickyNote v-else-if="isNote(item)" :size="34" />
             <FileText v-else :size="34" />
           </div>
-          <strong>{{ item.title }}</strong>
-          <small>{{ [formatBytes(item.file_size), formatDate(item.created_at)].filter(Boolean).join(' · ') }}</small>
+          <strong>{{ item.title || (isNote(item) ? t('pages.notes.untitled') : '') }}</strong>
+          <small v-if="isNote(item)">{{ [t('pages.vault.noteKind'), formatDate(item.added_at)].join(' · ') }}</small>
+          <small v-else>{{ [formatBytes(item.file_size), formatDate(item.created_at)].filter(Boolean).join(' · ') }}</small>
         </button>
       </div>
     </template>
@@ -309,11 +361,18 @@ onBeforeUnmount(() => {
     <section v-if="viewer" class="xb-modal-backdrop xb-vault-viewer" @click.self="closeViewer">
       <div class="xb-modal">
         <header>
-          <strong>{{ viewer.item.title }}</strong>
+          <strong>{{ viewer.item.title || t('pages.notes.untitled') }}</strong>
           <button class="xb-icon-button" type="button" :title="t('common.actions.close')" @click="closeViewer"><X :size="18" /></button>
         </header>
         <div class="xb-vault-viewer-body">
           <p v-if="viewer.loading" class="xb-vault-hint">{{ t('common.actions.loading') }}…</p>
+          <div v-else-if="viewer.kind === 'note'" class="xb-vault-note">
+            <template v-for="(block, index) in viewer.blocks" :key="index">
+              <img v-if="block.imageId && block.url" :src="block.url" alt="" />
+              <p v-else-if="block.imageId" class="xb-vault-hint">…</p>
+              <div v-else-if="block.text.trim()" class="xb-vault-note-text">{{ block.text }}</div>
+            </template>
+          </div>
           <img v-else-if="viewer.kind === 'image'" :src="viewer.url" alt="" />
           <iframe v-else-if="viewer.kind === 'pdf' || viewer.kind === 'text'" :src="viewer.url" :title="viewer.item.title"></iframe>
           <video v-else-if="viewer.kind === 'video'" :src="viewer.url" controls></video>
@@ -321,8 +380,10 @@ onBeforeUnmount(() => {
           <p v-else class="xb-vault-hint">{{ t('pages.vault.noPreview') }}</p>
         </div>
         <footer>
-          <button class="xb-secondary-button" type="button" @click="download(viewer.item)"><Download :size="16" />{{ t('common.actions.download') }}</button>
-          <button class="xb-secondary-button" type="button" @click="rename(viewer.item)"><Pencil :size="16" />{{ t('pages.vault.rename') }}</button>
+          <template v-if="viewer.kind !== 'note'">
+            <button class="xb-secondary-button" type="button" @click="download(viewer.item)"><Download :size="16" />{{ t('common.actions.download') }}</button>
+            <button class="xb-secondary-button" type="button" @click="rename(viewer.item)"><Pencil :size="16" />{{ t('pages.vault.rename') }}</button>
+          </template>
           <button class="xb-secondary-button" type="button" @click="restore(viewer.item)"><Undo2 :size="16" />{{ t('pages.vault.restore') }}</button>
           <button class="xb-secondary-button xb-danger-button" type="button" @click="remove(viewer.item)"><Trash2 :size="16" />{{ t('common.actions.delete') }}</button>
         </footer>

@@ -192,6 +192,11 @@
       restoreToFiles: "This file goes back to Files, where it can be viewed and shared normally.",
       restoredPhotos: "Moved back to Photos",
       restoredFiles: "Moved back to Files",
+      restoreToNotes: 'This note goes back to Notes with its text, images, pin and place unchanged.',
+      restoredNotes: 'Moved back to Notes',
+      restoredFolder: 'Moved back to Files › {folder}',
+      restoredAlbums: 'Moved back to Photos and its albums: {albums}',
+      noteKind: 'Note',
       deleteTitle: "Delete for good?",
       deleteMessage: "\"{name}\" will be deleted permanently. It does not go to the trash and can't be recovered.",
       deleted: "Deleted for good",
@@ -234,6 +239,8 @@
       }
     },
     notes: {
+      vaultSaveFirst: 'This note is not saved yet. Wait a moment, then move it to the vault.',
+      vaulted: 'The note is in the vault and no longer shows in Notes. Choose Move out of vault there to bring it back unchanged.',
       ink: {
         title: 'Handwriting',
         pen: 'Pen',

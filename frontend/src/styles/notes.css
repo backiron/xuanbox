@@ -367,6 +367,21 @@
   color: var(--xb-color-success, #22c55e);
 }
 
+/* Phones: seven tools (handwriting and vault included) must fit one row. */
+@media (max-width: 429px) {
+  .xb-note-toolbar,
+  .xb-note-tools {
+    gap: 2px;
+  }
+
+  .xb-note-toolbar .xb-icon-button,
+  .xb-note-toolbar .xb-note-copy {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+  }
+}
+
 /* Very narrow phones: the Copy button keeps only its icon so the row still fits. */
 @media (max-width: 379px) {
   .xb-note-copy span {
@@ -374,8 +389,8 @@
   }
 
   .xb-note-toolbar .xb-note-copy {
-    width: 36px;
-    min-width: 36px;
+    width: 34px;
+    min-width: 34px;
     padding: 0;
     justify-content: center;
   }

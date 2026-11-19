@@ -112,6 +112,38 @@ async def add_photo_to_vault(photo_id: UUID, session: AsyncSession = Depends(get
     return success_response(await vault.add_file_to_vault(session, current_user, file_id))
 
 
+@router.post("/from-note/{note_id}")
+async def add_note_to_vault(note_id: UUID, session: AsyncSession = Depends(get_session), current_user: User = Depends(require_vault_unlock)) -> dict:
+    return success_response(await vault.add_note_to_vault(session, current_user, note_id))
+
+
+@router.get("/notes/{note_id}")
+async def vault_note(note_id: UUID, session: AsyncSession = Depends(get_session), current_user: User = Depends(require_vault_unlock)) -> dict:
+    return success_response(await vault.read_vault_note(session, current_user, note_id))
+
+
+@router.get("/notes/{note_id}/images/{image_id}")
+async def vault_note_image(
+    note_id: UUID,
+    image_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_vault_unlock),
+) -> Response:
+    content, mime_type = await vault.read_vault_note_image(session, current_user, note_id, image_id)
+    return Response(content=content, media_type=mime_type, headers={"Cache-Control": "no-store"})
+
+
+@router.post("/notes/{note_id}/restore")
+async def restore_vault_note(note_id: UUID, session: AsyncSession = Depends(get_session), current_user: User = Depends(require_vault_unlock)) -> dict:
+    return success_response(await vault.remove_note_from_vault(session, current_user, note_id))
+
+
+@router.delete("/notes/{note_id}")
+async def delete_vault_note(note_id: UUID, session: AsyncSession = Depends(get_session), current_user: User = Depends(require_vault_unlock)) -> dict:
+    await vault.delete_vault_note(session, current_user, note_id)
+    return success_response(message="deleted")
+
+
 @router.get("/{document_id}/content")
 async def vault_item_content(
     document_id: UUID,

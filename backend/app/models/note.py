@@ -1,6 +1,7 @@
+from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import BigInteger, Boolean, ForeignKey, String, Text
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -16,6 +17,9 @@ class Note(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     owner_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
     body: Mapped[str] = mapped_column(Text, default="", nullable=False)
     pinned: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # In the vault: hidden from Notes until moved back out, where it returns unchanged.
+    in_vault: Mapped[bool] = mapped_column(Boolean, default=False, index=True, nullable=False)
+    vaulted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class NoteImage(UUIDPrimaryKeyMixin, TimestampMixin, Base):

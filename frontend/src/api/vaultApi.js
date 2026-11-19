@@ -35,6 +35,21 @@ export const vaultApi = {
   addPhoto(token, photoId) {
     return http.post(`/important-docs/from-photo/${photoId}`, {}, unlock(token))
   },
+  addNote(token, noteId) {
+    return http.post(`/important-docs/from-note/${noteId}`, {}, unlock(token))
+  },
+  note(token, noteId) {
+    return http.get(`/important-docs/notes/${noteId}`, unlock(token))
+  },
+  noteImage(token, noteId, imageId) {
+    return http.get(`/important-docs/notes/${noteId}/images/${imageId}`, { ...unlock(token), responseType: 'blob' })
+  },
+  restoreNote(token, noteId) {
+    return http.post(`/important-docs/notes/${noteId}/restore`, {}, unlock(token))
+  },
+  removeNote(token, noteId) {
+    return http.delete(`/important-docs/notes/${noteId}`, unlock(token))
+  },
   content(token, id, download = false) {
     return http.get(`/important-docs/${id}/content`, { ...unlock(token), params: download ? { download: 1 } : {}, responseType: 'blob', timeout: 300000 })
   },

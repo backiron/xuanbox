@@ -192,6 +192,11 @@
       restoreToFiles: "这个文件会回到“文件”里，之后可以正常查看和分享。",
       restoredPhotos: "已移回照片",
       restoredFiles: "已移回文件",
+      restoreToNotes: "这条记事会回到记事板，文字、图片、置顶和原来的位置都保持不变。",
+      restoredNotes: "已移回记事板",
+      restoredFolder: "已移回文件 › {folder}",
+      restoredAlbums: "已移回照片，并放回相册：{albums}",
+      noteKind: "记事",
       deleteTitle: "彻底删除？",
       deleteMessage: "“{name}”会被永久删除，不进回收站，无法恢复。",
       deleted: "已彻底删除",
@@ -234,6 +239,8 @@
       }
     },
     notes: {
+      vaultSaveFirst: "这条记事还没保存好，请稍等一下再放进保险箱。",
+      vaulted: "这条记事已经放进保险箱，在记事板里看不到了。在保险箱里点“移出保险箱”，它会原样回到这里。",
       ink: {
         title: '手写',
         pen: '笔',
