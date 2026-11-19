@@ -82,11 +82,12 @@ async def _get_note(db: AsyncSession, user: User, note_id: UUID, *, in_vault: bo
 
 async def list_notes(db: AsyncSession, user: User, query: str | None = None) -> list[dict[str, Any]]:
     statement = select(Note).where(Note.owner_id == user.id, Note.in_vault.is_(False))
-    words = (query or "").split()
-    for word in words[:8]:
-        escaped = word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        statement = statement.where(Note.body.ilike(f"%{escaped}%", escape="\\"))
-    notes = list(await db.scalars(statement.order_by(Note.pinned.desc(), Note.updated_at.desc()).limit(500)))
+    notes = list(await db.scalars(statement.order_by(Note.pinned.desc(), Note.updated_at.desc())))
+    # Bodies are encrypted in the database, so the search runs on the decrypted text.
+    words = [word.casefold() for word in (query or "").split()[:8]]
+    if words:
+        notes = [note for note in notes if all(word in note.body.casefold() for word in words)]
+    notes = notes[:500]
     return [_summary(note, _ordered_image_ids(note.body)) for note in notes]
 
 

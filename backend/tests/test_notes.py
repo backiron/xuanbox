@@ -68,3 +68,44 @@ def test_large_photos_are_scaled_and_non_images_refused(make_user):
     assert (big["width"], big["height"]) == (2560, 640)
     refused = me.post(f"/notes/{note['id']}/images", files={"file": ("x.png", b"not an image", "image/png")})
     assert refused.status_code == 415
+
+
+def _stored_body(note_id):
+    """The note body exactly as the database holds it, bypassing the model's decryption."""
+    import asyncio
+
+    import sqlalchemy as sa
+
+    from app.core.database import engine
+
+    async def go():
+        async with engine.connect() as conn:
+            value = await conn.scalar(sa.text("SELECT body FROM notes WHERE id = :id"), {"id": note_id})
+        await engine.dispose()
+        return value
+
+    return asyncio.run(go())
+
+
+def test_note_text_is_encrypted_at_rest_and_still_searchable(make_user):
+    me = make_user("note")
+    note = me.data(me.post("/notes", json={"body": "保险柜密码提示：Wombatfjord 七月"}))
+    stored = _stored_body(note["id"])
+    assert stored.startswith("xbt1:") and "Wombatfjord" not in stored and "保险柜" not in stored
+
+    saved = me.data(me.patch(f"/notes/{note['id']}", json={"body": "保险柜密码提示：Wombatfjord 八月"}))
+    assert saved["body"].endswith("八月")
+    assert "八月" not in _stored_body(note["id"])
+
+    assert [n["id"] for n in me.data(me.get("/notes", params={"q": "wombatFJORD 八月"}))] == [note["id"]]
+    assert [n["id"] for n in me.data(me.get("/notes", params={"q": "保险柜"}))] == [note["id"]]
+    assert me.data(me.get("/notes", params={"q": "七月"})) == []
+    assert me.data(me.get("/notes"))[0]["title"] == "保险柜密码提示：Wombatfjord 八月"
+
+
+def test_note_images_are_never_cached(make_user):
+    me = make_user("note")
+    note = me.data(me.post("/notes", json={}))
+    image = me.data(me.post(f"/notes/{note['id']}/images", files={"file": ("a.png", _png(), "image/png")}))
+    shown = me.get(f"/notes/{note['id']}/images/{image['id']}")
+    assert shown.headers["cache-control"] == "no-store"

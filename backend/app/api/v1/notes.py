@@ -77,4 +77,5 @@ async def note_image_endpoint(
     current_user: User = Depends(require_user_app),
 ) -> Response:
     content, mime_type = await note_service.read_image(session, current_user, note_id, image_id)
-    return Response(content=content, media_type=mime_type, headers={"Cache-Control": "private, max-age=86400"})
+    # Never cached by the browser: a note moved into the vault must not stay readable on the device.
+    return Response(content=content, media_type=mime_type, headers={"Cache-Control": "no-store"})

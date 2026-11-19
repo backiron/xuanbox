@@ -6,6 +6,7 @@ from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+from app.core.encrypted_types import EncryptedText
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 
@@ -15,7 +16,8 @@ class Note(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "notes"
 
     owner_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
-    body: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    # Encrypted at rest; only searchable after decrypting (see note_service.list_notes).
+    body: Mapped[str] = mapped_column(EncryptedText("notes.body"), default="", nullable=False)
     pinned: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # In the vault: hidden from Notes until moved back out, where it returns unchanged.
     in_vault: Mapped[bool] = mapped_column(Boolean, default=False, index=True, nullable=False)
